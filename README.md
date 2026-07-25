@@ -70,7 +70,7 @@ Start with the least autonomous design that can reliably solve the task. More au
 
 ## Test your knowledge
 
-Finished the guides? Open the [interactive AI Agents Knowledge Check](quiz/index.html)—18 multiple-answer questions covering foundations, the agent loop, tools and memory, workflows, multi-agent orchestration, and evaluation and safety.
+Finished the guides? Open the [interactive AI Agents Knowledge Check](https://mahsa-teimourikia.github.io/awsome-ai-agents/)—18 multiple-answer questions covering foundations, the agent loop, tools and memory, workflows, multi-agent orchestration, and evaluation and safety.
 
 The quiz:
 
