@@ -17,6 +17,7 @@ AI agents combine a model with instructions, tools, memory or state, and a contr
 - [Open-source frameworks](#open-source-frameworks)
 - [Tools, memory, and protocols](#tools-memory-and-protocols)
 - [Architecture patterns](#architecture-patterns)
+- [Multi-agent systems](#multi-agent-systems)
 - [Use-case playbook](#use-case-playbook)
 - [Evaluation and observability](#evaluation-and-observability)
 - [Security and production checklist](#security-and-production-checklist)
@@ -103,6 +104,7 @@ It is dependency-free and ready for GitHub Pages using the included workflow.
 ### Engineer for production
 
 - [Agent architecture patterns](docs/architecture-patterns.md) — routing, parallelization, orchestrator-worker, evaluator-optimizer, and human approval.
+- [Multi-agent systems](docs/multi-agent-systems.md) — teams, topologies, communication contracts, delegation, shared state, and when not to add another agent.
 - [Evaluation and security](docs/evaluation-and-security.md) — trajectory evaluation, outcome checks, threat modeling, and release gates.
 - [OpenAI Agents SDK: running agents](https://openai.github.io/openai-agents-python/running_agents/) — lifecycle, turns, exceptions, sessions, and run configuration.
 - [LangGraph durable execution](https://langchain-ai.github.io/langgraph/concepts/durable_execution/) — persistence and replay for long-running workflows.
@@ -216,6 +218,25 @@ Separate **working state** needed for the current run from **long-term memory** 
 | Human approval | Human boundary | High-impact or ambiguous actions | Approval fatigue and poor context |
 
 See [Agent architecture patterns](docs/architecture-patterns.md) for decision rules, flow descriptions, failure modes, and sources.
+
+## Multi-agent systems
+
+Multi-agent systems divide a task across specialized agents coordinated by code, a manager, a group-chat selector, or a graph. The most important design choice is ownership: does one manager retain the user-facing conversation, or does a handoff let a specialist take over?
+
+![Multi-agent team patterns showing manager delegation, peer handoffs, parallel workers, and a graph team](assets/multi-agent-patterns.svg)
+
+<sub>Diagram source: [Mermaid](assets/multi-agent-patterns.mmd).</sub>
+
+Use the [multi-agent systems guide](docs/multi-agent-systems.md) to choose a topology, define agent contracts, control context and state, design termination, and evaluate a team against a simpler single-agent baseline.
+
+Useful official references:
+
+- [OpenAI Agents SDK orchestration](https://openai.github.io/openai-agents-python/multi_agent/) — agents-as-tools, handoffs, code orchestration, and parallel agents.
+- [OpenAI Agents SDK tools](https://openai.github.io/openai-agents-python/tools/) — manager-style `Agent.as_tool()` orchestration.
+- [OpenAI Agents SDK handoffs](https://openai.github.io/openai-agents-python/handoffs/) — transfer control to a specialist.
+- [Anthropic: multi-agent research system](https://www.anthropic.com/engineering/multi-agent-research-system) — orchestrator-worker delegation and parallel research.
+- [AutoGen: group chat](https://microsoft.github.io/autogen/stable/user-guide/core-user-guide/design-patterns/group-chat.html) — selector/manager-driven team communication.
+- [AutoGen: teams](https://microsoft.github.io/autogen/dev/user-guide/agentchat-user-guide/tutorial/teams.html) — round-robin and team-based collaboration.
 
 ## Use-case playbook
 
