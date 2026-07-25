@@ -1,0 +1,39 @@
+flowchart TB
+    classDef human fill:#fff7ed,stroke:#ea580c,color:#7c2d12,stroke-width:2px
+    classDef core fill:#eff6ff,stroke:#2563eb,color:#172554,stroke-width:2px
+    classDef action fill:#ecfdf5,stroke:#059669,color:#064e3b,stroke-width:2px
+    classDef state fill:#f5f3ff,stroke:#7c3aed,color:#3b0764,stroke-width:2px
+    classDef control fill:#fef2f2,stroke:#dc2626,color:#7f1d1d,stroke-width:2px
+    classDef evidence fill:#f8fafc,stroke:#475569,color:#0f172a,stroke-width:2px
+
+    U["User goal<br/>and success criteria"]:::human
+
+    subgraph LOOP["Bounded agent loop"]
+        direction LR
+        M["Model<br/>decide next action"]:::core
+        P{"Policy and<br/>permission check"}:::control
+        A["Execute tool<br/>or return response"]:::action
+        O["Observation<br/>and result"]:::action
+
+        M -->|"structured proposal"| P
+        P -->|"allowed"| A
+        A --> O
+        O -.->|"continue"| M
+        P -->|"blocked or risky"| H["Human approval<br/>or escalation"]:::human
+        H -->|"approved / redirected"| A
+    end
+
+    G["Instructions<br/>policies and stop conditions"]:::control
+    T["Typed tools<br/>schemas and scoped credentials"]:::action
+    S[("Working state<br/>and memory")]:::state
+    E["Tracing and evaluation<br/>outcome · trajectory · operations"]:::evidence
+    R["Final result<br/>or safe termination"]:::human
+
+    U --> M
+    G -.-> M
+    T -.-> A
+    O -->|"record"| S
+    S -.->|"relevant context"| M
+    O -->|"success, limit, or escalation"| R
+    LOOP -.->|"events and spans"| E
+    E -.->|"regression feedback"| G
