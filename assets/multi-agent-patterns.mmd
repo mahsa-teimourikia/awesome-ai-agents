@@ -1,0 +1,41 @@
+flowchart TB
+    classDef input fill:#fff7ed,stroke:#ea580c,color:#7c2d12,stroke-width:2px
+    classDef manager fill:#eff6ff,stroke:#2563eb,color:#172554,stroke-width:2px
+    classDef worker fill:#ecfdf5,stroke:#059669,color:#064e3b,stroke-width:2px
+    classDef graphNode fill:#f5f3ff,stroke:#7c3aed,color:#3b0764,stroke-width:2px
+    classDef guard fill:#fef2f2,stroke:#dc2626,color:#7f1d1d,stroke-width:2px
+
+    U["User goal"]:::input
+
+    subgraph TEAM["Multi-agent design patterns"]
+        direction LR
+        M["Manager<br/>owns final answer"]:::manager
+        H["Triage / handoff<br/>specialist takes over"]:::manager
+        O["Orchestrator<br/>decomposes goal"]:::manager
+        G["Group chat manager<br/>selects next speaker"]:::manager
+        W1["Researcher"]:::worker
+        W2["Analyst"]:::worker
+        W3["Reviewer"]:::worker
+        J["Join / synthesize<br/>typed results"]:::graphNode
+        N["Graph runtime<br/>branches · joins · retries"]:::graphNode
+
+        M -->|"agents as tools"| W1
+        M -->|"bounded subtask"| W2
+        W1 --> J
+        W2 --> J
+        H -->|"transfer control"| W3
+        O --> W1
+        O --> W2
+        W1 --> N
+        W2 --> N
+        G <-->|"shared topic"| W3
+    end
+
+    U --> M
+    U --> H
+    U --> O
+    U --> G
+    J --> V{"Validate outcome,<br/>provenance, budget"}:::guard
+    N --> V
+    W3 --> V
+    V --> R["Final result<br/>or human escalation"]:::input
