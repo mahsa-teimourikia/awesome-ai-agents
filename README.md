@@ -8,7 +8,7 @@ AI agents combine a model with instructions, tools, memory or state, and a contr
 
 ## Contents
 
-- [Start here](#start-here)
+- [AI Agents Learning Hub](#ai-agents-learning-hub)
 - [Agents explained](#agents-explained)
 - [Agent or workflow?](#agent-or-workflow)
 - [Test your knowledge](#test-your-knowledge)
@@ -24,6 +24,15 @@ AI agents combine a model with instructions, tools, memory or state, and a contr
 - [Research and benchmarks](#research-and-benchmarks)
 - [Related awesome lists](#related-awesome-lists)
 - [Contributing](#contributing)
+
+## AI Agents Learning Hub
+
+**[Open the AI Agents Learning Hub →](https://mahsa-teimourikia.github.io/awsome-ai-agents/)**
+
+Use the Hub as the structured starting point: choose Beginner, Intermediate, or
+Advanced, read the linked theory, inspect the practical guide, and follow the
+Learn → Design → Check loop. The existing [Knowledge Check](quiz/index.html)
+remains available for a full 18-question assessment.
 
 ## Start here
 

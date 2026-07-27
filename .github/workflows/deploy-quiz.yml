@@ -1,10 +1,11 @@
-name: Deploy interactive quiz to GitHub Pages
+name: Deploy AI Agents Learning Hub to GitHub Pages
 
 on:
   push:
     branches: ["main"]
     paths:
       - "quiz/**"
+      - "hub/**"
       - ".github/workflows/deploy-quiz.yml"
   workflow_dispatch:
 
@@ -44,10 +45,15 @@ jobs:
         uses: actions/checkout@v6
       - name: Configure Pages
         uses: actions/configure-pages@v5
-      - name: Upload quiz
+      - name: Assemble learning site
+        run: |
+          mkdir -p site/quiz
+          cp -R hub/. site/
+          cp -R quiz/. site/quiz/
+      - name: Upload learning hub
         uses: actions/upload-pages-artifact@v4
         with:
-          path: quiz
+          path: site
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
