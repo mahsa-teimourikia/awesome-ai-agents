@@ -10,17 +10,21 @@ before connecting a provider.
 - [`01_agent_loop.py`](beginner/01_agent_loop.py) — observe → decide → act with budgets and stop conditions.
 - [`02_tool_contracts.py`](beginner/02_tool_contracts.py) — typed tool validation, authorization, dry runs, and idempotency.
 - [`03_checkpointed_state.py`](beginner/03_checkpointed_state.py) — resumable state and typed failure handling.
+- [`04_research_assistant_capstone.py`](beginner/04_research_assistant_capstone.py) — citations, evidence budgets, and abstention.
 
 ## Intermediate
 
 - [`01_architecture_patterns.py`](intermediate/01_architecture_patterns.py) — compare routing, parallelization, and evaluator-optimizer designs.
 - [`02_langgraph_workflow.py`](intermediate/02_langgraph_workflow.py) — model an explicit state graph with conditional routing.
 - [`03_evaluation_release_gate.py`](intermediate/03_evaluation_release_gate.py) — gate releases on outcomes, policy compliance, and cost.
+- [`04_support_workflow_capstone.py`](intermediate/04_support_workflow_capstone.py) — routing, account lookup, approval, and escalation.
 
 ## Advanced
 
 - [`01_multi_agent_team.py`](advanced/01_multi_agent_team.py) — manager/worker contracts, findings, and provenance.
 - [`02_durable_recovery.py`](advanced/02_durable_recovery.py) — idempotency, replay safety, and a kill switch.
+- [`03_protocol_boundaries.py`](advanced/03_protocol_boundaries.py) — identity and capability checks for interoperability.
+- [`04_safety_readiness.py`](advanced/04_safety_readiness.py) — threat-model checks and production readiness gates.
 
 ## Optional LangGraph environment
 
