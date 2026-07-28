@@ -25,6 +25,7 @@ before connecting a provider.
 - [`02_durable_recovery.py`](advanced/02_durable_recovery.py) — idempotency, replay safety, and a kill switch.
 - [`03_protocol_boundaries.py`](advanced/03_protocol_boundaries.py) — identity and capability checks for interoperability.
 - [`04_safety_readiness.py`](advanced/04_safety_readiness.py) — threat-model checks and production readiness gates.
+- [`05_multi_agent_research_capstone.py`](advanced/05_multi_agent_research_capstone.py) — bounded research team with claims, citations, and escalation.
 
 ## Optional LangGraph environment
 
