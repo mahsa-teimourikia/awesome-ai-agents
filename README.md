@@ -11,6 +11,8 @@ AI agents combine a model with instructions, tools, memory or state, and a contr
 - [AI Agents Learning Hub](#ai-agents-learning-hub)
 - [Agents explained](#agents-explained)
 - [Agent or workflow?](#agent-or-workflow)
+- [Learning roadmap](#learning-roadmap)
+- [Labs and implementation](#labs-and-implementation)
 - [Test your knowledge](#test-your-knowledge)
 - [Learning paths](#learning-paths)
 - [Official educational resources](#official-educational-resources)
@@ -33,16 +35,6 @@ Use the Hub as the structured starting point: choose Beginner, Intermediate, or
 Advanced, read the linked theory, inspect the practical guide, and follow the
 Learn → Design → Check loop. The existing [Knowledge Check](quiz/index.html)
 remains available for a full 18-question assessment.
-
-## Start here
-
-**New to agents?** Follow this sequence:
-
-1. Read [What is an AI agent?](docs/what-is-an-ai-agent.md) and Anthropic's [Building effective agents](https://www.anthropic.com/engineering/building-effective-agents).
-2. Learn the difference between an agent and an agentic workflow in [Agentic workflows](docs/agentic-workflows.md).
-3. Build one small tool-using loop with the [OpenAI Agents SDK quickstart](https://openai.github.io/openai-agents-python/quickstart/), [LangGraph quickstart](https://langchain-ai.github.io/langgraph/tutorials/introduction/), or [smolagents tutorial](https://huggingface.co/docs/smolagents/main/en/tutorials/building_good_agents).
-4. Add deterministic checks, budgets, traces, and human approval before expanding autonomy.
-5. Create task-level evaluations before adding more tools or multiple agents—see [Evaluation and security](docs/evaluation-and-security.md).
 
 ## Agents explained
 
@@ -78,9 +70,27 @@ Anthropic makes a useful distinction: **workflows** orchestrate models and tools
 
 Start with the least autonomous design that can reliably solve the task. More autonomy is justified when it produces measurable gains on representative evaluations, not merely a more impressive demo.
 
+## Learning roadmap
+
+Use the [AI Agents Learning Hub](#ai-agents-learning-hub) as the structured path:
+
+- **Beginner:** learn the agent loop, tool contracts, state, memory, and safe stopping; complete the research-assistant capstone.
+- **Intermediate:** compare workflows and agents, apply architecture patterns, and build evaluation and support-workflow gates.
+- **Advanced:** design multi-agent teams, durable recovery, protocol boundaries, safety readiness, and the research-team capstone.
+
+The [learning paths](#learning-paths) and [labs](labs/README.md) provide the source material behind each level.
+
+## Labs and implementation
+
+The [Python labs](labs/README.md) are dependency-light teaching artifacts. They
+include runnable beginner, intermediate, and advanced examples, with an optional
+[LangGraph environment](labs/requirements.txt). Larger modules stay in Python so
+they can be tested and reused; the [notebook companion](labs/notebooks/01_agent_loop.ipynb)
+adds an interactive explanation for the first lab.
+
 ## Test your knowledge
 
-Finished the guides? Open the [interactive AI Agents Knowledge Check](https://mahsa-teimourikia.github.io/awsome-ai-agents/)—18 multiple-answer questions covering foundations, the agent loop, tools and memory, workflows, multi-agent orchestration, and evaluation and safety.
+Finished the guides? Open the [interactive AI Agents Knowledge Check](https://mahsa-teimourikia.github.io/awsome-ai-agents/quiz/)—18 multiple-answer questions covering foundations, the agent loop, tools and memory, workflows, multi-agent orchestration, and evaluation and safety.
 
 The quiz:
 
@@ -118,6 +128,11 @@ It is dependency-free and ready for GitHub Pages using the included workflow.
 - [OpenAI Agents SDK: running agents](https://openai.github.io/openai-agents-python/running_agents/) — lifecycle, turns, exceptions, sessions, and run configuration.
 - [LangGraph durable execution](https://langchain-ai.github.io/langgraph/concepts/durable_execution/) — persistence and replay for long-running workflows.
 - [Anthropic: demystifying evals for AI agents](https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents) — practical guidance for tasks, graders, transcripts, and evaluation design.
+
+## Appendix: curated references and resources
+
+The following sections collect optional official documentation, open-source
+frameworks, protocols, benchmarks, and research to deepen the Hub curriculum.
 
 ## Official educational resources
 
