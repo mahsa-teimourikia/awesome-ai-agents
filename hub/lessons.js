@@ -9,3 +9,15 @@ export const lessons = [
   {id:"a2",level:"Advanced",step:"02",title:"Production operations",summary:"Add durable state, approvals, observability, replay, and rollback to long-running runs.",material:"docs/evaluation-and-security.md",lab:"labs/advanced/02_durable_recovery.py",outcome:"Define operational SLOs and recovery paths for an agentic system.",refs:["docs/evaluation-and-security.md#release-gates","https://langchain-ai.github.io/langgraph/concepts/durable_execution/"]},
   {id:"a3",level:"Advanced",step:"03",title:"Interoperability and autonomy",summary:"Combine MCP, A2A, human boundaries, and autonomy measurement without losing control.",material:"README.md#tools-memory-and-protocols",lab:"README.md#multi-agent-systems",outcome:"Map protocol boundaries and choose where identity, policy, and approval are enforced.",refs:["https://modelcontextprotocol.io/","https://a2a-protocol.org/"]}
 ];
+
+export const checks = {
+  b1: ["Which boundary keeps tools safe?", "Application policy and authorization outside the model."],
+  b2: ["What should stop a loop?", "A success condition, budget, policy block, or safe terminal state."],
+  b3: ["What should a tool contract include?", "Typed inputs, authorization, risk metadata, and useful errors."],
+  i1: ["When should you prefer a workflow?", "When the path is predictable and control or auditability matters."],
+  i2: ["What should you compare before adding agents?", "Success, cost, latency, coordination overhead, and failure modes."],
+  i3: ["What belongs in an agent release gate?", "Outcome, policy, trajectory, cost, and regression checks."],
+  a1: ["What makes a multi-agent team safe?", "Explicit roles, contracts, ownership, budgets, and termination rules."],
+  a2: ["Why use idempotency?", "To make retries and replay safe around side effects."],
+  a3: ["Where should interoperability authorization live?", "At the application protocol boundary, not in model instructions alone."]
+};

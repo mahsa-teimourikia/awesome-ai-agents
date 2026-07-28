@@ -88,6 +88,11 @@ include runnable beginner, intermediate, and advanced examples, with an optional
 they can be tested and reused; the [notebook companion](labs/notebooks/01_agent_loop.ipynb)
 adds an interactive explanation for the first lab.
 
+The labs also include a [provider and LangGraph setup guide](labs/provider-guide.md),
+two interactive notebook companions, and lesson-specific checkpoint prompts in
+the Hub. Start with deterministic stubs, then swap in a provider adapter only
+after the policy and evaluation tests are in place.
+
 ## Test your knowledge
 
 Finished the guides? Open the [interactive AI Agents Knowledge Check](https://mahsa-teimourikia.github.io/awsome-ai-agents/quiz/)—18 multiple-answer questions covering foundations, the agent loop, tools and memory, workflows, multi-agent orchestration, and evaluation and safety.

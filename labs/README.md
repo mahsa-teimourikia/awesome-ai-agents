@@ -39,3 +39,5 @@ identity, policy, secrets, and side effects in application code around the model
 The [`notebooks/`](notebooks/) directory contains Markdown-first companions for
 running the same ideas interactively. Larger implementations remain in Python so
 they can be tested and reused outside a notebook.
+
+See [`provider-guide.md`](provider-guide.md) before connecting a real model or API key.
