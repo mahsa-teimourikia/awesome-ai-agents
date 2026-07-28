@@ -93,6 +93,11 @@ two interactive notebook companions, and lesson-specific checkpoint prompts in
 the Hub. Start with deterministic stubs, then swap in a provider adapter only
 after the policy and evaluation tests are in place.
 
+Notebook JSON is validated in CI, and provider seams for the OpenAI Agents SDK
+and LangGraph are included under [`labs/providers/`](labs/providers/). These
+examples intentionally keep credentials and side effects outside the learning
+artifacts.
+
 ## Test your knowledge
 
 Finished the guides? Open the [interactive AI Agents Knowledge Check](https://mahsa-teimourikia.github.io/awsome-ai-agents/quiz/)—18 multiple-answer questions covering foundations, the agent loop, tools and memory, workflows, multi-agent orchestration, and evaluation and safety.

@@ -39,6 +39,9 @@ jobs:
       - name: Pages smoke check
         working-directory: .
         run: node scripts/pages-smoke.mjs
+      - name: Validate notebooks
+        working-directory: .
+        run: node scripts/validate-notebooks.mjs
       - name: Check external Hub links
         working-directory: .
         run: node scripts/check-external-links.mjs
