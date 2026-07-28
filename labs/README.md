@@ -35,3 +35,7 @@ and run [`02_langgraph_workflow.py`](intermediate/02_langgraph_workflow.py).
 
 The examples are teaching artifacts, not production authorization systems. Keep
 identity, policy, secrets, and side effects in application code around the model.
+
+The [`notebooks/`](notebooks/) directory contains Markdown-first companions for
+running the same ideas interactively. Larger implementations remain in Python so
+they can be tested and reused outside a notebook.
