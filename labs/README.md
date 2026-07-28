@@ -39,3 +39,9 @@ identity, policy, secrets, and side effects in application code around the model
 The [`notebooks/`](notebooks/) directory contains Markdown-first companions for
 running the same ideas interactively. Larger implementations remain in Python so
 they can be tested and reused outside a notebook.
+
+See [`provider-guide.md`](provider-guide.md) before connecting a real model or API key.
+
+Provider seams are demonstrated in [`providers/`](providers/); install a provider
+SDK only when you are ready to add credentials and retain the surrounding policy
+and evaluation boundaries.
