@@ -33,6 +33,15 @@ jobs:
           node-version: 22
       - name: Test quiz data and grading
         run: npm test
+      - name: Validate Hub links
+        working-directory: .
+        run: node scripts/validate-hub-links.mjs
+      - name: Pages smoke check
+        working-directory: .
+        run: node scripts/pages-smoke.mjs
+      - name: Check external Hub links
+        working-directory: .
+        run: node scripts/check-external-links.mjs
 
   deploy:
     environment:
