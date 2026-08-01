@@ -642,3 +642,4 @@ footer {
     transition-duration: 0.01ms !important;
   }
 }
+.oneplus-brand{display:flex;align-items:center;gap:12px;margin:18px auto 0;padding-top:15px;border-top:1px solid rgba(255,255,255,.2);font-size:.78rem}.oneplus-brand img{width:34px;height:34px;object-fit:contain;background:#fff;border-radius:50%;padding:3px}.oneplus-brand a{color:inherit;font-weight:700}
