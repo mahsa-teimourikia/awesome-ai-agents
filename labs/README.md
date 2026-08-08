@@ -15,7 +15,9 @@ before connecting a provider.
 ## AgentOps scenario track
 
 - [`agentops_lab/loop_yourself.py`](agentops_lab/loop_yourself.py) — manual incident-investigation loop over deterministic service status, incident search, and runbook tools.
+- [`agentops_lab/workflow_or_agent.py`](agentops_lab/workflow_or_agent.py) — compare deterministic workflows, bounded workflows, and dynamic agent investigations.
 - [`notebooks/06_agentops_manual_loop.ipynb`](notebooks/06_agentops_manual_loop.ipynb) — scenario notebook for building, tracing, and safely stopping the loop yourself.
+- [`notebooks/07_agentops_workflow_or_agent.ipynb`](notebooks/07_agentops_workflow_or_agent.ipynb) — scenario notebook for deciding whether a task needs a workflow, agentic workflow, single agent, or multi-agent team.
 
 The AgentOps track uses one evolving SaaS incident-response scenario to show
 why teams move from deterministic workflows to bounded agents, stateful agents,

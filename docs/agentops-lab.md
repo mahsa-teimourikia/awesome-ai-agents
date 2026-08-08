@@ -19,6 +19,8 @@ The simulated company environment lives under [`labs/agentops_lab/`](../labs/age
 - [`data/services.json`](../labs/agentops_lab/data/services.json) contains service owners, health, dependencies, and deploy metadata.
 - [`runbooks/checkout.md`](../labs/agentops_lab/runbooks/checkout.md) contains an operational response playbook.
 - [`loop_yourself.py`](../labs/agentops_lab/loop_yourself.py) implements the first manual control loop.
+- [`workflow_or_agent.py`](../labs/agentops_lab/workflow_or_agent.py) compares deterministic workflows, bounded workflows, and dynamic agent investigations.
+- [`data/deployments.json`](../labs/agentops_lab/data/deployments.json) and [`data/region_logs.json`](../labs/agentops_lab/data/region_logs.json) add evidence for regional checkout investigations.
 
 Every external system starts as a deterministic Python function. That keeps the
 training credential-free and lets learners test tool contracts, state, budgets,
@@ -39,7 +41,7 @@ flowchart TD
 | Notebook | Architecture | Main library focus | What learners practice |
 | --- | --- | --- | --- |
 | [01 Build the loop yourself](../labs/notebooks/06_agentops_manual_loop.ipynb) | Manual control loop | Plain Python first | Tool calls, observations, state, stop conditions, and cost/tool budgets |
-| 02 Bounded incident workflow | Deterministic workflow | Plain Python and typed contracts | Known paths, validation gates, and support-ready incident summaries |
+| [02 Agent or workflow?](../labs/notebooks/07_agentops_workflow_or_agent.ipynb) | Deterministic workflow, bounded workflow, and bounded agent | Plain Python and typed contracts | Matching architecture to problem shape across status reports, runbook summaries, and regional checkout investigations |
 | 03 Stateful investigation graph | Stateful agentic workflow | LangGraph | Graph state, conditional routing, checkpointing, replay, and interruption |
 | 04 Human-approved remediation | Bounded agent with approval | OpenAI Agents SDK or provider adapter | Tool risk metadata, escalation, approval, and side-effect boundaries |
 | 05 Evaluation and tracing | Release-gated agent | Inspect AI, Langfuse, or OpenTelemetry-style traces | Trajectory checks, regression datasets, cost/latency metrics, and failure diagnosis |
@@ -58,6 +60,17 @@ By the end of the first notebook, learners should be able to:
   loops; and
 - add `MAX_STEPS`, `MAX_TOOL_CALLS`, and `MAX_ESTIMATED_COST` as production
   control boundaries.
+
+## Notebook 02 learning objectives
+
+By the end of the second notebook, learners should be able to:
+
+- identify when a deterministic workflow is enough for known steps;
+- design a bounded workflow when only one or two branches require judgment;
+- explain why dynamic investigation can justify a single bounded agent;
+- classify problems as workflow, agentic workflow, agent, or multi-agent based
+  on problem shape rather than novelty; and
+- compare trajectories by step count, evidence quality, cost, and failure modes.
 
 ## References
 

@@ -123,9 +123,15 @@ It implements the agent loop manually, then deliberately breaks the system with
 `MAX_STEPS`, `MAX_TOOL_CALLS`, and `MAX_ESTIMATED_COST` are core production
 controls.
 
+Then continue to [Notebook 02: Agent or workflow?](labs/notebooks/07_agentops_workflow_or_agent.ipynb).
+It compares three checkout operations tasks: a deterministic status report, a
+bounded unhealthy-check workflow, and a dynamic European checkout investigation.
+Learners practice classifying problems as workflow, agentic workflow, agent, or
+multi-agent before choosing a framework.
+
 ## Test your knowledge
 
-Finished the guides? Open the [interactive AI Agents Knowledge Check](https://mahsa-teimourikia.github.io/awsome-ai-agents/quiz/)—20 multiple-answer questions covering foundations, the agent loop, scenario-based AgentOps investigation, tools and memory, workflows, multi-agent orchestration, and evaluation and safety.
+Finished the guides? Open the [interactive AI Agents Knowledge Check](https://mahsa-teimourikia.github.io/awsome-ai-agents/quiz/)—22 multiple-answer questions covering foundations, the agent loop, scenario-based AgentOps investigation, tools and memory, workflows, multi-agent orchestration, and evaluation and safety.
 
 The quiz:
 

@@ -247,6 +247,44 @@ export const questions = [
     },
   },
   {
+    id: "agentops-task-a",
+    category: "Workflows",
+    prompt: "In AgentOps Task A, why is a deterministic workflow preferable to an agent?",
+    options: [
+      "The steps are known before runtime",
+      "The task only needs a status read and report formatting",
+      "A model-controlled loop would add unnecessary cost and failure paths",
+      "Agents are never useful for operations work",
+      "The expected output can be produced from structured tool data",
+    ],
+    correct: [0, 1, 2, 4],
+    explanation:
+      "Task A has a fixed path: retrieve checkout status and format it. Operations work can absolutely use agents, but this task does not need dynamic tool selection.",
+    source: {
+      label: "AgentOps Lab - Notebook 02",
+      url: "docs/agentops-lab.md#notebook-02-learning-objectives",
+    },
+  },
+  {
+    id: "agentops-task-c",
+    category: "Workflows",
+    prompt: "What makes AgentOps Task C a better fit for a bounded agent than a fixed workflow?",
+    options: [
+      "The evidence path is discovered at runtime",
+      "The system may need to choose among service health, incidents, deployments, logs, and runbooks",
+      "The task should still have max-step and tool boundaries",
+      "The model should be allowed to call any production API it can name",
+      "The final recommendation should preserve uncertainty instead of inventing root cause",
+    ],
+    correct: [0, 1, 2, 4],
+    explanation:
+      "Task C justifies bounded agency because each observation affects the next evidence source. That does not remove application-owned tool allowlists, budgets, or grounding rules.",
+    source: {
+      label: "AgentOps Lab - Notebook 02",
+      url: "docs/agentops-lab.md#notebook-02-learning-objectives",
+    },
+  },
+  {
     id: "workflow-human",
     category: "Workflows",
     prompt: "What makes a human-approval checkpoint effective?",
