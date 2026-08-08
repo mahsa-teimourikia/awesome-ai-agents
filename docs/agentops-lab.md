@@ -22,6 +22,7 @@ The simulated company environment lives under [`labs/agentops_lab/`](../labs/age
 - [`workflow_or_agent.py`](../labs/agentops_lab/workflow_or_agent.py) compares deterministic workflows, bounded workflows, and dynamic agent investigations.
 - [`agents_sdk_rebuild.py`](../labs/agentops_lab/agents_sdk_rebuild.py) compares the manual loop with a framework-shaped OpenAI Agents SDK implementation.
 - [`tool_engineering.py`](../labs/agentops_lab/tool_engineering.py) refactors a broad admin tool into narrow, validated tools with predictable error handling.
+- [`state_memory_langgraph.py`](../labs/agentops_lab/state_memory_langgraph.py) models a stateful incident graph and demonstrates memory bias.
 - [`data/deployments.json`](../labs/agentops_lab/data/deployments.json) and [`data/region_logs.json`](../labs/agentops_lab/data/region_logs.json) add evidence for regional checkout investigations.
 
 Every external system starts as a deterministic Python function. That keeps the
@@ -48,7 +49,7 @@ flowchart TD
 | [02 Agent or workflow?](../labs/notebooks/07_agentops_workflow_or_agent.ipynb) | Deterministic workflow, bounded workflow, and bounded agent | Plain Python and typed contracts | Matching architecture to problem shape across status reports, runbook summaries, and regional checkout investigations |
 | [03 Rebuild with OpenAI Agents SDK](../labs/notebooks/08_agentops_openai_agents_sdk.ipynb) | Managed agent runtime | OpenAI Agents SDK concepts | Comparing manual ownership with framework-managed turns, tool dispatch, sessions, and traces |
 | [04 Tool engineering](../labs/notebooks/09_agentops_tool_engineering.ipynb) | Tool boundary design | Function tools and validation | Replacing broad admin APIs with narrow schemas, approval boundaries, and retry rules |
-| 05 Stateful investigation graph | Stateful agentic workflow | LangGraph | Graph state, conditional routing, checkpointing, replay, and interruption |
+| [05 Stateful investigation graph](../labs/notebooks/10_agentops_langgraph_state_memory.ipynb) | Stateful agentic workflow | LangGraph | Graph state, conditional routing, confidence loops, thread state, and long-term memory risk |
 | 06 Human-approved remediation | Bounded agent with approval | OpenAI Agents SDK or provider adapter | Tool risk metadata, escalation, approval, and side-effect boundaries |
 | 07 Evaluation and tracing | Release-gated agent | Inspect AI, Langfuse, or OpenTelemetry-style traces | Trajectory checks, regression datasets, cost/latency metrics, and failure diagnosis |
 | 08 Multi-agent incident team | Manager and specialist agents | AutoGen, CrewAI, or LangGraph teams | Delegation contracts, shared evidence, synthesis, and bounded collaboration |
@@ -100,6 +101,17 @@ By the end of the fourth notebook, learners should be able to:
   `InvalidService`, and `PermissionDenied`; and
 - implement retry, escalation, and stop rules based on error type.
 
+## Notebook 05 learning objectives
+
+By the end of the fifth notebook, learners should be able to:
+
+- represent an incident investigation as explicit state, nodes, and edges;
+- explain why LangGraph is useful for stateful agentic workflows;
+- distinguish thread-scoped short-term state from longer-term memory;
+- use confidence thresholds and attempt limits to control investigation loops;
+- demonstrate how stale or unverified memory can bias a new diagnosis; and
+- define memory controls for scope, validation, auditability, and reversal.
+
 ## References
 
 - One+i, [Building AI Agents: From Loops to Teams](https://www.linkedin.com/pulse/building-ai-agents-from-loops-teams-oneplusi-y3atc/)
@@ -107,5 +119,7 @@ By the end of the fourth notebook, learners should be able to:
 - OpenAI, [Agents SDK](https://openai.github.io/openai-agents-python/)
 - OpenAI, [Agents SDK tools](https://openai.github.io/openai-agents-python/tools/)
 - OpenAI, [Agents SDK tracing](https://openai.github.io/openai-agents-python/tracing/)
+- LangChain, [LangGraph persistence](https://langchain-ai.github.io/langgraph/concepts/persistence/)
+- LangChain, [LangGraph memory](https://langchain-ai.github.io/langgraph/concepts/memory/)
 - Anthropic, [Building effective agents](https://www.anthropic.com/engineering/building-effective-agents)
 - Yao et al., [ReAct: Synergizing Reasoning and Acting in Language Models](https://arxiv.org/abs/2210.03629)

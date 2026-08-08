@@ -135,9 +135,14 @@ schemas, dispatch, sessions, and tracing. [Notebook 04: Tool engineering](labs/n
 then refactors a dangerous broad `admin_api(command)` into narrow, validated
 tools with explicit retry, escalation, and stop rules.
 
+[Notebook 05: Add state and memory with LangGraph](labs/notebooks/10_agentops_langgraph_state_memory.ipynb)
+turns the incident investigation into explicit state, nodes, and edges. It also
+shows how stale long-term memory can bias a new diagnosis unless memory is
+scoped, validated, auditable, and reversible.
+
 ## Test your knowledge
 
-Finished the guides? Open the [interactive AI Agents Knowledge Check](https://mahsa-teimourikia.github.io/awsome-ai-agents/quiz/)—26 multiple-answer questions covering foundations, the agent loop, scenario-based AgentOps investigation, tools and memory, workflows, multi-agent orchestration, and evaluation and safety.
+Finished the guides? Open the [interactive AI Agents Knowledge Check](https://mahsa-teimourikia.github.io/awsome-ai-agents/quiz/)—28 multiple-answer questions covering foundations, the agent loop, scenario-based AgentOps investigation, tools and memory, workflows, multi-agent orchestration, and evaluation and safety.
 
 The quiz:
 

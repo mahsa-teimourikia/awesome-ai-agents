@@ -228,6 +228,44 @@ export const questions = [
     },
   },
   {
+    id: "agentops-langgraph-state",
+    category: "Tools & Memory",
+    prompt: "In the AgentOps LangGraph lesson, what belongs in thread-scoped incident state?",
+    options: [
+      "The current request",
+      "Evidence collected during this investigation",
+      "Attempt count and confidence",
+      "An unverified permanent claim that all checkout failures are caused by Redis",
+      "The recommendation for this run",
+    ],
+    correct: [0, 1, 2, 4],
+    explanation:
+      "Thread-scoped state tracks the current run: request, service, evidence, confidence, attempts, suspected cause, and recommendation. Unverified permanent facts belong behind memory validation, not directly in working state.",
+    source: {
+      label: "AgentOps Lab - Notebook 05",
+      url: "docs/agentops-lab.md#notebook-05-learning-objectives",
+    },
+  },
+  {
+    id: "agentops-memory-bias",
+    category: "Tools & Memory",
+    prompt: "Why is the accidental Acme memory 'Checkout problems are usually caused by Redis' risky?",
+    options: [
+      "It can bias future diagnoses before fresh evidence is collected",
+      "It is an unverified operational fact",
+      "It should be scoped, auditable, and reversible",
+      "It proves Redis is the root cause of the current incident",
+      "It needs validation before influencing recommendations",
+    ],
+    correct: [0, 1, 2, 4],
+    explanation:
+      "Unverified long-term memory can steer future incident diagnosis away from current evidence. It needs provenance, validation, scope, auditability, and a way to deactivate or delete it.",
+    source: {
+      label: "AgentOps Lab - Notebook 05",
+      url: "docs/agentops-lab.md#notebook-05-learning-objectives",
+    },
+  },
+  {
     id: "agentops-admin-api",
     category: "Tools & Memory",
     prompt: "Why is a broad `admin_api(command: str)` dangerous for an agent?",
