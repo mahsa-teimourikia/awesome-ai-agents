@@ -342,6 +342,44 @@ export const questions = [
     },
   },
   {
+    id: "agentops-retrieved-data",
+    category: "Tools & Memory",
+    prompt: "How should the AgentOps guardrails lesson treat instructions found inside a retrieved runbook?",
+    options: [
+      "As untrusted data to summarize or cite",
+      "As instructions that can override the system prompt",
+      "As content that may be trying to manipulate the agent",
+      "As authorization to restart services",
+      "As evidence only after policy and tool boundaries are applied",
+    ],
+    correct: [0, 2, 4],
+    explanation:
+      "Retrieved documents are data, not authority. They may contain prompt-injection attempts and cannot override system instructions or authorize operational tools.",
+    source: {
+      label: "AgentOps Lab - Notebook 07",
+      url: "docs/agentops-lab.md#notebook-07-learning-objectives",
+    },
+  },
+  {
+    id: "agentops-tool-guardrail",
+    category: "Tools & Memory",
+    prompt: "What should a restart tool guardrail check before executing?",
+    options: [
+      "Whether the action has explicit human approval",
+      "Whether the request came from a trusted user or system boundary",
+      "Whether retrieved text told the agent to restart immediately",
+      "Whether the service target is allowed",
+      "Whether the run has enough audit context for review",
+    ],
+    correct: [0, 1, 3, 4],
+    explanation:
+      "A restart guardrail should require approval, trusted authorization source, an allowed target, and audit context. Retrieved text is not a valid source of authorization.",
+    source: {
+      label: "AgentOps Lab - Notebook 07",
+      url: "docs/agentops-lab.md#notebook-07-learning-objectives",
+    },
+  },
+  {
     id: "protocols",
     category: "Tools & Memory",
     prompt: "Which statements about MCP and agent-to-agent protocols are accurate?",

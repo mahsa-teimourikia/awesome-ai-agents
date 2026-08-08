@@ -144,9 +144,14 @@ scoped, validated, auditable, and reversible.
 adds a restart action and shows how policy pauses execution before high-impact
 tools, then resumes from human approval, modification, or rejection.
 
+[Notebook 07: Guardrails and untrusted content](labs/notebooks/12_agentops_guardrails_untrusted_content.ipynb)
+injects a malicious instruction into a retrieved runbook and teaches learners to
+treat retrieved documents as data while enforcing restart approval at the tool
+boundary.
+
 ## Test your knowledge
 
-Finished the guides? Open the [interactive AI Agents Knowledge Check](https://mahsa-teimourikia.github.io/awsome-ai-agents/quiz/)—30 multiple-answer questions covering foundations, the agent loop, scenario-based AgentOps investigation, tools and memory, workflows, multi-agent orchestration, and evaluation and safety.
+Finished the guides? Open the [interactive AI Agents Knowledge Check](https://mahsa-teimourikia.github.io/awsome-ai-agents/quiz/)—32 multiple-answer questions covering foundations, the agent loop, scenario-based AgentOps investigation, tools and memory, workflows, multi-agent orchestration, and evaluation and safety.
 
 The quiz:
 

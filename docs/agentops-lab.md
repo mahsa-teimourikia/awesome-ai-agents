@@ -24,6 +24,7 @@ The simulated company environment lives under [`labs/agentops_lab/`](../labs/age
 - [`tool_engineering.py`](../labs/agentops_lab/tool_engineering.py) refactors a broad admin tool into narrow, validated tools with predictable error handling.
 - [`state_memory_langgraph.py`](../labs/agentops_lab/state_memory_langgraph.py) models a stateful incident graph and demonstrates memory bias.
 - [`human_permissions.py`](../labs/agentops_lab/human_permissions.py) models human approval gates, permission levels, and resume decisions.
+- [`guardrails_untrusted_content.py`](../labs/agentops_lab/guardrails_untrusted_content.py) demonstrates poisoned retrieved content and tool-level guardrails.
 - [`data/deployments.json`](../labs/agentops_lab/data/deployments.json) and [`data/region_logs.json`](../labs/agentops_lab/data/region_logs.json) add evidence for regional checkout investigations.
 
 Every external system starts as a deterministic Python function. That keeps the
@@ -39,9 +40,10 @@ flowchart TD
     N3 --> N4["04 Tool engineering"]
     N4 --> N5["05 Stateful LangGraph investigation"]
     N5 --> N6["06 Human-in-the-loop and permissions"]
-    N6 --> N7["07 Evaluation, tracing, and release gates"]
-    N7 --> N8["08 Multi-agent incident response team"]
-    N8 --> N9["09 Provider comparison: OpenAI Agents SDK, LangGraph, AutoGen, CrewAI"]
+    N6 --> N7["07 Guardrails and untrusted content"]
+    N7 --> N8["08 Evaluation, tracing, and release gates"]
+    N8 --> N9["09 Multi-agent incident response team"]
+    N9 --> N10["10 Provider comparison: OpenAI Agents SDK, LangGraph, AutoGen, CrewAI"]
 ```
 
 | Notebook | Architecture | Main library focus | What learners practice |
@@ -52,9 +54,10 @@ flowchart TD
 | [04 Tool engineering](../labs/notebooks/09_agentops_tool_engineering.ipynb) | Tool boundary design | Function tools and validation | Replacing broad admin APIs with narrow schemas, approval boundaries, and retry rules |
 | [05 Stateful investigation graph](../labs/notebooks/10_agentops_langgraph_state_memory.ipynb) | Stateful agentic workflow | LangGraph | Graph state, conditional routing, confidence loops, thread state, and long-term memory risk |
 | [06 Human-in-the-loop and permissions](../labs/notebooks/11_agentops_human_permissions.ipynb) | Bounded action with approval | LangGraph/LangChain HITL concepts | Permission levels, persisted pause state, approval, modification, rejection, and audit records |
-| 07 Evaluation and tracing | Release-gated agent | Inspect AI, Langfuse, or OpenTelemetry-style traces | Trajectory checks, regression datasets, cost/latency metrics, and failure diagnosis |
-| 08 Multi-agent incident team | Manager and specialist agents | AutoGen, CrewAI, or LangGraph teams | Delegation contracts, shared evidence, synthesis, and bounded collaboration |
-| 09 Provider comparison | Same scenario across frameworks | OpenAI Agents SDK, LangGraph, AutoGen, CrewAI | Choosing the simplest framework that matches the operational requirement |
+| [07 Guardrails and untrusted content](../labs/notebooks/12_agentops_guardrails_untrusted_content.ipynb) | Trust-boundary enforcement | OpenAI Agents SDK guardrail concepts | Treating retrieved content as data, detecting poisoned instructions, and wrapping tools with approval guardrails |
+| 08 Evaluation and tracing | Release-gated agent | Inspect AI, Langfuse, or OpenTelemetry-style traces | Trajectory checks, regression datasets, cost/latency metrics, and failure diagnosis |
+| 09 Multi-agent incident team | Manager and specialist agents | AutoGen, CrewAI, or LangGraph teams | Delegation contracts, shared evidence, synthesis, and bounded collaboration |
+| 10 Provider comparison | Same scenario across frameworks | OpenAI Agents SDK, LangGraph, AutoGen, CrewAI | Choosing the simplest framework that matches the operational requirement |
 
 ## Notebook 01 learning objectives
 
@@ -125,6 +128,17 @@ By the end of the sixth notebook, learners should be able to:
 - explain why human approval should include evidence, exact action, risk, actor,
   and audit reason.
 
+## Notebook 07 learning objectives
+
+By the end of the seventh notebook, learners should be able to:
+
+- explain why retrieved documents, external input, and tool responses are
+  untrusted data;
+- identify prompt-injection instructions inside retrieved operational content;
+- harden system instructions so documents cannot authorize actions;
+- add a tool-level guardrail that blocks restarts without explicit approval; and
+- distinguish evidence extraction from instruction following.
+
 ## References
 
 - One+i, [Building AI Agents: From Loops to Teams](https://www.linkedin.com/pulse/building-ai-agents-from-loops-teams-oneplusi-y3atc/)
@@ -132,6 +146,7 @@ By the end of the sixth notebook, learners should be able to:
 - OpenAI, [Agents SDK](https://openai.github.io/openai-agents-python/)
 - OpenAI, [Agents SDK tools](https://openai.github.io/openai-agents-python/tools/)
 - OpenAI, [Agents SDK tracing](https://openai.github.io/openai-agents-python/tracing/)
+- OpenAI, [Agents SDK guardrails](https://openai.github.io/openai-agents-python/guardrails/)
 - LangChain, [LangGraph persistence](https://langchain-ai.github.io/langgraph/concepts/persistence/)
 - LangChain, [LangGraph memory](https://langchain-ai.github.io/langgraph/concepts/memory/)
 - LangChain, [LangGraph human-in-the-loop](https://langchain-ai.github.io/langgraph/concepts/human_in_the_loop/)
