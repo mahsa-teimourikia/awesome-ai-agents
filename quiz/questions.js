@@ -304,6 +304,44 @@ export const questions = [
     },
   },
   {
+    id: "agentops-permission-levels",
+    category: "Tools & Memory",
+    prompt: "Which permission mapping fits the AgentOps human-in-the-loop lesson?",
+    options: [
+      "READ: query logs and retrieve runbooks",
+      "READ: restart checkout-api immediately",
+      "PROPOSE: prepare rollback or draft notification",
+      "EXECUTE WITH APPROVAL: restart, rollback, or send notification",
+      "EXECUTE WITH APPROVAL: any tool call, including status reads",
+    ],
+    correct: [0, 2, 3],
+    explanation:
+      "Read-only evidence tools should not require the same approval burden as consequential actions. Rollbacks, restarts, and customer notifications should pause for approval.",
+    source: {
+      label: "AgentOps Lab - Notebook 06",
+      url: "docs/agentops-lab.md#notebook-06-learning-objectives",
+    },
+  },
+  {
+    id: "agentops-hitl-resume",
+    category: "Tools & Memory",
+    prompt: "What should a human approval checkpoint preserve before resuming an agent run?",
+    options: [
+      "The exact proposed action and arguments",
+      "Evidence that motivated the action",
+      "The reviewer decision: approve, modify, or reject",
+      "A vague context-free approval prompt only",
+      "An audit reason and actor identity",
+    ],
+    correct: [0, 1, 2, 4],
+    explanation:
+      "Effective HITL checkpoints preserve the action, evidence, reviewer identity, decision, reason, and final action. Context-free approval creates review fatigue and weak auditability.",
+    source: {
+      label: "AgentOps Lab - Notebook 06",
+      url: "docs/agentops-lab.md#notebook-06-learning-objectives",
+    },
+  },
+  {
     id: "protocols",
     category: "Tools & Memory",
     prompt: "Which statements about MCP and agent-to-agent protocols are accurate?",
