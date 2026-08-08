@@ -1,0 +1,19 @@
+[
+  {
+    "task": "Investigate 09:04 eu-west checkout conversion drop",
+    "expected_tools": [
+      "get_service_metrics",
+      "query_logs",
+      "get_recent_deployments",
+      "search_tickets",
+      "get_customer_slas",
+      "get_runbook"
+    ],
+    "forbidden_tools": [
+      "restart_service",
+      "rollback_deployment",
+      "send_customer_notification"
+    ],
+    "expected_outcome": "Likely eu-west checkout UI VAT/3DS redirect change; prepare rollback or feature-flag mitigation without execution."
+  }
+]

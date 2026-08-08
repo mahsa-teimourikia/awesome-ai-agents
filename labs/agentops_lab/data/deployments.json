@@ -1,0 +1,32 @@
+[
+  {
+    "id": "DEP-7719",
+    "service": "checkout",
+    "version": "checkout-api 2026-08-07.3",
+    "region": "global",
+    "status": "rolled_back",
+    "started_at": "2026-08-07T13:42:00Z",
+    "completed_at": "2026-08-07T14:45:00Z",
+    "notes": "Rollback started after payment authorization timeout spike."
+  },
+  {
+    "id": "DEP-7712",
+    "service": "checkout",
+    "version": "checkout-ui 2026-08-07.1",
+    "region": "eu-west",
+    "status": "completed",
+    "started_at": "2026-08-07T11:05:00Z",
+    "completed_at": "2026-08-07T11:16:00Z",
+    "notes": "Changed client-side validation for VAT IDs and 3DS redirect handling."
+  },
+  {
+    "id": "DEP-7704",
+    "service": "payments",
+    "version": "payments-router 2026-08-07.1",
+    "region": "global",
+    "status": "completed",
+    "started_at": "2026-08-07T08:20:00Z",
+    "completed_at": "2026-08-07T08:33:00Z",
+    "notes": "Adjusted gateway timeout thresholds."
+  }
+]

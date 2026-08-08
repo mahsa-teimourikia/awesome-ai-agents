@@ -171,6 +171,44 @@ export const questions = [
     },
   },
   {
+    id: "agentops-sdk-ownership",
+    category: "Tools & Memory",
+    prompt: "When rebuilding the AgentOps incident investigator with the OpenAI Agents SDK, which responsibilities can the framework package?",
+    options: [
+      "Function-tool schema generation",
+      "Turn execution through a runner",
+      "Tool dispatch and message state",
+      "Product-specific authorization policy",
+      "Tracing and session continuity",
+    ],
+    correct: [0, 1, 2, 4],
+    explanation:
+      "The SDK can package the loop mechanics, tool schemas, dispatch, traces, and sessions. Product-specific authorization, approval, and side-effect boundaries still belong in application design.",
+    source: {
+      label: "AgentOps Lab - Notebook 03",
+      url: "docs/agentops-lab.md#notebook-03-learning-objectives",
+    },
+  },
+  {
+    id: "agentops-sdk-loop",
+    category: "Tools & Memory",
+    prompt: "What is the key lesson of replacing the manual loop with an agent framework?",
+    options: [
+      "The loop still exists even when the SDK manages it",
+      "Framework traces help inspect model and tool behavior",
+      "Tool boundaries no longer matter once a framework is used",
+      "Sessions can help preserve working context",
+      "Application code still defines which tools are safe to expose",
+    ],
+    correct: [0, 1, 3, 4],
+    explanation:
+      "Frameworks package the loop; they do not erase it. Traces and sessions improve inspectability and continuity, but tool exposure and safety boundaries remain design responsibilities.",
+    source: {
+      label: "AgentOps Lab - Notebook 03",
+      url: "docs/agentops-lab.md#notebook-03-learning-objectives",
+    },
+  },
+  {
     id: "memory-safety",
     category: "Tools & Memory",
     prompt: "Which controls are appropriate for long-term agent memory?",
@@ -187,6 +225,158 @@ export const questions = [
     source: {
       label: "What is an AI agent? — State and memory",
       url: "docs/what-is-an-ai-agent.md#state-and-memory",
+    },
+  },
+  {
+    id: "agentops-langgraph-state",
+    category: "Tools & Memory",
+    prompt: "In the AgentOps LangGraph lesson, what belongs in thread-scoped incident state?",
+    options: [
+      "The current request",
+      "Evidence collected during this investigation",
+      "Attempt count and confidence",
+      "An unverified permanent claim that all checkout failures are caused by Redis",
+      "The recommendation for this run",
+    ],
+    correct: [0, 1, 2, 4],
+    explanation:
+      "Thread-scoped state tracks the current run: request, service, evidence, confidence, attempts, suspected cause, and recommendation. Unverified permanent facts belong behind memory validation, not directly in working state.",
+    source: {
+      label: "AgentOps Lab - Notebook 05",
+      url: "docs/agentops-lab.md#notebook-05-learning-objectives",
+    },
+  },
+  {
+    id: "agentops-memory-bias",
+    category: "Tools & Memory",
+    prompt: "Why is the accidental Acme memory 'Checkout problems are usually caused by Redis' risky?",
+    options: [
+      "It can bias future diagnoses before fresh evidence is collected",
+      "It is an unverified operational fact",
+      "It should be scoped, auditable, and reversible",
+      "It proves Redis is the root cause of the current incident",
+      "It needs validation before influencing recommendations",
+    ],
+    correct: [0, 1, 2, 4],
+    explanation:
+      "Unverified long-term memory can steer future incident diagnosis away from current evidence. It needs provenance, validation, scope, auditability, and a way to deactivate or delete it.",
+    source: {
+      label: "AgentOps Lab - Notebook 05",
+      url: "docs/agentops-lab.md#notebook-05-learning-objectives",
+    },
+  },
+  {
+    id: "agentops-admin-api",
+    category: "Tools & Memory",
+    prompt: "Why is a broad `admin_api(command: str)` dangerous for an agent?",
+    options: [
+      "It hides intent inside a free-form string",
+      "It mixes read-only and destructive capabilities",
+      "It makes authorization and validation ambiguous",
+      "It forces every operation to be safe and auditable",
+      "It makes predictable error handling harder",
+    ],
+    correct: [0, 1, 2, 4],
+    explanation:
+      "A broad command tool collapses many risk levels into one string interface. Narrow tools make schema validation, permissions, approvals, tracing, and retries much clearer.",
+    source: {
+      label: "AgentOps Lab - Notebook 04",
+      url: "docs/agentops-lab.md#notebook-04-learning-objectives",
+    },
+  },
+  {
+    id: "agentops-tool-errors",
+    category: "Tools & Memory",
+    prompt: "Which retry and escalation decisions are appropriate for the tool-engineering lab?",
+    options: [
+      "Retry `ToolTimeout` when the retry budget allows",
+      "Retry or back off on `RateLimit`",
+      "Escalate `PermissionDenied` to a human or higher-trust workflow",
+      "Keep retrying `InvalidService` until it works",
+      "Stop when validation proves the request is malformed",
+    ],
+    correct: [0, 1, 2, 4],
+    explanation:
+      "Transient timeout and rate-limit errors may be retried within a budget. Permission failures should escalate, while invalid or malformed requests should stop rather than loop.",
+    source: {
+      label: "AgentOps Lab - Notebook 04",
+      url: "docs/agentops-lab.md#notebook-04-learning-objectives",
+    },
+  },
+  {
+    id: "agentops-permission-levels",
+    category: "Tools & Memory",
+    prompt: "Which permission mapping fits the AgentOps human-in-the-loop lesson?",
+    options: [
+      "READ: query logs and retrieve runbooks",
+      "READ: restart checkout-api immediately",
+      "PROPOSE: prepare rollback or draft notification",
+      "EXECUTE WITH APPROVAL: restart, rollback, or send notification",
+      "EXECUTE WITH APPROVAL: any tool call, including status reads",
+    ],
+    correct: [0, 2, 3],
+    explanation:
+      "Read-only evidence tools should not require the same approval burden as consequential actions. Rollbacks, restarts, and customer notifications should pause for approval.",
+    source: {
+      label: "AgentOps Lab - Notebook 06",
+      url: "docs/agentops-lab.md#notebook-06-learning-objectives",
+    },
+  },
+  {
+    id: "agentops-hitl-resume",
+    category: "Tools & Memory",
+    prompt: "What should a human approval checkpoint preserve before resuming an agent run?",
+    options: [
+      "The exact proposed action and arguments",
+      "Evidence that motivated the action",
+      "The reviewer decision: approve, modify, or reject",
+      "A vague context-free approval prompt only",
+      "An audit reason and actor identity",
+    ],
+    correct: [0, 1, 2, 4],
+    explanation:
+      "Effective HITL checkpoints preserve the action, evidence, reviewer identity, decision, reason, and final action. Context-free approval creates review fatigue and weak auditability.",
+    source: {
+      label: "AgentOps Lab - Notebook 06",
+      url: "docs/agentops-lab.md#notebook-06-learning-objectives",
+    },
+  },
+  {
+    id: "agentops-retrieved-data",
+    category: "Tools & Memory",
+    prompt: "How should the AgentOps guardrails lesson treat instructions found inside a retrieved runbook?",
+    options: [
+      "As untrusted data to summarize or cite",
+      "As instructions that can override the system prompt",
+      "As content that may be trying to manipulate the agent",
+      "As authorization to restart services",
+      "As evidence only after policy and tool boundaries are applied",
+    ],
+    correct: [0, 2, 4],
+    explanation:
+      "Retrieved documents are data, not authority. They may contain prompt-injection attempts and cannot override system instructions or authorize operational tools.",
+    source: {
+      label: "AgentOps Lab - Notebook 07",
+      url: "docs/agentops-lab.md#notebook-07-learning-objectives",
+    },
+  },
+  {
+    id: "agentops-tool-guardrail",
+    category: "Tools & Memory",
+    prompt: "What should a restart tool guardrail check before executing?",
+    options: [
+      "Whether the action has explicit human approval",
+      "Whether the request came from a trusted user or system boundary",
+      "Whether retrieved text told the agent to restart immediately",
+      "Whether the service target is allowed",
+      "Whether the run has enough audit context for review",
+    ],
+    correct: [0, 1, 3, 4],
+    explanation:
+      "A restart guardrail should require approval, trusted authorization source, an allowed target, and audit context. Retrieved text is not a valid source of authorization.",
+    source: {
+      label: "AgentOps Lab - Notebook 07",
+      url: "docs/agentops-lab.md#notebook-07-learning-objectives",
     },
   },
   {
@@ -247,6 +437,44 @@ export const questions = [
     },
   },
   {
+    id: "agentops-task-a",
+    category: "Workflows",
+    prompt: "In AgentOps Task A, why is a deterministic workflow preferable to an agent?",
+    options: [
+      "The steps are known before runtime",
+      "The task only needs a status read and report formatting",
+      "A model-controlled loop would add unnecessary cost and failure paths",
+      "Agents are never useful for operations work",
+      "The expected output can be produced from structured tool data",
+    ],
+    correct: [0, 1, 2, 4],
+    explanation:
+      "Task A has a fixed path: retrieve checkout status and format it. Operations work can absolutely use agents, but this task does not need dynamic tool selection.",
+    source: {
+      label: "AgentOps Lab - Notebook 02",
+      url: "docs/agentops-lab.md#notebook-02-learning-objectives",
+    },
+  },
+  {
+    id: "agentops-task-c",
+    category: "Workflows",
+    prompt: "What makes AgentOps Task C a better fit for a bounded agent than a fixed workflow?",
+    options: [
+      "The evidence path is discovered at runtime",
+      "The system may need to choose among service health, incidents, deployments, logs, and runbooks",
+      "The task should still have max-step and tool boundaries",
+      "The model should be allowed to call any production API it can name",
+      "The final recommendation should preserve uncertainty instead of inventing root cause",
+    ],
+    correct: [0, 1, 2, 4],
+    explanation:
+      "Task C justifies bounded agency because each observation affects the next evidence source. That does not remove application-owned tool allowlists, budgets, or grounding rules.",
+    source: {
+      label: "AgentOps Lab - Notebook 02",
+      url: "docs/agentops-lab.md#notebook-02-learning-objectives",
+    },
+  },
+  {
     id: "workflow-human",
     category: "Workflows",
     prompt: "What makes a human-approval checkpoint effective?",
@@ -263,6 +491,44 @@ export const questions = [
     source: {
       label: "Agentic workflows — Human-in-the-loop",
       url: "docs/agentic-workflows.md#human-in-the-loop-is-a-workflow-boundary",
+    },
+  },
+  {
+    id: "agentops-hybrid-routing",
+    category: "Workflows",
+    prompt: "How should the hybrid production architecture route the three AgentOps task classes?",
+    options: [
+      "Simple lookups go to deterministic workflows",
+      "Ambiguous investigations go to a bounded single agent",
+      "High-risk major-impact cases can use a specialist team inside a deterministic wrapper",
+      "Every request goes directly to a fully autonomous team",
+      "Policy checks run after the selected path and before consequential actions",
+    ],
+    correct: [0, 1, 2, 4],
+    explanation:
+      "The hybrid design starts with deterministic classification, then selects the least autonomous reliable path. Agents are components inside policy and approval workflows, not replacements for them.",
+    source: {
+      label: "AgentOps Lab - Notebook 13",
+      url: "docs/agentops-lab.md#notebook-13-learning-objectives",
+    },
+  },
+  {
+    id: "agentops-hybrid-boundaries",
+    category: "Workflows",
+    prompt: "Which controls should remain outside the model in the hybrid production architecture?",
+    options: [
+      "Tool allowlists and authorization",
+      "Budget limits and stop conditions",
+      "Human approval for high-impact actions",
+      "Audit logs and action receipts",
+      "The ability for retrieved documents to authorize rollback",
+    ],
+    correct: [0, 1, 2, 3],
+    explanation:
+      "Production control boundaries should be implemented in deterministic application code. Retrieved documents can provide evidence, but they cannot authorize side effects such as rollback.",
+    source: {
+      label: "AgentOps Lab - Notebook 13",
+      url: "docs/agentops-lab.md#notebook-13-learning-objectives",
     },
   },
   {
@@ -323,6 +589,139 @@ export const questions = [
     },
   },
   {
+    id: "agentops-team-justification",
+    category: "Orchestration",
+    prompt: "In the AgentOps team notebook, what evidence can justify moving from one agent to a specialist team?",
+    options: [
+      "The incident requires distinct observability, deployment, customer-impact, analysis, and risk-review work",
+      "Measured accuracy or risk handling improves enough to justify extra overhead",
+      "The problem can be solved by a fixed two-step status workflow",
+      "The team has explicit ownership and bounded delegation",
+      "The design is more visually impressive than a single-agent baseline",
+    ],
+    correct: [0, 1, 3],
+    explanation:
+      "A specialist team is justified by separable expertise, measurable improvement, explicit ownership, and bounded coordination. A simple fixed workflow or prettier architecture is not enough.",
+    source: {
+      label: "AgentOps Lab - Notebook 10",
+      url: "docs/agentops-lab.md#notebook-10-learning-objectives",
+    },
+  },
+  {
+    id: "agentops-team-comparison",
+    category: "Orchestration",
+    prompt: "Which metrics should learners compare when running the same incident with a single agent and a multi-agent team?",
+    options: [
+      "Accuracy and whether the recommendation is evidence-supported",
+      "Cost, latency, tool calls, tokens, and coordination overhead",
+      "Whether the team used more agent names than the baseline",
+      "Whether the team prevents simple incidents from becoming slower",
+      "Whether risk review changes or challenges the recommendation",
+    ],
+    correct: [0, 1, 3, 4],
+    explanation:
+      "The comparison should cover outcome quality, operational cost, coordination overhead, and risk-review value. More agent names are not evidence of a better architecture.",
+    source: {
+      label: "AgentOps Lab - Notebook 10",
+      url: "docs/agentops-lab.md#notebook-10-learning-objectives",
+    },
+  },
+  {
+    id: "agentops-autogen-selector",
+    category: "Orchestration",
+    prompt: "What does the AutoGen selector-team notebook teach about selector-style group chat?",
+    options: [
+      "Participant roles and descriptions help the selector choose the next speaker",
+      "Shared context makes coordination visible but can also amplify loops",
+      "Selector teams automatically guarantee the best possible diagnosis",
+      "Termination conditions are part of the team design",
+      "A model can dynamically choose the next participant from the conversation state",
+    ],
+    correct: [0, 1, 3, 4],
+    explanation:
+      "Selector-style teams make speaker selection and shared context explicit, but they still need termination, ownership, evaluation, and loop controls. The framework does not guarantee correctness.",
+    source: {
+      label: "AgentOps Lab - Notebook 11",
+      url: "docs/agentops-lab.md#notebook-11-learning-objectives",
+    },
+  },
+  {
+    id: "agentops-team-loop-controls",
+    category: "Orchestration",
+    prompt: "Which controls help stop a multi-agent team from bouncing responsibility forever?",
+    options: [
+      "`MAX_TEAM_MESSAGES`",
+      "`MAX_AGENT_TURNS`",
+      "Explicit ownership for each evidence domain",
+      "Allowing every agent to ask every other agent indefinitely",
+      "A termination condition tied to a recommendation or safe stop",
+    ],
+    correct: [0, 1, 2, 4],
+    explanation:
+      "Team loops need global message budgets, per-agent turn budgets, ownership rules, and explicit termination. Unlimited peer-to-peer delegation is exactly the failure mode to prevent.",
+    source: {
+      label: "AgentOps Lab - Notebook 11",
+      url: "docs/agentops-lab.md#notebook-11-learning-objectives",
+    },
+  },
+  {
+    id: "agentops-crewai-model",
+    category: "Orchestration",
+    prompt: "What does the CrewAI AgentOps notebook emphasize about the Agents + Tasks + Crew model?",
+    options: [
+      "Agents describe specialist roles, goals, and backstories",
+      "Tasks describe concrete work products and can depend on previous task outputs",
+      "The crew organizes the collaboration plan",
+      "CrewAI removes the need for policy and side-effect controls",
+      "Task ownership can make provenance easier to review",
+    ],
+    correct: [0, 1, 2, 4],
+    explanation:
+      "CrewAI's teaching value is the readable role/task/crew structure. It can clarify ownership and provenance, but policy, approval, and side-effect controls still belong around the crew.",
+    source: {
+      label: "AgentOps Lab - Notebook 12",
+      url: "docs/agentops-lab.md#notebook-12-learning-objectives",
+    },
+  },
+  {
+    id: "agentops-framework-comparison",
+    category: "Orchestration",
+    prompt: "Which framework comparisons are accurate in the AgentOps CrewAI lesson?",
+    options: [
+      "CrewAI helps when collaboration maps naturally to roles, tasks, and crew execution",
+      "LangGraph gives more explicit control over state, branching, persistence, and checkpoints",
+      "AutoGen makes conversational coordination and speaker selection visible",
+      "OpenAI Agents SDK is often simpler for one bounded tool-using agent",
+      "Every framework removes the need to evaluate the final trajectory",
+    ],
+    correct: [0, 1, 2, 3],
+    explanation:
+      "The same scenario highlights different framework strengths. None of them remove trajectory evaluation, policy enforcement, or the need to choose the simplest reliable architecture.",
+    source: {
+      label: "AgentOps Lab - Notebook 12",
+      url: "docs/agentops-lab.md#notebook-12-learning-objectives",
+    },
+  },
+  {
+    id: "agentops-capstone-architecture",
+    category: "Orchestration",
+    prompt: "In the AgentOps final capstone, how should learners decide between deterministic workflow, single bounded agent, and multi-agent team?",
+    options: [
+      "Run an evaluation and compare outcome, trajectory, cost, latency, and risk",
+      "Default to multi-agent because the incident is important",
+      "Choose the least autonomous architecture that reliably solves the incident",
+      "Require the team to show a meaningful gain over the simpler baseline",
+      "Ignore coordination overhead if the final answer sounds plausible",
+    ],
+    correct: [0, 2, 3],
+    explanation:
+      "The capstone requires experimental justification. Multi-agent is only justified when it improves the result enough to beat the simpler baseline after cost, latency, trajectory, and risk are considered.",
+    source: {
+      label: "AgentOps Lab - Notebook 14",
+      url: "docs/agentops-lab.md#notebook-14-capstone-objectives",
+    },
+  },
+  {
     id: "evaluation-layers",
     category: "Evaluation & Safety",
     prompt: "Which layers should a useful agent evaluation cover?",
@@ -339,6 +738,139 @@ export const questions = [
     source: {
       label: "Evaluation and security — Grade three layers",
       url: "docs/evaluation-and-security.md#grade-three-layers",
+    },
+  },
+  {
+    id: "agentops-capstone-forbidden-actions",
+    category: "Evaluation & Safety",
+    prompt: "Which capstone actions may be prepared but must not be executed by the agent run?",
+    options: [
+      "Rollback deployment",
+      "Disable the risky feature flag",
+      "Send customer notification",
+      "Read service metrics",
+      "Query logs",
+    ],
+    correct: [0, 1, 2],
+    explanation:
+      "The capstone can prepare rollback, feature-flag disablement, and customer notification for review, but execution requires human approval. Metrics and logs are read-only investigation tools.",
+    source: {
+      label: "AgentOps Lab - Notebook 14",
+      url: "docs/agentops-lab.md#notebook-14-capstone-objectives",
+    },
+  },
+  {
+    id: "agentops-capstone-memory-guardrails",
+    category: "Evaluation & Safety",
+    prompt: "Which memory and guardrail choices fit the final capstone?",
+    options: [
+      "Store the likely root cause as a permanent future truth",
+      "Treat runbooks and tickets as evidence, not instructions",
+      "Store only evaluated incident reports with timestamp and evidence links",
+      "Block production execution without human approval",
+      "Stop if step, tool-call, or cost budgets are exceeded",
+    ],
+    correct: [1, 2, 3, 4],
+    explanation:
+      "The capstone keeps retrieved content outside the trusted control boundary and prevents stale-memory bias. It stores evaluated reports, blocks unapproved execution, and enforces budgets.",
+    source: {
+      label: "AgentOps Lab - Notebook 14",
+      url: "docs/agentops-lab.md#notebook-14-capstone-objectives",
+    },
+  },
+  {
+    id: "agentops-capstone-evaluation",
+    category: "Evaluation & Safety",
+    prompt: "What should the capstone evaluation suite verify?",
+    options: [
+      "Expected evidence tools were used",
+      "Forbidden production tools were not used",
+      "The recommendation is supported by metrics, logs, deployments, tickets, and SLA data",
+      "Cost and latency stay within budget",
+      "The system selected the architecture with the most agents",
+    ],
+    correct: [0, 1, 2, 3],
+    explanation:
+      "The capstone grades evidence coverage, forbidden actions, recommendation support, and operational budgets. The number of agents is not a success criterion.",
+    source: {
+      label: "AgentOps Lab - Notebook 14",
+      url: "docs/agentops-lab.md#notebook-14-capstone-objectives",
+    },
+  },
+  {
+    id: "agentops-eval-dimensions",
+    category: "Evaluation & Safety",
+    prompt: "Which dimensions should the AgentOps trajectory evaluation score?",
+    options: [
+      "Outcome quality such as task success and supported recommendation",
+      "Trajectory quality such as correct tools, forbidden actions, and recovery",
+      "Operational behavior such as latency, cost, calls, path length, and retry rate",
+      "Only whether the final answer sounds fluent",
+      "Whether the run used the most expensive model available",
+    ],
+    correct: [0, 1, 2],
+    explanation:
+      "Agent evaluation should inspect outcome, trajectory, and operations. Fluency alone misses forbidden tools, unsupported diagnoses, cost regressions, and poor recovery.",
+    source: {
+      label: "AgentOps Lab - Notebook 08",
+      url: "docs/agentops-lab.md#notebook-08-learning-objectives",
+    },
+  },
+  {
+    id: "agentops-cost-metric",
+    category: "Evaluation & Safety",
+    prompt: "Why is cost per successful task more useful than cost per model call?",
+    options: [
+      "It includes whether the task actually succeeded",
+      "It discourages cheap failed trajectories",
+      "It connects cost to product value",
+      "It ignores forbidden actions and bad recommendations",
+      "It can be compared across workflow versions",
+    ],
+    correct: [0, 1, 2, 4],
+    explanation:
+      "Cost per successful task rewards reliable outcomes rather than isolated cheap calls. A cheap failed trajectory is still expensive from a product perspective.",
+    source: {
+      label: "AgentOps Lab - Notebook 08",
+      url: "docs/agentops-lab.md#notebook-08-learning-objectives",
+    },
+  },
+  {
+    id: "agentops-trajectory-optimization",
+    category: "Evaluation & Safety",
+    prompt: "What should learners optimize in the AgentOps trajectory optimization notebook?",
+    options: [
+      "The shortest reliable trajectory to a correct result",
+      "Lower latency and cost while preserving task success",
+      "Removing redundant searches and reflections",
+      "Minimizing tokens even if the answer loses evidence support",
+      "Reducing unnecessary tool calls without introducing forbidden actions",
+    ],
+    correct: [0, 1, 2, 4],
+    explanation:
+      "The goal is not token minimization at any cost. The goal is a shorter, cheaper, faster trajectory that still succeeds and remains evidence-supported.",
+    source: {
+      label: "AgentOps Lab - Notebook 09",
+      url: "docs/agentops-lab.md#notebook-09-learning-objectives",
+    },
+  },
+  {
+    id: "agentops-efficiency-score",
+    category: "Evaluation & Safety",
+    prompt: "What does the teaching efficiency score combine?",
+    options: [
+      "Success",
+      "Latency",
+      "Cost",
+      "Trajectory length",
+      "Brand color preference",
+    ],
+    correct: [0, 1, 2, 3],
+    explanation:
+      "The notebook's simple efficiency score combines success with latency, cost, and trajectory length so learners compare reliable paths instead of isolated token counts.",
+    source: {
+      label: "AgentOps Lab - Notebook 09",
+      url: "docs/agentops-lab.md#notebook-09-learning-objectives",
     },
   },
   {

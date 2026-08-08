@@ -15,7 +15,33 @@ before connecting a provider.
 ## AgentOps scenario track
 
 - [`agentops_lab/loop_yourself.py`](agentops_lab/loop_yourself.py) — manual incident-investigation loop over deterministic service status, incident search, and runbook tools.
+- [`agentops_lab/workflow_or_agent.py`](agentops_lab/workflow_or_agent.py) — compare deterministic workflows, bounded workflows, and dynamic agent investigations.
+- [`agentops_lab/agents_sdk_rebuild.py`](agentops_lab/agents_sdk_rebuild.py) — compare manual loop ownership with an OpenAI Agents SDK-shaped runtime.
+- [`agentops_lab/tool_engineering.py`](agentops_lab/tool_engineering.py) — refactor a broad admin tool into narrow, validated, failure-aware tools.
+- [`agentops_lab/state_memory_langgraph.py`](agentops_lab/state_memory_langgraph.py) — model a stateful investigation graph and memory-bias experiment.
+- [`agentops_lab/human_permissions.py`](agentops_lab/human_permissions.py) — model approval-gated tools, persisted pause state, and resume decisions.
+- [`agentops_lab/guardrails_untrusted_content.py`](agentops_lab/guardrails_untrusted_content.py) — demonstrate poisoned retrieved content and tool-level guardrails.
+- [`agentops_lab/evaluation_trajectory.py`](agentops_lab/evaluation_trajectory.py) — evaluate outcome, trajectory, operations, and cost per successful task.
+- [`agentops_lab/trajectory_optimization.py`](agentops_lab/trajectory_optimization.py) — compare inefficient and optimized successful trajectories.
+- [`agentops_lab/multi_agent_team.py`](agentops_lab/multi_agent_team.py) — compare one incident investigator with a specialist incident-response team.
+- [`agentops_lab/autogen_selector_team.py`](agentops_lab/autogen_selector_team.py) — simulate AutoGen selector-style team coordination, ownership, and loop budgets.
+- [`agentops_lab/crewai_team.py`](agentops_lab/crewai_team.py) — map the same specialist team to a CrewAI-style Agents + Tasks + Crew structure.
+- [`agentops_lab/hybrid_production_architecture.py`](agentops_lab/hybrid_production_architecture.py) — route simple lookups, investigations, and high-risk cases through a hybrid production architecture.
+- [`agentops_lab/capstone_incident_response.py`](agentops_lab/capstone_incident_response.py) — combine architecture selection, tools, state, permissions, guardrails, evaluation, trace, and cost analysis.
 - [`notebooks/06_agentops_manual_loop.ipynb`](notebooks/06_agentops_manual_loop.ipynb) — scenario notebook for building, tracing, and safely stopping the loop yourself.
+- [`notebooks/07_agentops_workflow_or_agent.ipynb`](notebooks/07_agentops_workflow_or_agent.ipynb) — scenario notebook for deciding whether a task needs a workflow, agentic workflow, single agent, or multi-agent team.
+- [`notebooks/08_agentops_openai_agents_sdk.ipynb`](notebooks/08_agentops_openai_agents_sdk.ipynb) — scenario notebook for rebuilding the incident investigator with OpenAI Agents SDK concepts.
+- [`notebooks/09_agentops_tool_engineering.ipynb`](notebooks/09_agentops_tool_engineering.ipynb) — scenario notebook for narrow tool schemas, validation, errors, retries, and approval boundaries.
+- [`notebooks/10_agentops_langgraph_state_memory.ipynb`](notebooks/10_agentops_langgraph_state_memory.ipynb) — scenario notebook for LangGraph-style state, confidence loops, and memory safety.
+- [`notebooks/11_agentops_human_permissions.ipynb`](notebooks/11_agentops_human_permissions.ipynb) — scenario notebook for human approval gates, least privilege, and persisted resume.
+- [`notebooks/12_agentops_guardrails_untrusted_content.ipynb`](notebooks/12_agentops_guardrails_untrusted_content.ipynb) — scenario notebook for untrusted retrieved content, prompt injection, and tool guardrails.
+- [`notebooks/13_agentops_evaluate_trajectory.ipynb`](notebooks/13_agentops_evaluate_trajectory.ipynb) — scenario notebook for outcome, trajectory, and operational evaluation.
+- [`notebooks/14_agentops_optimize_trajectory.ipynb`](notebooks/14_agentops_optimize_trajectory.ipynb) — scenario notebook for reducing latency, cost, calls, and path length while preserving success.
+- [`notebooks/15_agentops_when_one_agent_becomes_team.ipynb`](notebooks/15_agentops_when_one_agent_becomes_team.ipynb) — scenario notebook for deciding when specialists justify coordination overhead.
+- [`notebooks/16_agentops_autogen_selector_team.ipynb`](notebooks/16_agentops_autogen_selector_team.ipynb) — scenario notebook for AutoGen-style selector teams, shared context, and bounded failure loops.
+- [`notebooks/17_agentops_crewai_team.ipynb`](notebooks/17_agentops_crewai_team.ipynb) — scenario notebook for implementing the same team with CrewAI concepts.
+- [`notebooks/18_agentops_hybrid_production_architecture.ipynb`](notebooks/18_agentops_hybrid_production_architecture.ipynb) — scenario notebook for combining deterministic workflows, bounded agents, teams, policy, and approvals.
+- [`notebooks/19_agentops_final_capstone.ipynb`](notebooks/19_agentops_final_capstone.ipynb) — final capstone notebook where learners justify the full production design experimentally.
 
 The AgentOps track uses one evolving SaaS incident-response scenario to show
 why teams move from deterministic workflows to bounded agents, stateful agents,

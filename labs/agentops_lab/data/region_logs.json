@@ -1,0 +1,29 @@
+[
+  {
+    "region": "eu-west",
+    "service": "checkout",
+    "window": "2026-08-07T14:00:00Z/2026-08-07T15:00:00Z",
+    "level": "error",
+    "message": "3DS redirect callback rejected for VAT validation mismatch",
+    "count": 184,
+    "customer_segment": "enterprise"
+  },
+  {
+    "region": "eu-west",
+    "service": "checkout",
+    "window": "2026-08-07T14:00:00Z/2026-08-07T15:00:00Z",
+    "level": "warning",
+    "message": "Payment authorization retry succeeded after fallback provider",
+    "count": 71,
+    "customer_segment": "enterprise"
+  },
+  {
+    "region": "us-east",
+    "service": "checkout",
+    "window": "2026-08-07T14:00:00Z/2026-08-07T15:00:00Z",
+    "level": "info",
+    "message": "Checkout latency within normal range",
+    "count": 22,
+    "customer_segment": "standard"
+  }
+]

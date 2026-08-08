@@ -123,9 +123,56 @@ It implements the agent loop manually, then deliberately breaks the system with
 `MAX_STEPS`, `MAX_TOOL_CALLS`, and `MAX_ESTIMATED_COST` are core production
 controls.
 
+Then continue to [Notebook 02: Agent or workflow?](labs/notebooks/07_agentops_workflow_or_agent.ipynb).
+It compares three checkout operations tasks: a deterministic status report, a
+bounded unhealthy-check workflow, and a dynamic European checkout investigation.
+Learners practice classifying problems as workflow, agentic workflow, agent, or
+multi-agent before choosing a framework.
+
+[Notebook 03: Rebuild with OpenAI Agents SDK](labs/notebooks/08_agentops_openai_agents_sdk.ipynb)
+shows how a framework packages the same loop into managed turns, function-tool
+schemas, dispatch, sessions, and tracing. [Notebook 04: Tool engineering](labs/notebooks/09_agentops_tool_engineering.ipynb)
+then refactors a dangerous broad `admin_api(command)` into narrow, validated
+tools with explicit retry, escalation, and stop rules.
+
+[Notebook 05: Add state and memory with LangGraph](labs/notebooks/10_agentops_langgraph_state_memory.ipynb)
+turns the incident investigation into explicit state, nodes, and edges. It also
+shows how stale long-term memory can bias a new diagnosis unless memory is
+scoped, validated, auditable, and reversible.
+
+[Notebook 06: Human-in-the-loop and permissions](labs/notebooks/11_agentops_human_permissions.ipynb)
+adds a restart action and shows how policy pauses execution before high-impact
+tools, then resumes from human approval, modification, or rejection.
+
+[Notebook 07: Guardrails and untrusted content](labs/notebooks/12_agentops_guardrails_untrusted_content.ipynb)
+injects a malicious instruction into a retrieved runbook and teaches learners to
+treat retrieved documents as data while enforcing restart approval at the tool
+boundary.
+
+[Notebook 08: Agent evaluation](labs/notebooks/13_agentops_evaluate_trajectory.ipynb)
+scores outcome, trajectory, and operational behavior, including forbidden tools
+and cost per successful task. [Notebook 09: Optimize the trajectory](labs/notebooks/14_agentops_optimize_trajectory.ipynb)
+then compares a wasteful successful run with a shorter reliable trajectory.
+
+[Notebook 10: When one agent becomes a team](labs/notebooks/15_agentops_when_one_agent_becomes_team.ipynb)
+compares a single-agent baseline with a specialist incident team. [Notebook 11:
+Multi-agent implementation with AutoGen](labs/notebooks/16_agentops_autogen_selector_team.ipynb)
+shows selector-style team coordination, ownership rules, and bounded failure-loop
+controls.
+
+[Notebook 12: Implement the same team in CrewAI](labs/notebooks/17_agentops_crewai_team.ipynb)
+maps the same incident team to CrewAI's Agents + Tasks + Crew model.
+[Notebook 13: Hybrid production architecture](labs/notebooks/18_agentops_hybrid_production_architecture.ipynb)
+wraps deterministic routing, bounded agents, specialist teams, policy checks,
+and human approval into one production-oriented design.
+[Notebook 14: Final capstone](labs/notebooks/19_agentops_final_capstone.ipynb)
+asks learners to design and justify the full incident-response system
+experimentally: tools, state, permissions, HITL, guardrails, evaluation, traces,
+cost/latency, and single-vs-multi-agent comparison.
+
 ## Test your knowledge
 
-Finished the guides? Open the [interactive AI Agents Knowledge Check](https://mahsa-teimourikia.github.io/awsome-ai-agents/quiz/)—20 multiple-answer questions covering foundations, the agent loop, scenario-based AgentOps investigation, tools and memory, workflows, multi-agent orchestration, and evaluation and safety.
+Finished the guides? Open the [interactive AI Agents Knowledge Check](https://mahsa-teimourikia.github.io/awsome-ai-agents/quiz/)—48 multiple-answer questions covering foundations, the agent loop, scenario-based AgentOps investigation, tools and memory, workflows, multi-agent orchestration, and evaluation and safety.
 
 The quiz:
 
