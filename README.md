@@ -149,9 +149,14 @@ injects a malicious instruction into a retrieved runbook and teaches learners to
 treat retrieved documents as data while enforcing restart approval at the tool
 boundary.
 
+[Notebook 08: Agent evaluation](labs/notebooks/13_agentops_evaluate_trajectory.ipynb)
+scores outcome, trajectory, and operational behavior, including forbidden tools
+and cost per successful task. [Notebook 09: Optimize the trajectory](labs/notebooks/14_agentops_optimize_trajectory.ipynb)
+then compares a wasteful successful run with a shorter reliable trajectory.
+
 ## Test your knowledge
 
-Finished the guides? Open the [interactive AI Agents Knowledge Check](https://mahsa-teimourikia.github.io/awsome-ai-agents/quiz/)—32 multiple-answer questions covering foundations, the agent loop, scenario-based AgentOps investigation, tools and memory, workflows, multi-agent orchestration, and evaluation and safety.
+Finished the guides? Open the [interactive AI Agents Knowledge Check](https://mahsa-teimourikia.github.io/awsome-ai-agents/quiz/)—36 multiple-answer questions covering foundations, the agent loop, scenario-based AgentOps investigation, tools and memory, workflows, multi-agent orchestration, and evaluation and safety.
 
 The quiz:
 

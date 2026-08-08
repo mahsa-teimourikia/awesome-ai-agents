@@ -570,6 +570,82 @@ export const questions = [
     },
   },
   {
+    id: "agentops-eval-dimensions",
+    category: "Evaluation & Safety",
+    prompt: "Which dimensions should the AgentOps trajectory evaluation score?",
+    options: [
+      "Outcome quality such as task success and supported recommendation",
+      "Trajectory quality such as correct tools, forbidden actions, and recovery",
+      "Operational behavior such as latency, cost, calls, path length, and retry rate",
+      "Only whether the final answer sounds fluent",
+      "Whether the run used the most expensive model available",
+    ],
+    correct: [0, 1, 2],
+    explanation:
+      "Agent evaluation should inspect outcome, trajectory, and operations. Fluency alone misses forbidden tools, unsupported diagnoses, cost regressions, and poor recovery.",
+    source: {
+      label: "AgentOps Lab - Notebook 08",
+      url: "docs/agentops-lab.md#notebook-08-learning-objectives",
+    },
+  },
+  {
+    id: "agentops-cost-metric",
+    category: "Evaluation & Safety",
+    prompt: "Why is cost per successful task more useful than cost per model call?",
+    options: [
+      "It includes whether the task actually succeeded",
+      "It discourages cheap failed trajectories",
+      "It connects cost to product value",
+      "It ignores forbidden actions and bad recommendations",
+      "It can be compared across workflow versions",
+    ],
+    correct: [0, 1, 2, 4],
+    explanation:
+      "Cost per successful task rewards reliable outcomes rather than isolated cheap calls. A cheap failed trajectory is still expensive from a product perspective.",
+    source: {
+      label: "AgentOps Lab - Notebook 08",
+      url: "docs/agentops-lab.md#notebook-08-learning-objectives",
+    },
+  },
+  {
+    id: "agentops-trajectory-optimization",
+    category: "Evaluation & Safety",
+    prompt: "What should learners optimize in the AgentOps trajectory optimization notebook?",
+    options: [
+      "The shortest reliable trajectory to a correct result",
+      "Lower latency and cost while preserving task success",
+      "Removing redundant searches and reflections",
+      "Minimizing tokens even if the answer loses evidence support",
+      "Reducing unnecessary tool calls without introducing forbidden actions",
+    ],
+    correct: [0, 1, 2, 4],
+    explanation:
+      "The goal is not token minimization at any cost. The goal is a shorter, cheaper, faster trajectory that still succeeds and remains evidence-supported.",
+    source: {
+      label: "AgentOps Lab - Notebook 09",
+      url: "docs/agentops-lab.md#notebook-09-learning-objectives",
+    },
+  },
+  {
+    id: "agentops-efficiency-score",
+    category: "Evaluation & Safety",
+    prompt: "What does the teaching efficiency score combine?",
+    options: [
+      "Success",
+      "Latency",
+      "Cost",
+      "Trajectory length",
+      "Brand color preference",
+    ],
+    correct: [0, 1, 2, 3],
+    explanation:
+      "The notebook's simple efficiency score combines success with latency, cost, and trajectory length so learners compare reliable paths instead of isolated token counts.",
+    source: {
+      label: "AgentOps Lab - Notebook 09",
+      url: "docs/agentops-lab.md#notebook-09-learning-objectives",
+    },
+  },
+  {
     id: "security-trust",
     category: "Evaluation & Safety",
     prompt: "Which inputs should an agent treat as untrusted?",
