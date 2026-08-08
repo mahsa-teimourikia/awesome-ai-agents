@@ -1,0 +1,19 @@
+{
+  "timestamp": "2026-08-08T09:04:00Z",
+  "region": "eu-west",
+  "service": "checkout",
+  "checkout_conversion_delta": -0.31,
+  "health_dashboard": "mostly_green",
+  "service_health": {
+    "checkout": "green",
+    "payments": "green",
+    "catalog": "green",
+    "fraud": "green"
+  },
+  "funnel": {
+    "cart_to_checkout": "normal",
+    "checkout_to_3ds_redirect": "down_33_percent",
+    "3ds_redirect_to_order_complete": "down_31_percent",
+    "payment_authorization_errors": "normal"
+  }
+}

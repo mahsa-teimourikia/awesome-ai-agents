@@ -1,0 +1,7 @@
+customer,tier,region,sla_minutes,annual_value_usd
+Acme Retail,enterprise,eu-west,30,240000
+Northstar GmbH,enterprise,eu-west,30,190000
+Boreal Supply,business,eu-west,120,72000
+Saffron Market,enterprise,eu-west,30,155000
+Eurora Medical,enterprise,eu-west,30,310000
+Atlas Labs,business,eu-west,120,64000

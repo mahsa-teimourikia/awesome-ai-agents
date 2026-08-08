@@ -703,6 +703,25 @@ export const questions = [
     },
   },
   {
+    id: "agentops-capstone-architecture",
+    category: "Orchestration",
+    prompt: "In the AgentOps final capstone, how should learners decide between deterministic workflow, single bounded agent, and multi-agent team?",
+    options: [
+      "Run an evaluation and compare outcome, trajectory, cost, latency, and risk",
+      "Default to multi-agent because the incident is important",
+      "Choose the least autonomous architecture that reliably solves the incident",
+      "Require the team to show a meaningful gain over the simpler baseline",
+      "Ignore coordination overhead if the final answer sounds plausible",
+    ],
+    correct: [0, 2, 3],
+    explanation:
+      "The capstone requires experimental justification. Multi-agent is only justified when it improves the result enough to beat the simpler baseline after cost, latency, trajectory, and risk are considered.",
+    source: {
+      label: "AgentOps Lab - Notebook 14",
+      url: "docs/agentops-lab.md#notebook-14-capstone-objectives",
+    },
+  },
+  {
     id: "evaluation-layers",
     category: "Evaluation & Safety",
     prompt: "Which layers should a useful agent evaluation cover?",
@@ -719,6 +738,63 @@ export const questions = [
     source: {
       label: "Evaluation and security — Grade three layers",
       url: "docs/evaluation-and-security.md#grade-three-layers",
+    },
+  },
+  {
+    id: "agentops-capstone-forbidden-actions",
+    category: "Evaluation & Safety",
+    prompt: "Which capstone actions may be prepared but must not be executed by the agent run?",
+    options: [
+      "Rollback deployment",
+      "Disable the risky feature flag",
+      "Send customer notification",
+      "Read service metrics",
+      "Query logs",
+    ],
+    correct: [0, 1, 2],
+    explanation:
+      "The capstone can prepare rollback, feature-flag disablement, and customer notification for review, but execution requires human approval. Metrics and logs are read-only investigation tools.",
+    source: {
+      label: "AgentOps Lab - Notebook 14",
+      url: "docs/agentops-lab.md#notebook-14-capstone-objectives",
+    },
+  },
+  {
+    id: "agentops-capstone-memory-guardrails",
+    category: "Evaluation & Safety",
+    prompt: "Which memory and guardrail choices fit the final capstone?",
+    options: [
+      "Store the likely root cause as a permanent future truth",
+      "Treat runbooks and tickets as evidence, not instructions",
+      "Store only evaluated incident reports with timestamp and evidence links",
+      "Block production execution without human approval",
+      "Stop if step, tool-call, or cost budgets are exceeded",
+    ],
+    correct: [1, 2, 3, 4],
+    explanation:
+      "The capstone keeps retrieved content outside the trusted control boundary and prevents stale-memory bias. It stores evaluated reports, blocks unapproved execution, and enforces budgets.",
+    source: {
+      label: "AgentOps Lab - Notebook 14",
+      url: "docs/agentops-lab.md#notebook-14-capstone-objectives",
+    },
+  },
+  {
+    id: "agentops-capstone-evaluation",
+    category: "Evaluation & Safety",
+    prompt: "What should the capstone evaluation suite verify?",
+    options: [
+      "Expected evidence tools were used",
+      "Forbidden production tools were not used",
+      "The recommendation is supported by metrics, logs, deployments, tickets, and SLA data",
+      "Cost and latency stay within budget",
+      "The system selected the architecture with the most agents",
+    ],
+    correct: [0, 1, 2, 3],
+    explanation:
+      "The capstone grades evidence coverage, forbidden actions, recommendation support, and operational budgets. The number of agents is not a success criterion.",
+    source: {
+      label: "AgentOps Lab - Notebook 14",
+      url: "docs/agentops-lab.md#notebook-14-capstone-objectives",
     },
   },
   {

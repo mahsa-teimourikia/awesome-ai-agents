@@ -27,6 +27,7 @@ before connecting a provider.
 - [`agentops_lab/autogen_selector_team.py`](agentops_lab/autogen_selector_team.py) — simulate AutoGen selector-style team coordination, ownership, and loop budgets.
 - [`agentops_lab/crewai_team.py`](agentops_lab/crewai_team.py) — map the same specialist team to a CrewAI-style Agents + Tasks + Crew structure.
 - [`agentops_lab/hybrid_production_architecture.py`](agentops_lab/hybrid_production_architecture.py) — route simple lookups, investigations, and high-risk cases through a hybrid production architecture.
+- [`agentops_lab/capstone_incident_response.py`](agentops_lab/capstone_incident_response.py) — combine architecture selection, tools, state, permissions, guardrails, evaluation, trace, and cost analysis.
 - [`notebooks/06_agentops_manual_loop.ipynb`](notebooks/06_agentops_manual_loop.ipynb) — scenario notebook for building, tracing, and safely stopping the loop yourself.
 - [`notebooks/07_agentops_workflow_or_agent.ipynb`](notebooks/07_agentops_workflow_or_agent.ipynb) — scenario notebook for deciding whether a task needs a workflow, agentic workflow, single agent, or multi-agent team.
 - [`notebooks/08_agentops_openai_agents_sdk.ipynb`](notebooks/08_agentops_openai_agents_sdk.ipynb) — scenario notebook for rebuilding the incident investigator with OpenAI Agents SDK concepts.
@@ -40,6 +41,7 @@ before connecting a provider.
 - [`notebooks/16_agentops_autogen_selector_team.ipynb`](notebooks/16_agentops_autogen_selector_team.ipynb) — scenario notebook for AutoGen-style selector teams, shared context, and bounded failure loops.
 - [`notebooks/17_agentops_crewai_team.ipynb`](notebooks/17_agentops_crewai_team.ipynb) — scenario notebook for implementing the same team with CrewAI concepts.
 - [`notebooks/18_agentops_hybrid_production_architecture.ipynb`](notebooks/18_agentops_hybrid_production_architecture.ipynb) — scenario notebook for combining deterministic workflows, bounded agents, teams, policy, and approvals.
+- [`notebooks/19_agentops_final_capstone.ipynb`](notebooks/19_agentops_final_capstone.ipynb) — final capstone notebook where learners justify the full production design experimentally.
 
 The AgentOps track uses one evolving SaaS incident-response scenario to show
 why teams move from deterministic workflows to bounded agents, stateful agents,

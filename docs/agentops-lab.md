@@ -31,6 +31,8 @@ The simulated company environment lives under [`labs/agentops_lab/`](../labs/age
 - [`autogen_selector_team.py`](../labs/agentops_lab/autogen_selector_team.py) demonstrates selector-style coordination, ownership, and bounded team loops.
 - [`crewai_team.py`](../labs/agentops_lab/crewai_team.py) maps the same team to a CrewAI-style Agents + Tasks + Crew model.
 - [`hybrid_production_architecture.py`](../labs/agentops_lab/hybrid_production_architecture.py) routes tasks through a deterministic production wrapper.
+- [`capstone_incident_response.py`](../labs/agentops_lab/capstone_incident_response.py) combines architecture selection, tools, state, memory policy, permissions, HITL, guardrails, evaluation, traces, and cost/latency analysis.
+- [`data/capstone_metrics.json`](../labs/agentops_lab/data/capstone_metrics.json), [`data/capstone_tickets.json`](../labs/agentops_lab/data/capstone_tickets.json), [`data/customers.csv`](../labs/agentops_lab/data/customers.csv), and [`evaluations/capstone_tasks.json`](../labs/agentops_lab/evaluations/capstone_tasks.json) provide the final capstone fixtures.
 - [`data/deployments.json`](../labs/agentops_lab/data/deployments.json) and [`data/region_logs.json`](../labs/agentops_lab/data/region_logs.json) add evidence for regional checkout investigations.
 
 Every external system starts as a deterministic Python function. That keeps the
@@ -53,6 +55,7 @@ flowchart TD
     N10 --> N11["11 AutoGen selector team"]
     N11 --> N12["12 CrewAI Agents + Tasks + Crew"]
     N12 --> N13["13 Hybrid production architecture"]
+    N13 --> N14["14 Final capstone"]
 ```
 
 | Notebook | Architecture | Main library focus | What learners practice |
@@ -70,6 +73,7 @@ flowchart TD
 | [11 AutoGen selector team](../labs/notebooks/16_agentops_autogen_selector_team.ipynb) | Selector-based group chat | AutoGen AgentChat concepts | Dynamic speaker selection, shared context, ownership rules, turn budgets, and failure-loop prevention |
 | [12 CrewAI team](../labs/notebooks/17_agentops_crewai_team.ipynb) | Task-owned specialist crew | CrewAI concepts | Mapping roles to agents, deliverables to tasks, and specialist outputs to a crew-level incident plan |
 | [13 Hybrid production architecture](../labs/notebooks/18_agentops_hybrid_production_architecture.ipynb) | Deterministic wrapper around agents | Production architecture | Routing simple lookups, investigations, and high-risk cases through the least autonomous reliable path |
+| [14 Final capstone](../labs/notebooks/19_agentops_final_capstone.ipynb) | Evaluated production design | Framework-independent harness | Justifying architecture choice with tools, state, permissions, HITL, guardrails, evaluation, traces, cost/latency, and single-vs-multi-agent comparison |
 
 ## Notebook 01 learning objectives
 
@@ -220,6 +224,20 @@ By the end of the thirteenth notebook, learners should be able to:
   and
 - explain why credible production systems are hybrids rather than one giant
   autonomous agent.
+
+## Notebook 14 capstone objectives
+
+By the end of the capstone, learners should be able to:
+
+- select an architecture experimentally rather than defaulting to multi-agent;
+- define read-only, propose-only, and approval-gated tools for an incident
+  assistant;
+- combine state, memory policy, permissions, HITL, guardrails, and termination
+  conditions into one coherent design;
+- evaluate expected tools, forbidden tools, recommendation support, trace
+  quality, cost, latency, and budget compliance; and
+- justify whether a single bounded agent or a specialist team is the better
+  production choice for the incident.
 
 ## References
 

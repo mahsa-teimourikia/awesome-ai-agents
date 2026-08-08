@@ -165,10 +165,14 @@ maps the same incident team to CrewAI's Agents + Tasks + Crew model.
 [Notebook 13: Hybrid production architecture](labs/notebooks/18_agentops_hybrid_production_architecture.ipynb)
 wraps deterministic routing, bounded agents, specialist teams, policy checks,
 and human approval into one production-oriented design.
+[Notebook 14: Final capstone](labs/notebooks/19_agentops_final_capstone.ipynb)
+asks learners to design and justify the full incident-response system
+experimentally: tools, state, permissions, HITL, guardrails, evaluation, traces,
+cost/latency, and single-vs-multi-agent comparison.
 
 ## Test your knowledge
 
-Finished the guides? Open the [interactive AI Agents Knowledge Check](https://mahsa-teimourikia.github.io/awsome-ai-agents/quiz/)—44 multiple-answer questions covering foundations, the agent loop, scenario-based AgentOps investigation, tools and memory, workflows, multi-agent orchestration, and evaluation and safety.
+Finished the guides? Open the [interactive AI Agents Knowledge Check](https://mahsa-teimourikia.github.io/awsome-ai-agents/quiz/)—48 multiple-answer questions covering foundations, the agent loop, scenario-based AgentOps investigation, tools and memory, workflows, multi-agent orchestration, and evaluation and safety.
 
 The quiz:
 
