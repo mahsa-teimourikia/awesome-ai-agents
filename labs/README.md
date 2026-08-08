@@ -12,7 +12,13 @@ before connecting a provider.
 - [`03_checkpointed_state.py`](beginner/03_checkpointed_state.py) — resumable state and typed failure handling.
 - [`04_research_assistant_capstone.py`](beginner/04_research_assistant_capstone.py) — citations, evidence budgets, and abstention.
 
-## AgentOps scenario track
+## AgentOps notebook-first scenario track
+
+Start with the [`notebooks/README.md`](notebooks/README.md) track map. The
+notebooks are the canonical training path: they contain the theory, architecture
+diagrams, implementation walkthroughs, deliberate failure cases, evaluation
+outputs, and learner exercises. The Python files below are the reusable modules
+the notebooks import and explain.
 
 - [`agentops_lab/loop_yourself.py`](agentops_lab/loop_yourself.py) — manual incident-investigation loop over deterministic service status, incident search, and runbook tools.
 - [`agentops_lab/workflow_or_agent.py`](agentops_lab/workflow_or_agent.py) — compare deterministic workflows, bounded workflows, and dynamic agent investigations.
@@ -45,7 +51,8 @@ before connecting a provider.
 
 The AgentOps track uses one evolving SaaS incident-response scenario to show
 why teams move from deterministic workflows to bounded agents, stateful agents,
-human-approved actions, evaluations, and eventually multi-agent teams.
+human-approved actions, evaluations, multi-agent teams, framework comparison,
+hybrid production architecture, and a final capstone.
 
 ## Intermediate
 

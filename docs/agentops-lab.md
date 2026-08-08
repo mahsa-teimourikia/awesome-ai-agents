@@ -1,6 +1,6 @@
 # AgentOps Lab: From tool calls to agent teams
 
-AgentOps Lab is a scenario-based notebook track for learning AI agent design
+AgentOps Lab is a notebook-first scenario track for learning AI agent design
 through one evolving business problem: a fictional SaaS company is receiving
 customer reports of checkout failures. The system begins as a simple
 investigation assistant and gradually grows into a bounded agent, stateful
@@ -10,6 +10,11 @@ The track follows the central design argument in One+i's
 [Building AI Agents: From Loops to Teams](https://www.linkedin.com/pulse/building-ai-agents-from-loops-teams-oneplusi-y3atc/):
 use the least autonomous architecture that reliably solves the problem.
 Frameworks are useful, but learners should first understand the loop they wrap.
+The notebooks are the canonical training material: they contain concept
+explanations, diagrams, implementation walkthroughs, deliberate failure cases,
+evaluation outputs, and architecture questions. The Python modules under
+[`labs/agentops_lab/`](../labs/agentops_lab/) are implementation units that the
+notebooks explain and run.
 
 ## Scenario environment
 

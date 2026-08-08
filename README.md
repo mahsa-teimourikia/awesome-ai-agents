@@ -85,30 +85,36 @@ behind each level.
 
 ## Labs and implementation
 
-The [Python labs](labs/README.md) are dependency-light teaching artifacts. They
-include runnable beginner, intermediate, and advanced examples, with an optional
-[LangGraph environment](labs/requirements.txt). Larger modules stay in Python so
-they can be tested and reused; the [notebook companion](labs/notebooks/01_agent_loop.ipynb)
-adds an interactive explanation for the first lab.
+The [AgentOps notebooks](labs/notebooks/README.md) are the front-and-center lab
+experience. Use them as the canonical training path because they combine theory,
+architecture diagrams, implementation walkthroughs, deliberate failure cases,
+evaluation output, and exercises. The [Python labs](labs/README.md) are the
+reusable implementation modules behind the notebooks; they remain
+dependency-light and runnable without API keys except for optional provider or
+LangGraph extensions.
 
-The labs also include a [provider and LangGraph setup guide](labs/provider-guide.md),
-two interactive notebook companions, and lesson-specific checkpoint prompts in
-the Hub. Start with deterministic stubs, then swap in a provider adapter only
-after the policy and evaluation tests are in place.
+The labs also include a [provider and LangGraph setup guide](labs/provider-guide.md)
+and lesson-specific checkpoint prompts in the Hub. Start with deterministic
+stubs, then swap in a provider adapter only after the policy and evaluation
+tests are in place.
 
 Notebook JSON is validated in CI, and provider seams for the OpenAI Agents SDK
 and LangGraph are included under [`labs/providers/`](labs/providers/). These
 examples intentionally keep credentials and side effects outside the learning
 artifacts.
 
-## AgentOps scenario notebooks
+## AgentOps notebook-first scenario track
 
-[AgentOps Lab](docs/agentops-lab.md) is a new scenario-based notebook track
+[AgentOps Lab](docs/agentops-lab.md) is a scenario-based notebook track
 based on the design argument in One+i's
 [Building AI Agents: From Loops to Teams](https://www.linkedin.com/pulse/building-ai-agents-from-loops-teams-oneplusi-y3atc/):
 start with the least autonomous architecture that reliably solves the problem,
 then add agentic behavior only when the scenario proves it needs runtime
 adaptation.
+
+The notebooks are the reference material for both theory and practice. Start
+from the [AgentOps notebook track map](labs/notebooks/README.md), then use the
+linked Python modules when you want to inspect or extend implementation details.
 
 The fictional business problem is an AI Operations Analyst for a SaaS company:
 customers are reporting checkout failures, and the assistant must investigate
