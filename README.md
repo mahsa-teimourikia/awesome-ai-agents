@@ -13,6 +13,7 @@ AI agents combine a model with instructions, tools, memory or state, and a contr
 - [Agent or workflow?](#agent-or-workflow)
 - [Learning roadmap](#learning-roadmap)
 - [Labs and implementation](#labs-and-implementation)
+- [AgentOps scenario notebooks](#agentops-scenario-notebooks)
 - [Test your knowledge](#test-your-knowledge)
 - [Learning paths](#learning-paths)
 - [Official educational resources](#official-educational-resources)
@@ -78,7 +79,9 @@ Use the [AI Agents Learning Hub](#ai-agents-learning-hub) as the structured path
 - **Intermediate:** compare workflows and agents, apply architecture patterns, and build evaluation and support-workflow gates.
 - **Advanced:** design multi-agent teams, durable recovery, protocol boundaries, safety readiness, and the research-team capstone.
 
-The [learning paths](#learning-paths) and [labs](labs/README.md) provide the source material behind each level.
+The [learning paths](#learning-paths), [labs](labs/README.md), and
+[AgentOps scenario notebooks](docs/agentops-lab.md) provide the source material
+behind each level.
 
 ## Labs and implementation
 
@@ -98,9 +101,31 @@ and LangGraph are included under [`labs/providers/`](labs/providers/). These
 examples intentionally keep credentials and side effects outside the learning
 artifacts.
 
+## AgentOps scenario notebooks
+
+[AgentOps Lab](docs/agentops-lab.md) is a new scenario-based notebook track
+based on the design argument in One+i's
+[Building AI Agents: From Loops to Teams](https://www.linkedin.com/pulse/building-ai-agents-from-loops-teams-oneplusi-y3atc/):
+start with the least autonomous architecture that reliably solves the problem,
+then add agentic behavior only when the scenario proves it needs runtime
+adaptation.
+
+The fictional business problem is an AI Operations Analyst for a SaaS company:
+customers are reporting checkout failures, and the assistant must investigate
+service health, incident records, and runbooks before advising the support team.
+Every external system starts as a deterministic Python function so learners can
+study tool design, state, stop conditions, budgets, evaluation, and escalation
+without credentials or live infrastructure.
+
+Start with [Notebook 01: Build the loop yourself](labs/notebooks/06_agentops_manual_loop.ipynb).
+It implements the agent loop manually, then deliberately breaks the system with
+"keep investigating until you are completely sure" so learners see why
+`MAX_STEPS`, `MAX_TOOL_CALLS`, and `MAX_ESTIMATED_COST` are core production
+controls.
+
 ## Test your knowledge
 
-Finished the guides? Open the [interactive AI Agents Knowledge Check](https://mahsa-teimourikia.github.io/awsome-ai-agents/quiz/)—18 multiple-answer questions covering foundations, the agent loop, tools and memory, workflows, multi-agent orchestration, and evaluation and safety.
+Finished the guides? Open the [interactive AI Agents Knowledge Check](https://mahsa-teimourikia.github.io/awsome-ai-agents/quiz/)—20 multiple-answer questions covering foundations, the agent loop, scenario-based AgentOps investigation, tools and memory, workflows, multi-agent orchestration, and evaluation and safety.
 
 The quiz:
 

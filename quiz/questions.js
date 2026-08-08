@@ -114,6 +114,44 @@ export const questions = [
     },
   },
   {
+    id: "agentops-evidence",
+    category: "Agent Loop",
+    prompt: "In the AgentOps checkout scenario, what evidence should the assistant collect before claiming there is an active incident?",
+    options: [
+      "Current service health for checkout or a dependency",
+      "An active incident record that matches checkout/payment failure symptoms",
+      "The relevant checkout runbook or response policy",
+      "A user instruction that says customers are upset",
+      "Enough context to distinguish evidence from speculation",
+    ],
+    correct: [0, 1, 2, 4],
+    explanation:
+      "The assistant should ground its recommendation in service health, incident records, and runbook guidance. A customer report is a signal to investigate, not proof of an active incident.",
+    source: {
+      label: "AgentOps Lab",
+      url: "docs/agentops-lab.md#notebook-01-learning-objectives",
+    },
+  },
+  {
+    id: "agentops-budgets",
+    category: "Agent Loop",
+    prompt: "Why does the manual AgentOps loop include step, tool-call, and cost budgets?",
+    options: [
+      "They prevent open-ended investigation loops",
+      "They create auditable terminal reasons",
+      "They let the application stop safely when confidence is not improving",
+      "They guarantee the model will choose the correct tool",
+      "They keep operational cost and latency bounded",
+    ],
+    correct: [0, 1, 2, 4],
+    explanation:
+      "Budgets do not make a model correct, but they keep the application in control when the model repeats itself, seeks impossible certainty, or consumes too much time or spend.",
+    source: {
+      label: "AgentOps Lab",
+      url: "docs/agentops-lab.md#notebook-01-learning-objectives",
+    },
+  },
+  {
     id: "tools-contract",
     category: "Tools & Memory",
     prompt: "Which properties improve an agent-facing tool contract?",
