@@ -12,6 +12,15 @@ before connecting a provider.
 - [`03_checkpointed_state.py`](beginner/03_checkpointed_state.py) — resumable state and typed failure handling.
 - [`04_research_assistant_capstone.py`](beginner/04_research_assistant_capstone.py) — citations, evidence budgets, and abstention.
 
+## AgentOps scenario track
+
+- [`agentops_lab/loop_yourself.py`](agentops_lab/loop_yourself.py) — manual incident-investigation loop over deterministic service status, incident search, and runbook tools.
+- [`notebooks/06_agentops_manual_loop.ipynb`](notebooks/06_agentops_manual_loop.ipynb) — scenario notebook for building, tracing, and safely stopping the loop yourself.
+
+The AgentOps track uses one evolving SaaS incident-response scenario to show
+why teams move from deterministic workflows to bounded agents, stateful agents,
+human-approved actions, evaluations, and eventually multi-agent teams.
+
 ## Intermediate
 
 - [`01_architecture_patterns.py`](intermediate/01_architecture_patterns.py) — compare routing, parallelization, and evaluator-optimizer designs.

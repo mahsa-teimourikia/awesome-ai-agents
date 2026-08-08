@@ -4,8 +4,8 @@ import test from "node:test";
 import { gradeQuiz, isExactMatch, normalizeSelection } from "./grading.js";
 import { questions } from "./questions.js";
 
-test("the quiz contains 18 questions in 6 balanced categories", () => {
-  assert.equal(questions.length, 18);
+test("the quiz contains 20 questions across 6 categories", () => {
+  assert.equal(questions.length, 20);
 
   const categories = questions.reduce((counts, question) => {
     counts[question.category] = (counts[question.category] ?? 0) + 1;
@@ -13,7 +13,8 @@ test("the quiz contains 18 questions in 6 balanced categories", () => {
   }, {});
 
   assert.equal(Object.keys(categories).length, 6);
-  assert.deepEqual([...new Set(Object.values(categories))], [3]);
+  assert.ok(Object.values(categories).every((count) => count >= 3));
+  assert.equal(categories["Agent Loop"], 5);
 });
 
 test("every question is a valid multiple-answer question", () => {
@@ -45,10 +46,10 @@ test("a complete answer key earns 100 percent", () => {
   );
   const result = gradeQuiz(questions, selections);
 
-  assert.equal(result.answeredCount, 18);
-  assert.equal(result.correctCount, 18);
+  assert.equal(result.answeredCount, 20);
+  assert.equal(result.correctCount, 20);
   assert.equal(result.percent, 100);
-  assert.ok(Object.values(result.categories).every((score) => score.correct === 3));
+  assert.ok(Object.values(result.categories).every((score) => score.correct === score.total));
 });
 
 test("unanswered questions count as incorrect", () => {
