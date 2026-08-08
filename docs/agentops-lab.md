@@ -29,6 +29,8 @@ The simulated company environment lives under [`labs/agentops_lab/`](../labs/age
 - [`trajectory_optimization.py`](../labs/agentops_lab/trajectory_optimization.py) compares inefficient and optimized incident trajectories.
 - [`multi_agent_team.py`](../labs/agentops_lab/multi_agent_team.py) compares a single agent with a specialist incident-response team.
 - [`autogen_selector_team.py`](../labs/agentops_lab/autogen_selector_team.py) demonstrates selector-style coordination, ownership, and bounded team loops.
+- [`crewai_team.py`](../labs/agentops_lab/crewai_team.py) maps the same team to a CrewAI-style Agents + Tasks + Crew model.
+- [`hybrid_production_architecture.py`](../labs/agentops_lab/hybrid_production_architecture.py) routes tasks through a deterministic production wrapper.
 - [`data/deployments.json`](../labs/agentops_lab/data/deployments.json) and [`data/region_logs.json`](../labs/agentops_lab/data/region_logs.json) add evidence for regional checkout investigations.
 
 Every external system starts as a deterministic Python function. That keeps the
@@ -49,7 +51,8 @@ flowchart TD
     N8 --> N9["09 Optimize the trajectory"]
     N9 --> N10["10 When one agent becomes a team"]
     N10 --> N11["11 AutoGen selector team"]
-    N11 --> N12["12 Provider comparison: OpenAI Agents SDK, LangGraph, AutoGen, CrewAI"]
+    N11 --> N12["12 CrewAI Agents + Tasks + Crew"]
+    N12 --> N13["13 Hybrid production architecture"]
 ```
 
 | Notebook | Architecture | Main library focus | What learners practice |
@@ -65,7 +68,8 @@ flowchart TD
 | [09 Optimize the trajectory](../labs/notebooks/14_agentops_optimize_trajectory.ipynb) | Efficient bounded agent | Trajectory optimization | Shortening reliable paths while preserving correctness, evidence, and support |
 | [10 When one agent becomes a team](../labs/notebooks/15_agentops_when_one_agent_becomes_team.ipynb) | Manager and specialist agents | Multi-agent design | Comparing a single-agent baseline with observability, deployment, customer impact, analyst, and risk-review specialists |
 | [11 AutoGen selector team](../labs/notebooks/16_agentops_autogen_selector_team.ipynb) | Selector-based group chat | AutoGen AgentChat concepts | Dynamic speaker selection, shared context, ownership rules, turn budgets, and failure-loop prevention |
-| 12 Provider comparison | Same scenario across frameworks | OpenAI Agents SDK, LangGraph, AutoGen, CrewAI | Choosing the simplest framework that matches the operational requirement |
+| [12 CrewAI team](../labs/notebooks/17_agentops_crewai_team.ipynb) | Task-owned specialist crew | CrewAI concepts | Mapping roles to agents, deliverables to tasks, and specialist outputs to a crew-level incident plan |
+| [13 Hybrid production architecture](../labs/notebooks/18_agentops_hybrid_production_architecture.ipynb) | Deterministic wrapper around agents | Production architecture | Routing simple lookups, investigations, and high-risk cases through the least autonomous reliable path |
 
 ## Notebook 01 learning objectives
 
@@ -191,6 +195,32 @@ By the end of the eleventh notebook, learners should be able to:
 - enforce `MAX_TEAM_MESSAGES` and `MAX_AGENT_TURNS` when a team starts
   bouncing responsibility.
 
+## Notebook 12 learning objectives
+
+By the end of the twelfth notebook, learners should be able to:
+
+- map observability, deployment, customer-impact, and analyst roles to a
+  CrewAI-style crew;
+- explain the difference between an agent role, a task deliverable, and the
+  crew execution plan;
+- compare CrewAI with LangGraph, AutoGen, and OpenAI Agents SDK for the same
+  incident-response scenario; and
+- decide where deterministic policy and side-effect controls should surround a
+  crew.
+
+## Notebook 13 learning objectives
+
+By the end of the thirteenth notebook, learners should be able to:
+
+- design a deterministic workflow that classifies tasks before selecting an
+  architecture;
+- route simple lookups to deterministic code, ambiguous investigations to a
+  bounded single agent, and high-risk cases to a specialist team;
+- keep policy checks, human approval, budgets, and audit logs outside the model;
+  and
+- explain why credible production systems are hybrids rather than one giant
+  autonomous agent.
+
 ## References
 
 - One+i, [Building AI Agents: From Loops to Teams](https://www.linkedin.com/pulse/building-ai-agents-from-loops-teams-oneplusi-y3atc/)
@@ -206,4 +236,8 @@ By the end of the eleventh notebook, learners should be able to:
 - Anthropic, [Demystifying evals for AI agents](https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents)
 - Microsoft, [AutoGen AgentChat agents](https://microsoft.github.io/autogen/stable/user-guide/agentchat-user-guide/tutorial/agents.html)
 - Microsoft, [AutoGen SelectorGroupChat](https://microsoft.github.io/autogen/stable/user-guide/agentchat-user-guide/selector-group-chat.html)
+- CrewAI, [Documentation](https://docs.crewai.com/)
+- CrewAI, [Agents](https://docs.crewai.com/v1.15.10/en/concepts/agents)
+- CrewAI, [Crews](https://docs.crewai.com/v1.15.6/en/concepts/crews)
+- CrewAI, [Processes](https://docs.crewai.com/v1.15.5/en/concepts/processes)
 - Yao et al., [ReAct: Synergizing Reasoning and Acting in Language Models](https://arxiv.org/abs/2210.03629)

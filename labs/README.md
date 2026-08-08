@@ -25,6 +25,8 @@ before connecting a provider.
 - [`agentops_lab/trajectory_optimization.py`](agentops_lab/trajectory_optimization.py) — compare inefficient and optimized successful trajectories.
 - [`agentops_lab/multi_agent_team.py`](agentops_lab/multi_agent_team.py) — compare one incident investigator with a specialist incident-response team.
 - [`agentops_lab/autogen_selector_team.py`](agentops_lab/autogen_selector_team.py) — simulate AutoGen selector-style team coordination, ownership, and loop budgets.
+- [`agentops_lab/crewai_team.py`](agentops_lab/crewai_team.py) — map the same specialist team to a CrewAI-style Agents + Tasks + Crew structure.
+- [`agentops_lab/hybrid_production_architecture.py`](agentops_lab/hybrid_production_architecture.py) — route simple lookups, investigations, and high-risk cases through a hybrid production architecture.
 - [`notebooks/06_agentops_manual_loop.ipynb`](notebooks/06_agentops_manual_loop.ipynb) — scenario notebook for building, tracing, and safely stopping the loop yourself.
 - [`notebooks/07_agentops_workflow_or_agent.ipynb`](notebooks/07_agentops_workflow_or_agent.ipynb) — scenario notebook for deciding whether a task needs a workflow, agentic workflow, single agent, or multi-agent team.
 - [`notebooks/08_agentops_openai_agents_sdk.ipynb`](notebooks/08_agentops_openai_agents_sdk.ipynb) — scenario notebook for rebuilding the incident investigator with OpenAI Agents SDK concepts.
@@ -36,6 +38,8 @@ before connecting a provider.
 - [`notebooks/14_agentops_optimize_trajectory.ipynb`](notebooks/14_agentops_optimize_trajectory.ipynb) — scenario notebook for reducing latency, cost, calls, and path length while preserving success.
 - [`notebooks/15_agentops_when_one_agent_becomes_team.ipynb`](notebooks/15_agentops_when_one_agent_becomes_team.ipynb) — scenario notebook for deciding when specialists justify coordination overhead.
 - [`notebooks/16_agentops_autogen_selector_team.ipynb`](notebooks/16_agentops_autogen_selector_team.ipynb) — scenario notebook for AutoGen-style selector teams, shared context, and bounded failure loops.
+- [`notebooks/17_agentops_crewai_team.ipynb`](notebooks/17_agentops_crewai_team.ipynb) — scenario notebook for implementing the same team with CrewAI concepts.
+- [`notebooks/18_agentops_hybrid_production_architecture.ipynb`](notebooks/18_agentops_hybrid_production_architecture.ipynb) — scenario notebook for combining deterministic workflows, bounded agents, teams, policy, and approvals.
 
 The AgentOps track uses one evolving SaaS incident-response scenario to show
 why teams move from deterministic workflows to bounded agents, stateful agents,

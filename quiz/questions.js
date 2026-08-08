@@ -494,6 +494,44 @@ export const questions = [
     },
   },
   {
+    id: "agentops-hybrid-routing",
+    category: "Workflows",
+    prompt: "How should the hybrid production architecture route the three AgentOps task classes?",
+    options: [
+      "Simple lookups go to deterministic workflows",
+      "Ambiguous investigations go to a bounded single agent",
+      "High-risk major-impact cases can use a specialist team inside a deterministic wrapper",
+      "Every request goes directly to a fully autonomous team",
+      "Policy checks run after the selected path and before consequential actions",
+    ],
+    correct: [0, 1, 2, 4],
+    explanation:
+      "The hybrid design starts with deterministic classification, then selects the least autonomous reliable path. Agents are components inside policy and approval workflows, not replacements for them.",
+    source: {
+      label: "AgentOps Lab - Notebook 13",
+      url: "docs/agentops-lab.md#notebook-13-learning-objectives",
+    },
+  },
+  {
+    id: "agentops-hybrid-boundaries",
+    category: "Workflows",
+    prompt: "Which controls should remain outside the model in the hybrid production architecture?",
+    options: [
+      "Tool allowlists and authorization",
+      "Budget limits and stop conditions",
+      "Human approval for high-impact actions",
+      "Audit logs and action receipts",
+      "The ability for retrieved documents to authorize rollback",
+    ],
+    correct: [0, 1, 2, 3],
+    explanation:
+      "Production control boundaries should be implemented in deterministic application code. Retrieved documents can provide evidence, but they cannot authorize side effects such as rollback.",
+    source: {
+      label: "AgentOps Lab - Notebook 13",
+      url: "docs/agentops-lab.md#notebook-13-learning-objectives",
+    },
+  },
+  {
     id: "orchestration-ownership",
     category: "Orchestration",
     prompt: "Which statements correctly compare an agent-as-tool with a handoff?",
@@ -624,6 +662,44 @@ export const questions = [
     source: {
       label: "AgentOps Lab - Notebook 11",
       url: "docs/agentops-lab.md#notebook-11-learning-objectives",
+    },
+  },
+  {
+    id: "agentops-crewai-model",
+    category: "Orchestration",
+    prompt: "What does the CrewAI AgentOps notebook emphasize about the Agents + Tasks + Crew model?",
+    options: [
+      "Agents describe specialist roles, goals, and backstories",
+      "Tasks describe concrete work products and can depend on previous task outputs",
+      "The crew organizes the collaboration plan",
+      "CrewAI removes the need for policy and side-effect controls",
+      "Task ownership can make provenance easier to review",
+    ],
+    correct: [0, 1, 2, 4],
+    explanation:
+      "CrewAI's teaching value is the readable role/task/crew structure. It can clarify ownership and provenance, but policy, approval, and side-effect controls still belong around the crew.",
+    source: {
+      label: "AgentOps Lab - Notebook 12",
+      url: "docs/agentops-lab.md#notebook-12-learning-objectives",
+    },
+  },
+  {
+    id: "agentops-framework-comparison",
+    category: "Orchestration",
+    prompt: "Which framework comparisons are accurate in the AgentOps CrewAI lesson?",
+    options: [
+      "CrewAI helps when collaboration maps naturally to roles, tasks, and crew execution",
+      "LangGraph gives more explicit control over state, branching, persistence, and checkpoints",
+      "AutoGen makes conversational coordination and speaker selection visible",
+      "OpenAI Agents SDK is often simpler for one bounded tool-using agent",
+      "Every framework removes the need to evaluate the final trajectory",
+    ],
+    correct: [0, 1, 2, 3],
+    explanation:
+      "The same scenario highlights different framework strengths. None of them remove trajectory evaluation, policy enforcement, or the need to choose the simplest reliable architecture.",
+    source: {
+      label: "AgentOps Lab - Notebook 12",
+      url: "docs/agentops-lab.md#notebook-12-learning-objectives",
     },
   },
   {

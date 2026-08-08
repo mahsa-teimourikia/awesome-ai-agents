@@ -160,9 +160,15 @@ Multi-agent implementation with AutoGen](labs/notebooks/16_agentops_autogen_sele
 shows selector-style team coordination, ownership rules, and bounded failure-loop
 controls.
 
+[Notebook 12: Implement the same team in CrewAI](labs/notebooks/17_agentops_crewai_team.ipynb)
+maps the same incident team to CrewAI's Agents + Tasks + Crew model.
+[Notebook 13: Hybrid production architecture](labs/notebooks/18_agentops_hybrid_production_architecture.ipynb)
+wraps deterministic routing, bounded agents, specialist teams, policy checks,
+and human approval into one production-oriented design.
+
 ## Test your knowledge
 
-Finished the guides? Open the [interactive AI Agents Knowledge Check](https://mahsa-teimourikia.github.io/awsome-ai-agents/quiz/)—40 multiple-answer questions covering foundations, the agent loop, scenario-based AgentOps investigation, tools and memory, workflows, multi-agent orchestration, and evaluation and safety.
+Finished the guides? Open the [interactive AI Agents Knowledge Check](https://mahsa-teimourikia.github.io/awsome-ai-agents/quiz/)—44 multiple-answer questions covering foundations, the agent loop, scenario-based AgentOps investigation, tools and memory, workflows, multi-agent orchestration, and evaluation and safety.
 
 The quiz:
 
