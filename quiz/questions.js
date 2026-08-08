@@ -171,6 +171,44 @@ export const questions = [
     },
   },
   {
+    id: "agentops-sdk-ownership",
+    category: "Tools & Memory",
+    prompt: "When rebuilding the AgentOps incident investigator with the OpenAI Agents SDK, which responsibilities can the framework package?",
+    options: [
+      "Function-tool schema generation",
+      "Turn execution through a runner",
+      "Tool dispatch and message state",
+      "Product-specific authorization policy",
+      "Tracing and session continuity",
+    ],
+    correct: [0, 1, 2, 4],
+    explanation:
+      "The SDK can package the loop mechanics, tool schemas, dispatch, traces, and sessions. Product-specific authorization, approval, and side-effect boundaries still belong in application design.",
+    source: {
+      label: "AgentOps Lab - Notebook 03",
+      url: "docs/agentops-lab.md#notebook-03-learning-objectives",
+    },
+  },
+  {
+    id: "agentops-sdk-loop",
+    category: "Tools & Memory",
+    prompt: "What is the key lesson of replacing the manual loop with an agent framework?",
+    options: [
+      "The loop still exists even when the SDK manages it",
+      "Framework traces help inspect model and tool behavior",
+      "Tool boundaries no longer matter once a framework is used",
+      "Sessions can help preserve working context",
+      "Application code still defines which tools are safe to expose",
+    ],
+    correct: [0, 1, 3, 4],
+    explanation:
+      "Frameworks package the loop; they do not erase it. Traces and sessions improve inspectability and continuity, but tool exposure and safety boundaries remain design responsibilities.",
+    source: {
+      label: "AgentOps Lab - Notebook 03",
+      url: "docs/agentops-lab.md#notebook-03-learning-objectives",
+    },
+  },
+  {
     id: "memory-safety",
     category: "Tools & Memory",
     prompt: "Which controls are appropriate for long-term agent memory?",
@@ -187,6 +225,44 @@ export const questions = [
     source: {
       label: "What is an AI agent? — State and memory",
       url: "docs/what-is-an-ai-agent.md#state-and-memory",
+    },
+  },
+  {
+    id: "agentops-admin-api",
+    category: "Tools & Memory",
+    prompt: "Why is a broad `admin_api(command: str)` dangerous for an agent?",
+    options: [
+      "It hides intent inside a free-form string",
+      "It mixes read-only and destructive capabilities",
+      "It makes authorization and validation ambiguous",
+      "It forces every operation to be safe and auditable",
+      "It makes predictable error handling harder",
+    ],
+    correct: [0, 1, 2, 4],
+    explanation:
+      "A broad command tool collapses many risk levels into one string interface. Narrow tools make schema validation, permissions, approvals, tracing, and retries much clearer.",
+    source: {
+      label: "AgentOps Lab - Notebook 04",
+      url: "docs/agentops-lab.md#notebook-04-learning-objectives",
+    },
+  },
+  {
+    id: "agentops-tool-errors",
+    category: "Tools & Memory",
+    prompt: "Which retry and escalation decisions are appropriate for the tool-engineering lab?",
+    options: [
+      "Retry `ToolTimeout` when the retry budget allows",
+      "Retry or back off on `RateLimit`",
+      "Escalate `PermissionDenied` to a human or higher-trust workflow",
+      "Keep retrying `InvalidService` until it works",
+      "Stop when validation proves the request is malformed",
+    ],
+    correct: [0, 1, 2, 4],
+    explanation:
+      "Transient timeout and rate-limit errors may be retried within a budget. Permission failures should escalate, while invalid or malformed requests should stop rather than loop.",
+    source: {
+      label: "AgentOps Lab - Notebook 04",
+      url: "docs/agentops-lab.md#notebook-04-learning-objectives",
     },
   },
   {

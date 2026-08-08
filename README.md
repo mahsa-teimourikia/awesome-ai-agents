@@ -129,9 +129,15 @@ bounded unhealthy-check workflow, and a dynamic European checkout investigation.
 Learners practice classifying problems as workflow, agentic workflow, agent, or
 multi-agent before choosing a framework.
 
+[Notebook 03: Rebuild with OpenAI Agents SDK](labs/notebooks/08_agentops_openai_agents_sdk.ipynb)
+shows how a framework packages the same loop into managed turns, function-tool
+schemas, dispatch, sessions, and tracing. [Notebook 04: Tool engineering](labs/notebooks/09_agentops_tool_engineering.ipynb)
+then refactors a dangerous broad `admin_api(command)` into narrow, validated
+tools with explicit retry, escalation, and stop rules.
+
 ## Test your knowledge
 
-Finished the guides? Open the [interactive AI Agents Knowledge Check](https://mahsa-teimourikia.github.io/awsome-ai-agents/quiz/)—22 multiple-answer questions covering foundations, the agent loop, scenario-based AgentOps investigation, tools and memory, workflows, multi-agent orchestration, and evaluation and safety.
+Finished the guides? Open the [interactive AI Agents Knowledge Check](https://mahsa-teimourikia.github.io/awsome-ai-agents/quiz/)—26 multiple-answer questions covering foundations, the agent loop, scenario-based AgentOps investigation, tools and memory, workflows, multi-agent orchestration, and evaluation and safety.
 
 The quiz:
 
