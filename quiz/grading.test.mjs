@@ -4,8 +4,8 @@ import test from "node:test";
 import { gradeQuiz, isExactMatch, normalizeSelection } from "./grading.js";
 import { questions } from "./questions.js";
 
-test("the quiz contains 36 questions across 6 categories", () => {
-  assert.equal(questions.length, 36);
+test("the quiz contains 40 questions across 6 categories", () => {
+  assert.equal(questions.length, 40);
 
   const categories = questions.reduce((counts, question) => {
     counts[question.category] = (counts[question.category] ?? 0) + 1;
@@ -17,6 +17,7 @@ test("the quiz contains 36 questions across 6 categories", () => {
   assert.equal(categories["Agent Loop"], 5);
   assert.equal(categories["Tools & Memory"], 13);
   assert.equal(categories.Workflows, 5);
+  assert.equal(categories.Orchestration, 7);
   assert.equal(categories["Evaluation & Safety"], 7);
 });
 
@@ -49,8 +50,8 @@ test("a complete answer key earns 100 percent", () => {
   );
   const result = gradeQuiz(questions, selections);
 
-  assert.equal(result.answeredCount, 36);
-  assert.equal(result.correctCount, 36);
+  assert.equal(result.answeredCount, 40);
+  assert.equal(result.correctCount, 40);
   assert.equal(result.percent, 100);
   assert.ok(Object.values(result.categories).every((score) => score.correct === score.total));
 });

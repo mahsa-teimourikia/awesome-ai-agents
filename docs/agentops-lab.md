@@ -27,6 +27,8 @@ The simulated company environment lives under [`labs/agentops_lab/`](../labs/age
 - [`guardrails_untrusted_content.py`](../labs/agentops_lab/guardrails_untrusted_content.py) demonstrates poisoned retrieved content and tool-level guardrails.
 - [`evaluation_trajectory.py`](../labs/agentops_lab/evaluation_trajectory.py) scores agent runs across outcome, trajectory, and operations.
 - [`trajectory_optimization.py`](../labs/agentops_lab/trajectory_optimization.py) compares inefficient and optimized incident trajectories.
+- [`multi_agent_team.py`](../labs/agentops_lab/multi_agent_team.py) compares a single agent with a specialist incident-response team.
+- [`autogen_selector_team.py`](../labs/agentops_lab/autogen_selector_team.py) demonstrates selector-style coordination, ownership, and bounded team loops.
 - [`data/deployments.json`](../labs/agentops_lab/data/deployments.json) and [`data/region_logs.json`](../labs/agentops_lab/data/region_logs.json) add evidence for regional checkout investigations.
 
 Every external system starts as a deterministic Python function. That keeps the
@@ -45,8 +47,9 @@ flowchart TD
     N6 --> N7["07 Guardrails and untrusted content"]
     N7 --> N8["08 Agent evaluation: trajectory"]
     N8 --> N9["09 Optimize the trajectory"]
-    N9 --> N10["10 Multi-agent incident response team"]
-    N10 --> N11["11 Provider comparison: OpenAI Agents SDK, LangGraph, AutoGen, CrewAI"]
+    N9 --> N10["10 When one agent becomes a team"]
+    N10 --> N11["11 AutoGen selector team"]
+    N11 --> N12["12 Provider comparison: OpenAI Agents SDK, LangGraph, AutoGen, CrewAI"]
 ```
 
 | Notebook | Architecture | Main library focus | What learners practice |
@@ -60,8 +63,9 @@ flowchart TD
 | [07 Guardrails and untrusted content](../labs/notebooks/12_agentops_guardrails_untrusted_content.ipynb) | Trust-boundary enforcement | OpenAI Agents SDK guardrail concepts | Treating retrieved content as data, detecting poisoned instructions, and wrapping tools with approval guardrails |
 | [08 Agent evaluation: trajectory](../labs/notebooks/13_agentops_evaluate_trajectory.ipynb) | Release-gated agent | Evaluation datasets and traces | Outcome, trajectory, operations, forbidden actions, and cost per successful task |
 | [09 Optimize the trajectory](../labs/notebooks/14_agentops_optimize_trajectory.ipynb) | Efficient bounded agent | Trajectory optimization | Shortening reliable paths while preserving correctness, evidence, and support |
-| 10 Multi-agent incident team | Manager and specialist agents | AutoGen, CrewAI, or LangGraph teams | Delegation contracts, shared evidence, synthesis, and bounded collaboration |
-| 11 Provider comparison | Same scenario across frameworks | OpenAI Agents SDK, LangGraph, AutoGen, CrewAI | Choosing the simplest framework that matches the operational requirement |
+| [10 When one agent becomes a team](../labs/notebooks/15_agentops_when_one_agent_becomes_team.ipynb) | Manager and specialist agents | Multi-agent design | Comparing a single-agent baseline with observability, deployment, customer impact, analyst, and risk-review specialists |
+| [11 AutoGen selector team](../labs/notebooks/16_agentops_autogen_selector_team.ipynb) | Selector-based group chat | AutoGen AgentChat concepts | Dynamic speaker selection, shared context, ownership rules, turn budgets, and failure-loop prevention |
+| 12 Provider comparison | Same scenario across frameworks | OpenAI Agents SDK, LangGraph, AutoGen, CrewAI | Choosing the simplest framework that matches the operational requirement |
 
 ## Notebook 01 learning objectives
 
@@ -165,6 +169,28 @@ By the end of the ninth notebook, learners should be able to:
 - calculate a simple efficiency score; and
 - optimize toward the shortest reliable trajectory to a correct result.
 
+## Notebook 10 learning objectives
+
+By the end of the tenth notebook, learners should be able to:
+
+- identify when one agent has too much context and a team may be justified;
+- define specialist roles for observability, deployment, customer impact,
+  incident analysis, and risk review;
+- compare single-agent and multi-agent runs by accuracy, cost, latency, tool
+  calls, tokens, and coordination overhead; and
+- explain why the single agent should still win on simple incidents.
+
+## Notebook 11 learning objectives
+
+By the end of the eleventh notebook, learners should be able to:
+
+- map the AgentOps incident team to AutoGen AgentChat concepts;
+- explain how `SelectorGroupChat` makes next-speaker selection part of the
+  system;
+- define explicit ownership to prevent coordination loops; and
+- enforce `MAX_TEAM_MESSAGES` and `MAX_AGENT_TURNS` when a team starts
+  bouncing responsibility.
+
 ## References
 
 - One+i, [Building AI Agents: From Loops to Teams](https://www.linkedin.com/pulse/building-ai-agents-from-loops-teams-oneplusi-y3atc/)
@@ -178,4 +204,6 @@ By the end of the ninth notebook, learners should be able to:
 - LangChain, [LangGraph human-in-the-loop](https://langchain-ai.github.io/langgraph/concepts/human_in_the_loop/)
 - Anthropic, [Building effective agents](https://www.anthropic.com/engineering/building-effective-agents)
 - Anthropic, [Demystifying evals for AI agents](https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents)
+- Microsoft, [AutoGen AgentChat agents](https://microsoft.github.io/autogen/stable/user-guide/agentchat-user-guide/tutorial/agents.html)
+- Microsoft, [AutoGen SelectorGroupChat](https://microsoft.github.io/autogen/stable/user-guide/agentchat-user-guide/selector-group-chat.html)
 - Yao et al., [ReAct: Synergizing Reasoning and Acting in Language Models](https://arxiv.org/abs/2210.03629)

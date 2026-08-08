@@ -23,6 +23,8 @@ before connecting a provider.
 - [`agentops_lab/guardrails_untrusted_content.py`](agentops_lab/guardrails_untrusted_content.py) — demonstrate poisoned retrieved content and tool-level guardrails.
 - [`agentops_lab/evaluation_trajectory.py`](agentops_lab/evaluation_trajectory.py) — evaluate outcome, trajectory, operations, and cost per successful task.
 - [`agentops_lab/trajectory_optimization.py`](agentops_lab/trajectory_optimization.py) — compare inefficient and optimized successful trajectories.
+- [`agentops_lab/multi_agent_team.py`](agentops_lab/multi_agent_team.py) — compare one incident investigator with a specialist incident-response team.
+- [`agentops_lab/autogen_selector_team.py`](agentops_lab/autogen_selector_team.py) — simulate AutoGen selector-style team coordination, ownership, and loop budgets.
 - [`notebooks/06_agentops_manual_loop.ipynb`](notebooks/06_agentops_manual_loop.ipynb) — scenario notebook for building, tracing, and safely stopping the loop yourself.
 - [`notebooks/07_agentops_workflow_or_agent.ipynb`](notebooks/07_agentops_workflow_or_agent.ipynb) — scenario notebook for deciding whether a task needs a workflow, agentic workflow, single agent, or multi-agent team.
 - [`notebooks/08_agentops_openai_agents_sdk.ipynb`](notebooks/08_agentops_openai_agents_sdk.ipynb) — scenario notebook for rebuilding the incident investigator with OpenAI Agents SDK concepts.
@@ -32,6 +34,8 @@ before connecting a provider.
 - [`notebooks/12_agentops_guardrails_untrusted_content.ipynb`](notebooks/12_agentops_guardrails_untrusted_content.ipynb) — scenario notebook for untrusted retrieved content, prompt injection, and tool guardrails.
 - [`notebooks/13_agentops_evaluate_trajectory.ipynb`](notebooks/13_agentops_evaluate_trajectory.ipynb) — scenario notebook for outcome, trajectory, and operational evaluation.
 - [`notebooks/14_agentops_optimize_trajectory.ipynb`](notebooks/14_agentops_optimize_trajectory.ipynb) — scenario notebook for reducing latency, cost, calls, and path length while preserving success.
+- [`notebooks/15_agentops_when_one_agent_becomes_team.ipynb`](notebooks/15_agentops_when_one_agent_becomes_team.ipynb) — scenario notebook for deciding when specialists justify coordination overhead.
+- [`notebooks/16_agentops_autogen_selector_team.ipynb`](notebooks/16_agentops_autogen_selector_team.ipynb) — scenario notebook for AutoGen-style selector teams, shared context, and bounded failure loops.
 
 The AgentOps track uses one evolving SaaS incident-response scenario to show
 why teams move from deterministic workflows to bounded agents, stateful agents,

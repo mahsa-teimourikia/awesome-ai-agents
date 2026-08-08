@@ -154,9 +154,15 @@ scores outcome, trajectory, and operational behavior, including forbidden tools
 and cost per successful task. [Notebook 09: Optimize the trajectory](labs/notebooks/14_agentops_optimize_trajectory.ipynb)
 then compares a wasteful successful run with a shorter reliable trajectory.
 
+[Notebook 10: When one agent becomes a team](labs/notebooks/15_agentops_when_one_agent_becomes_team.ipynb)
+compares a single-agent baseline with a specialist incident team. [Notebook 11:
+Multi-agent implementation with AutoGen](labs/notebooks/16_agentops_autogen_selector_team.ipynb)
+shows selector-style team coordination, ownership rules, and bounded failure-loop
+controls.
+
 ## Test your knowledge
 
-Finished the guides? Open the [interactive AI Agents Knowledge Check](https://mahsa-teimourikia.github.io/awsome-ai-agents/quiz/)—36 multiple-answer questions covering foundations, the agent loop, scenario-based AgentOps investigation, tools and memory, workflows, multi-agent orchestration, and evaluation and safety.
+Finished the guides? Open the [interactive AI Agents Knowledge Check](https://mahsa-teimourikia.github.io/awsome-ai-agents/quiz/)—40 multiple-answer questions covering foundations, the agent loop, scenario-based AgentOps investigation, tools and memory, workflows, multi-agent orchestration, and evaluation and safety.
 
 The quiz:
 

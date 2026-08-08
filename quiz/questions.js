@@ -551,6 +551,82 @@ export const questions = [
     },
   },
   {
+    id: "agentops-team-justification",
+    category: "Orchestration",
+    prompt: "In the AgentOps team notebook, what evidence can justify moving from one agent to a specialist team?",
+    options: [
+      "The incident requires distinct observability, deployment, customer-impact, analysis, and risk-review work",
+      "Measured accuracy or risk handling improves enough to justify extra overhead",
+      "The problem can be solved by a fixed two-step status workflow",
+      "The team has explicit ownership and bounded delegation",
+      "The design is more visually impressive than a single-agent baseline",
+    ],
+    correct: [0, 1, 3],
+    explanation:
+      "A specialist team is justified by separable expertise, measurable improvement, explicit ownership, and bounded coordination. A simple fixed workflow or prettier architecture is not enough.",
+    source: {
+      label: "AgentOps Lab - Notebook 10",
+      url: "docs/agentops-lab.md#notebook-10-learning-objectives",
+    },
+  },
+  {
+    id: "agentops-team-comparison",
+    category: "Orchestration",
+    prompt: "Which metrics should learners compare when running the same incident with a single agent and a multi-agent team?",
+    options: [
+      "Accuracy and whether the recommendation is evidence-supported",
+      "Cost, latency, tool calls, tokens, and coordination overhead",
+      "Whether the team used more agent names than the baseline",
+      "Whether the team prevents simple incidents from becoming slower",
+      "Whether risk review changes or challenges the recommendation",
+    ],
+    correct: [0, 1, 3, 4],
+    explanation:
+      "The comparison should cover outcome quality, operational cost, coordination overhead, and risk-review value. More agent names are not evidence of a better architecture.",
+    source: {
+      label: "AgentOps Lab - Notebook 10",
+      url: "docs/agentops-lab.md#notebook-10-learning-objectives",
+    },
+  },
+  {
+    id: "agentops-autogen-selector",
+    category: "Orchestration",
+    prompt: "What does the AutoGen selector-team notebook teach about selector-style group chat?",
+    options: [
+      "Participant roles and descriptions help the selector choose the next speaker",
+      "Shared context makes coordination visible but can also amplify loops",
+      "Selector teams automatically guarantee the best possible diagnosis",
+      "Termination conditions are part of the team design",
+      "A model can dynamically choose the next participant from the conversation state",
+    ],
+    correct: [0, 1, 3, 4],
+    explanation:
+      "Selector-style teams make speaker selection and shared context explicit, but they still need termination, ownership, evaluation, and loop controls. The framework does not guarantee correctness.",
+    source: {
+      label: "AgentOps Lab - Notebook 11",
+      url: "docs/agentops-lab.md#notebook-11-learning-objectives",
+    },
+  },
+  {
+    id: "agentops-team-loop-controls",
+    category: "Orchestration",
+    prompt: "Which controls help stop a multi-agent team from bouncing responsibility forever?",
+    options: [
+      "`MAX_TEAM_MESSAGES`",
+      "`MAX_AGENT_TURNS`",
+      "Explicit ownership for each evidence domain",
+      "Allowing every agent to ask every other agent indefinitely",
+      "A termination condition tied to a recommendation or safe stop",
+    ],
+    correct: [0, 1, 2, 4],
+    explanation:
+      "Team loops need global message budgets, per-agent turn budgets, ownership rules, and explicit termination. Unlimited peer-to-peer delegation is exactly the failure mode to prevent.",
+    source: {
+      label: "AgentOps Lab - Notebook 11",
+      url: "docs/agentops-lab.md#notebook-11-learning-objectives",
+    },
+  },
+  {
     id: "evaluation-layers",
     category: "Evaluation & Safety",
     prompt: "Which layers should a useful agent evaluation cover?",
