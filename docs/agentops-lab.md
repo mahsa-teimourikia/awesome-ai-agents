@@ -65,7 +65,7 @@ flowchart TD
 
 | Notebook | Architecture | Main library focus | What learners practice |
 | --- | --- | --- | --- |
-| [01 Build the loop yourself](../curriculum/beginner/02-agent-loop/06_agentops_manual_loop.ipynb) | Manual control loop | Plain Python first | Tool calls, observations, state, stop conditions, and cost/tool budgets |
+| [01 Build the loop yourself](../curriculum/beginner/02-agent-loop/agent_loop.ipynb) | Manual control loop | Plain Python first | Tool calls, observations, state, stop conditions, and cost/tool budgets |
 | [02 Agent or workflow?](../curriculum/beginner/03-workflow-or-agent/07_agentops_workflow_or_agent.ipynb) | Deterministic workflow, bounded workflow, and bounded agent | Plain Python and typed contracts | Matching architecture to problem shape across status reports, runbook summaries, and regional checkout investigations |
 | [03 Rebuild with OpenAI Agents SDK](../curriculum/beginner/04-openai-agents-sdk/08_agentops_openai_agents_sdk.ipynb) | Managed agent runtime | OpenAI Agents SDK concepts | Comparing manual ownership with framework-managed turns, tool dispatch, sessions, and traces |
 | [04 Tool engineering](../curriculum/beginner/05-tool-engineering/09_agentops_tool_engineering.ipynb) | Tool boundary design | Function tools and validation | Replacing broad admin APIs with narrow schemas, approval boundaries, and retry rules |

@@ -123,7 +123,7 @@ Every external system starts as a deterministic Python function so learners can
 study tool design, state, stop conditions, budgets, evaluation, and escalation
 without credentials or live infrastructure.
 
-Start with [Notebook 01: Build the loop yourself](curriculum/beginner/02-agent-loop/06_agentops_manual_loop.ipynb).
+Start with [Notebook 01: Build the loop yourself](curriculum/beginner/02-agent-loop/agent_loop.ipynb).
 It implements the agent loop manually, then deliberately breaks the system with
 "keep investigating until you are completely sure" so learners see why
 `MAX_STEPS`, `MAX_TOOL_CALLS`, and `MAX_ESTIMATED_COST` are core production
