@@ -30,6 +30,7 @@ modules plus the incident data, runbooks, and evaluation fixtures. This is
 intentional: every lesson has its own learning surface, while one shared source
 of truth prevents copies of the simulated production environment from drifting.
 
-`reference-implementations/` preserves compact standalone examples that support
-the curriculum. They are useful for targeted experimentation; the numbered
-AgentOps lesson folders are the recommended learning route.
+Every runnable example now belongs to the lesson it supports. Look for
+`lab.py` in each notebook-led topic, plus focused supporting scripts such as
+`tool_contracts.py`, `release_gate.py`, or `durable_recovery.py` where a topic
+benefits from an additional experiment.
