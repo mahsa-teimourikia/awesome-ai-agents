@@ -89,7 +89,7 @@ The [AgentOps curriculum](curriculum/README.md) is the front-and-center lab
 experience. Use them as the canonical training path because they combine theory,
 architecture diagrams, implementation walkthroughs, deliberate failure cases,
 evaluation output, and exercises. The shared
-[Python implementation modules](curriculum/shared/agentops_lab/) remain
+[Python implementation modules](curriculum/advanced/05-incident-response-capstone/agentops_lab/) remain
 dependency-light and runnable without API keys except for optional provider or
 LangGraph extensions.
 

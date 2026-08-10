@@ -13,32 +13,32 @@ Frameworks are useful, but learners should first understand the loop they wrap.
 The notebooks are the canonical training material: they contain concept
 explanations, diagrams, implementation walkthroughs, deliberate failure cases,
 evaluation outputs, and architecture questions. The Python modules under
-[`curriculum/shared/agentops_lab/`](../curriculum/shared/agentops_lab/) are implementation units that the
+[`curriculum/advanced/05-incident-response-capstone/agentops_lab/`](../curriculum/advanced/05-incident-response-capstone/agentops_lab/) are implementation units that the
 notebooks explain and run.
 
 ## Scenario environment
 
-The simulated company environment lives under [`curriculum/shared/agentops_lab/`](../curriculum/shared/agentops_lab/):
+The simulated company environment lives under [`curriculum/advanced/05-incident-response-capstone/agentops_lab/`](../curriculum/advanced/05-incident-response-capstone/agentops_lab/):
 
-- [`data/incidents.json`](../curriculum/shared/agentops_lab/data/incidents.json) contains active and historical incidents.
-- [`data/services.json`](../curriculum/shared/agentops_lab/data/services.json) contains service owners, health, dependencies, and deploy metadata.
-- [`runbooks/checkout.md`](../curriculum/shared/agentops_lab/runbooks/checkout.md) contains an operational response playbook.
-- [`loop_yourself.py`](../curriculum/shared/agentops_lab/loop_yourself.py) implements the first manual control loop.
-- [`workflow_or_agent.py`](../curriculum/shared/agentops_lab/workflow_or_agent.py) compares deterministic workflows, bounded workflows, and dynamic agent investigations.
-- [`agents_sdk_rebuild.py`](../curriculum/shared/agentops_lab/agents_sdk_rebuild.py) compares the manual loop with a framework-shaped OpenAI Agents SDK implementation.
-- [`tool_engineering.py`](../curriculum/shared/agentops_lab/tool_engineering.py) refactors a broad admin tool into narrow, validated tools with predictable error handling.
-- [`state_memory_langgraph.py`](../curriculum/shared/agentops_lab/state_memory_langgraph.py) models a stateful incident graph and demonstrates memory bias.
-- [`human_permissions.py`](../curriculum/shared/agentops_lab/human_permissions.py) models human approval gates, permission levels, and resume decisions.
-- [`guardrails_untrusted_content.py`](../curriculum/shared/agentops_lab/guardrails_untrusted_content.py) demonstrates poisoned retrieved content and tool-level guardrails.
-- [`evaluation_trajectory.py`](../curriculum/shared/agentops_lab/evaluation_trajectory.py) scores agent runs across outcome, trajectory, and operations.
-- [`trajectory_optimization.py`](../curriculum/shared/agentops_lab/trajectory_optimization.py) compares inefficient and optimized incident trajectories.
-- [`multi_agent_team.py`](../curriculum/shared/agentops_lab/multi_agent_team.py) compares a single agent with a specialist incident-response team.
-- [`autogen_selector_team.py`](../curriculum/shared/agentops_lab/autogen_selector_team.py) demonstrates selector-style coordination, ownership, and bounded team loops.
-- [`crewai_team.py`](../curriculum/shared/agentops_lab/crewai_team.py) maps the same team to a CrewAI-style Agents + Tasks + Crew model.
-- [`hybrid_production_architecture.py`](../curriculum/shared/agentops_lab/hybrid_production_architecture.py) routes tasks through a deterministic production wrapper.
-- [`capstone_incident_response.py`](../curriculum/shared/agentops_lab/capstone_incident_response.py) combines architecture selection, tools, state, memory policy, permissions, HITL, guardrails, evaluation, traces, and cost/latency analysis.
-- [`data/capstone_metrics.json`](../curriculum/shared/agentops_lab/data/capstone_metrics.json), [`data/capstone_tickets.json`](../curriculum/shared/agentops_lab/data/capstone_tickets.json), [`data/customers.csv`](../curriculum/shared/agentops_lab/data/customers.csv), and [`evaluations/capstone_tasks.json`](../curriculum/shared/agentops_lab/evaluations/capstone_tasks.json) provide the final capstone fixtures.
-- [`data/deployments.json`](../curriculum/shared/agentops_lab/data/deployments.json) and [`data/region_logs.json`](../curriculum/shared/agentops_lab/data/region_logs.json) add evidence for regional checkout investigations.
+- [`data/incidents.json`](../curriculum/advanced/05-incident-response-capstone/agentops_lab/data/incidents.json) contains active and historical incidents.
+- [`data/services.json`](../curriculum/advanced/05-incident-response-capstone/agentops_lab/data/services.json) contains service owners, health, dependencies, and deploy metadata.
+- [`runbooks/checkout.md`](../curriculum/advanced/05-incident-response-capstone/agentops_lab/runbooks/checkout.md) contains an operational response playbook.
+- [`loop_yourself.py`](../curriculum/advanced/05-incident-response-capstone/agentops_lab/loop_yourself.py) implements the first manual control loop.
+- [`workflow_or_agent.py`](../curriculum/advanced/05-incident-response-capstone/agentops_lab/workflow_or_agent.py) compares deterministic workflows, bounded workflows, and dynamic agent investigations.
+- [`agents_sdk_rebuild.py`](../curriculum/advanced/05-incident-response-capstone/agentops_lab/agents_sdk_rebuild.py) compares the manual loop with a framework-shaped OpenAI Agents SDK implementation.
+- [`tool_engineering.py`](../curriculum/advanced/05-incident-response-capstone/agentops_lab/tool_engineering.py) refactors a broad admin tool into narrow, validated tools with predictable error handling.
+- [`state_memory_langgraph.py`](../curriculum/advanced/05-incident-response-capstone/agentops_lab/state_memory_langgraph.py) models a stateful incident graph and demonstrates memory bias.
+- [`human_permissions.py`](../curriculum/advanced/05-incident-response-capstone/agentops_lab/human_permissions.py) models human approval gates, permission levels, and resume decisions.
+- [`guardrails_untrusted_content.py`](../curriculum/advanced/05-incident-response-capstone/agentops_lab/guardrails_untrusted_content.py) demonstrates poisoned retrieved content and tool-level guardrails.
+- [`evaluation_trajectory.py`](../curriculum/advanced/05-incident-response-capstone/agentops_lab/evaluation_trajectory.py) scores agent runs across outcome, trajectory, and operations.
+- [`trajectory_optimization.py`](../curriculum/advanced/05-incident-response-capstone/agentops_lab/trajectory_optimization.py) compares inefficient and optimized incident trajectories.
+- [`multi_agent_team.py`](../curriculum/advanced/05-incident-response-capstone/agentops_lab/multi_agent_team.py) compares a single agent with a specialist incident-response team.
+- [`autogen_selector_team.py`](../curriculum/advanced/05-incident-response-capstone/agentops_lab/autogen_selector_team.py) demonstrates selector-style coordination, ownership, and bounded team loops.
+- [`crewai_team.py`](../curriculum/advanced/05-incident-response-capstone/agentops_lab/crewai_team.py) maps the same team to a CrewAI-style Agents + Tasks + Crew model.
+- [`hybrid_production_architecture.py`](../curriculum/advanced/05-incident-response-capstone/agentops_lab/hybrid_production_architecture.py) routes tasks through a deterministic production wrapper.
+- [`capstone_incident_response.py`](../curriculum/advanced/05-incident-response-capstone/agentops_lab/capstone_incident_response.py) combines architecture selection, tools, state, memory policy, permissions, HITL, guardrails, evaluation, traces, and cost/latency analysis.
+- [`data/capstone_metrics.json`](../curriculum/advanced/05-incident-response-capstone/agentops_lab/data/capstone_metrics.json), [`data/capstone_tickets.json`](../curriculum/advanced/05-incident-response-capstone/agentops_lab/data/capstone_tickets.json), [`data/customers.csv`](../curriculum/advanced/05-incident-response-capstone/agentops_lab/data/customers.csv), and [`evaluations/capstone_tasks.json`](../curriculum/advanced/05-incident-response-capstone/agentops_lab/evaluations/capstone_tasks.json) provide the final capstone fixtures.
+- [`data/deployments.json`](../curriculum/advanced/05-incident-response-capstone/agentops_lab/data/deployments.json) and [`data/region_logs.json`](../curriculum/advanced/05-incident-response-capstone/agentops_lab/data/region_logs.json) add evidence for regional checkout investigations.
 
 Every external system starts as a deterministic Python function. That keeps the
 training credential-free and lets learners test tool contracts, state, budgets,
