@@ -23,7 +23,7 @@ function sourceLabel(ref) {
   if (ref.includes("agentops_lab/")) return "Implementation source";
   if (ref.endsWith("README.md")) return "Notebook track index";
   if (ref.startsWith("docs/")) return "Course guide";
-  if (ref.startsWith("labs/")) return "Lab resource";
+  if (ref.startsWith("curriculum/")) return "Curriculum resource";
   return ref;
 }
 

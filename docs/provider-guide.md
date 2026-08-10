@@ -8,8 +8,8 @@ keep provider calls behind the same `decide`, `tool`, and `policy` boundaries.
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install -r labs/requirements.txt
-python labs/intermediate/02_langgraph_workflow.py
+pip install -r requirements.txt
+python curriculum/reference-implementations/intermediate/02_langgraph_workflow.py
 ```
 
 Replace the deterministic `write_draft` node only after the graph state,

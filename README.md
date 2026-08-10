@@ -79,27 +79,27 @@ Use the [AI Agents Learning Hub](#ai-agents-learning-hub) as the structured path
 - **Intermediate:** compare workflows and agents, apply architecture patterns, and build evaluation and support-workflow gates.
 - **Advanced:** design multi-agent teams, durable recovery, protocol boundaries, safety readiness, and the research-team capstone.
 
-The [learning paths](#learning-paths), [labs](labs/README.md), and
-[AgentOps scenario notebooks](docs/agentops-lab.md) provide the source material
+The [curriculum map](curriculum/README.md) and
+[AgentOps scenario guide](docs/agentops-lab.md) provide the source material
 behind each level.
 
 ## Labs and implementation
 
-The [AgentOps notebooks](labs/notebooks/README.md) are the front-and-center lab
+The [AgentOps curriculum](curriculum/README.md) is the front-and-center lab
 experience. Use them as the canonical training path because they combine theory,
 architecture diagrams, implementation walkthroughs, deliberate failure cases,
-evaluation output, and exercises. The [Python labs](labs/README.md) are the
-reusable implementation modules behind the notebooks; they remain
+evaluation output, and exercises. The shared
+[Python implementation modules](curriculum/shared/agentops_lab/) remain
 dependency-light and runnable without API keys except for optional provider or
 LangGraph extensions.
 
-The labs also include a [provider and LangGraph setup guide](labs/provider-guide.md)
+The labs also include a [provider and LangGraph setup guide](docs/provider-guide.md)
 and lesson-specific checkpoint prompts in the Hub. Start with deterministic
 stubs, then swap in a provider adapter only after the policy and evaluation
 tests are in place.
 
 Notebook JSON is validated in CI, and provider seams for the OpenAI Agents SDK
-and LangGraph are included under [`labs/providers/`](labs/providers/). These
+and LangGraph are included under [`curriculum/shared/providers/`](curriculum/shared/providers/). These
 examples intentionally keep credentials and side effects outside the learning
 artifacts.
 
@@ -113,7 +113,7 @@ then add agentic behavior only when the scenario proves it needs runtime
 adaptation.
 
 The notebooks are the reference material for both theory and practice. Start
-from the [AgentOps notebook track map](labs/notebooks/README.md), then use the
+from the [AgentOps notebook track map](curriculum/README.md), then use the
 linked Python modules when you want to inspect or extend implementation details.
 
 The fictional business problem is an AI Operations Analyst for a SaaS company:
@@ -123,55 +123,55 @@ Every external system starts as a deterministic Python function so learners can
 study tool design, state, stop conditions, budgets, evaluation, and escalation
 without credentials or live infrastructure.
 
-Start with [Notebook 01: Build the loop yourself](labs/notebooks/06_agentops_manual_loop.ipynb).
+Start with [Notebook 01: Build the loop yourself](curriculum/beginner/01-agent-loop/06_agentops_manual_loop.ipynb).
 It implements the agent loop manually, then deliberately breaks the system with
 "keep investigating until you are completely sure" so learners see why
 `MAX_STEPS`, `MAX_TOOL_CALLS`, and `MAX_ESTIMATED_COST` are core production
 controls.
 
-Then continue to [Notebook 02: Agent or workflow?](labs/notebooks/07_agentops_workflow_or_agent.ipynb).
+Then continue to [Notebook 02: Agent or workflow?](curriculum/beginner/02-workflow-or-agent/07_agentops_workflow_or_agent.ipynb).
 It compares three checkout operations tasks: a deterministic status report, a
 bounded unhealthy-check workflow, and a dynamic European checkout investigation.
 Learners practice classifying problems as workflow, agentic workflow, agent, or
 multi-agent before choosing a framework.
 
-[Notebook 03: Rebuild with OpenAI Agents SDK](labs/notebooks/08_agentops_openai_agents_sdk.ipynb)
+[Notebook 03: Rebuild with OpenAI Agents SDK](curriculum/beginner/03-openai-agents-sdk/08_agentops_openai_agents_sdk.ipynb)
 shows how a framework packages the same loop into managed turns, function-tool
-schemas, dispatch, sessions, and tracing. [Notebook 04: Tool engineering](labs/notebooks/09_agentops_tool_engineering.ipynb)
+schemas, dispatch, sessions, and tracing. [Notebook 04: Tool engineering](curriculum/beginner/04-tool-engineering/09_agentops_tool_engineering.ipynb)
 then refactors a dangerous broad `admin_api(command)` into narrow, validated
 tools with explicit retry, escalation, and stop rules.
 
-[Notebook 05: Add state and memory with LangGraph](labs/notebooks/10_agentops_langgraph_state_memory.ipynb)
+[Notebook 05: Add state and memory with LangGraph](curriculum/intermediate/01-langgraph-state-memory/10_agentops_langgraph_state_memory.ipynb)
 turns the incident investigation into explicit state, nodes, and edges. It also
 shows how stale long-term memory can bias a new diagnosis unless memory is
 scoped, validated, auditable, and reversible.
 
-[Notebook 06: Human-in-the-loop and permissions](labs/notebooks/11_agentops_human_permissions.ipynb)
+[Notebook 06: Human-in-the-loop and permissions](curriculum/intermediate/02-human-approval-permissions/11_agentops_human_permissions.ipynb)
 adds a restart action and shows how policy pauses execution before high-impact
 tools, then resumes from human approval, modification, or rejection.
 
-[Notebook 07: Guardrails and untrusted content](labs/notebooks/12_agentops_guardrails_untrusted_content.ipynb)
+[Notebook 07: Guardrails and untrusted content](curriculum/intermediate/03-guardrails-untrusted-content/12_agentops_guardrails_untrusted_content.ipynb)
 injects a malicious instruction into a retrieved runbook and teaches learners to
 treat retrieved documents as data while enforcing restart approval at the tool
 boundary.
 
-[Notebook 08: Agent evaluation](labs/notebooks/13_agentops_evaluate_trajectory.ipynb)
+[Notebook 08: Agent evaluation](curriculum/intermediate/04-agent-evaluation/13_agentops_evaluate_trajectory.ipynb)
 scores outcome, trajectory, and operational behavior, including forbidden tools
-and cost per successful task. [Notebook 09: Optimize the trajectory](labs/notebooks/14_agentops_optimize_trajectory.ipynb)
+and cost per successful task. [Notebook 09: Optimize the trajectory](curriculum/intermediate/05-trajectory-optimization/14_agentops_optimize_trajectory.ipynb)
 then compares a wasteful successful run with a shorter reliable trajectory.
 
-[Notebook 10: When one agent becomes a team](labs/notebooks/15_agentops_when_one_agent_becomes_team.ipynb)
+[Notebook 10: When one agent becomes a team](curriculum/advanced/01-single-vs-multi-agent/15_agentops_when_one_agent_becomes_team.ipynb)
 compares a single-agent baseline with a specialist incident team. [Notebook 11:
-Multi-agent implementation with AutoGen](labs/notebooks/16_agentops_autogen_selector_team.ipynb)
+Multi-agent implementation with AutoGen](curriculum/advanced/02-autogen-selector-teams/16_agentops_autogen_selector_team.ipynb)
 shows selector-style team coordination, ownership rules, and bounded failure-loop
 controls.
 
-[Notebook 12: Implement the same team in CrewAI](labs/notebooks/17_agentops_crewai_team.ipynb)
+[Notebook 12: Implement the same team in CrewAI](curriculum/advanced/03-crewai-teams/17_agentops_crewai_team.ipynb)
 maps the same incident team to CrewAI's Agents + Tasks + Crew model.
-[Notebook 13: Hybrid production architecture](labs/notebooks/18_agentops_hybrid_production_architecture.ipynb)
+[Notebook 13: Hybrid production architecture](curriculum/advanced/04-hybrid-production-architecture/18_agentops_hybrid_production_architecture.ipynb)
 wraps deterministic routing, bounded agents, specialist teams, policy checks,
 and human approval into one production-oriented design.
-[Notebook 14: Final capstone](labs/notebooks/19_agentops_final_capstone.ipynb)
+[Notebook 14: Final capstone](curriculum/advanced/05-incident-response-capstone/19_agentops_final_capstone.ipynb)
 asks learners to design and justify the full incident-response system
 experimentally: tools, state, permissions, HITL, guardrails, evaluation, traces,
 cost/latency, and single-vs-multi-agent comparison.
