@@ -13,32 +13,32 @@ Frameworks are useful, but learners should first understand the loop they wrap.
 The notebooks are the canonical training material: they contain concept
 explanations, diagrams, implementation walkthroughs, deliberate failure cases,
 evaluation outputs, and architecture questions. The Python modules under
-[`labs/agentops_lab/`](../labs/agentops_lab/) are implementation units that the
+[`curriculum/shared/agentops_lab/`](../curriculum/shared/agentops_lab/) are implementation units that the
 notebooks explain and run.
 
 ## Scenario environment
 
-The simulated company environment lives under [`labs/agentops_lab/`](../labs/agentops_lab/):
+The simulated company environment lives under [`curriculum/shared/agentops_lab/`](../curriculum/shared/agentops_lab/):
 
-- [`data/incidents.json`](../labs/agentops_lab/data/incidents.json) contains active and historical incidents.
-- [`data/services.json`](../labs/agentops_lab/data/services.json) contains service owners, health, dependencies, and deploy metadata.
-- [`runbooks/checkout.md`](../labs/agentops_lab/runbooks/checkout.md) contains an operational response playbook.
-- [`loop_yourself.py`](../labs/agentops_lab/loop_yourself.py) implements the first manual control loop.
-- [`workflow_or_agent.py`](../labs/agentops_lab/workflow_or_agent.py) compares deterministic workflows, bounded workflows, and dynamic agent investigations.
-- [`agents_sdk_rebuild.py`](../labs/agentops_lab/agents_sdk_rebuild.py) compares the manual loop with a framework-shaped OpenAI Agents SDK implementation.
-- [`tool_engineering.py`](../labs/agentops_lab/tool_engineering.py) refactors a broad admin tool into narrow, validated tools with predictable error handling.
-- [`state_memory_langgraph.py`](../labs/agentops_lab/state_memory_langgraph.py) models a stateful incident graph and demonstrates memory bias.
-- [`human_permissions.py`](../labs/agentops_lab/human_permissions.py) models human approval gates, permission levels, and resume decisions.
-- [`guardrails_untrusted_content.py`](../labs/agentops_lab/guardrails_untrusted_content.py) demonstrates poisoned retrieved content and tool-level guardrails.
-- [`evaluation_trajectory.py`](../labs/agentops_lab/evaluation_trajectory.py) scores agent runs across outcome, trajectory, and operations.
-- [`trajectory_optimization.py`](../labs/agentops_lab/trajectory_optimization.py) compares inefficient and optimized incident trajectories.
-- [`multi_agent_team.py`](../labs/agentops_lab/multi_agent_team.py) compares a single agent with a specialist incident-response team.
-- [`autogen_selector_team.py`](../labs/agentops_lab/autogen_selector_team.py) demonstrates selector-style coordination, ownership, and bounded team loops.
-- [`crewai_team.py`](../labs/agentops_lab/crewai_team.py) maps the same team to a CrewAI-style Agents + Tasks + Crew model.
-- [`hybrid_production_architecture.py`](../labs/agentops_lab/hybrid_production_architecture.py) routes tasks through a deterministic production wrapper.
-- [`capstone_incident_response.py`](../labs/agentops_lab/capstone_incident_response.py) combines architecture selection, tools, state, memory policy, permissions, HITL, guardrails, evaluation, traces, and cost/latency analysis.
-- [`data/capstone_metrics.json`](../labs/agentops_lab/data/capstone_metrics.json), [`data/capstone_tickets.json`](../labs/agentops_lab/data/capstone_tickets.json), [`data/customers.csv`](../labs/agentops_lab/data/customers.csv), and [`evaluations/capstone_tasks.json`](../labs/agentops_lab/evaluations/capstone_tasks.json) provide the final capstone fixtures.
-- [`data/deployments.json`](../labs/agentops_lab/data/deployments.json) and [`data/region_logs.json`](../labs/agentops_lab/data/region_logs.json) add evidence for regional checkout investigations.
+- [`data/incidents.json`](../curriculum/shared/agentops_lab/data/incidents.json) contains active and historical incidents.
+- [`data/services.json`](../curriculum/shared/agentops_lab/data/services.json) contains service owners, health, dependencies, and deploy metadata.
+- [`runbooks/checkout.md`](../curriculum/shared/agentops_lab/runbooks/checkout.md) contains an operational response playbook.
+- [`loop_yourself.py`](../curriculum/shared/agentops_lab/loop_yourself.py) implements the first manual control loop.
+- [`workflow_or_agent.py`](../curriculum/shared/agentops_lab/workflow_or_agent.py) compares deterministic workflows, bounded workflows, and dynamic agent investigations.
+- [`agents_sdk_rebuild.py`](../curriculum/shared/agentops_lab/agents_sdk_rebuild.py) compares the manual loop with a framework-shaped OpenAI Agents SDK implementation.
+- [`tool_engineering.py`](../curriculum/shared/agentops_lab/tool_engineering.py) refactors a broad admin tool into narrow, validated tools with predictable error handling.
+- [`state_memory_langgraph.py`](../curriculum/shared/agentops_lab/state_memory_langgraph.py) models a stateful incident graph and demonstrates memory bias.
+- [`human_permissions.py`](../curriculum/shared/agentops_lab/human_permissions.py) models human approval gates, permission levels, and resume decisions.
+- [`guardrails_untrusted_content.py`](../curriculum/shared/agentops_lab/guardrails_untrusted_content.py) demonstrates poisoned retrieved content and tool-level guardrails.
+- [`evaluation_trajectory.py`](../curriculum/shared/agentops_lab/evaluation_trajectory.py) scores agent runs across outcome, trajectory, and operations.
+- [`trajectory_optimization.py`](../curriculum/shared/agentops_lab/trajectory_optimization.py) compares inefficient and optimized incident trajectories.
+- [`multi_agent_team.py`](../curriculum/shared/agentops_lab/multi_agent_team.py) compares a single agent with a specialist incident-response team.
+- [`autogen_selector_team.py`](../curriculum/shared/agentops_lab/autogen_selector_team.py) demonstrates selector-style coordination, ownership, and bounded team loops.
+- [`crewai_team.py`](../curriculum/shared/agentops_lab/crewai_team.py) maps the same team to a CrewAI-style Agents + Tasks + Crew model.
+- [`hybrid_production_architecture.py`](../curriculum/shared/agentops_lab/hybrid_production_architecture.py) routes tasks through a deterministic production wrapper.
+- [`capstone_incident_response.py`](../curriculum/shared/agentops_lab/capstone_incident_response.py) combines architecture selection, tools, state, memory policy, permissions, HITL, guardrails, evaluation, traces, and cost/latency analysis.
+- [`data/capstone_metrics.json`](../curriculum/shared/agentops_lab/data/capstone_metrics.json), [`data/capstone_tickets.json`](../curriculum/shared/agentops_lab/data/capstone_tickets.json), [`data/customers.csv`](../curriculum/shared/agentops_lab/data/customers.csv), and [`evaluations/capstone_tasks.json`](../curriculum/shared/agentops_lab/evaluations/capstone_tasks.json) provide the final capstone fixtures.
+- [`data/deployments.json`](../curriculum/shared/agentops_lab/data/deployments.json) and [`data/region_logs.json`](../curriculum/shared/agentops_lab/data/region_logs.json) add evidence for regional checkout investigations.
 
 Every external system starts as a deterministic Python function. That keeps the
 training credential-free and lets learners test tool contracts, state, budgets,
@@ -65,20 +65,20 @@ flowchart TD
 
 | Notebook | Architecture | Main library focus | What learners practice |
 | --- | --- | --- | --- |
-| [01 Build the loop yourself](../labs/notebooks/06_agentops_manual_loop.ipynb) | Manual control loop | Plain Python first | Tool calls, observations, state, stop conditions, and cost/tool budgets |
-| [02 Agent or workflow?](../labs/notebooks/07_agentops_workflow_or_agent.ipynb) | Deterministic workflow, bounded workflow, and bounded agent | Plain Python and typed contracts | Matching architecture to problem shape across status reports, runbook summaries, and regional checkout investigations |
-| [03 Rebuild with OpenAI Agents SDK](../labs/notebooks/08_agentops_openai_agents_sdk.ipynb) | Managed agent runtime | OpenAI Agents SDK concepts | Comparing manual ownership with framework-managed turns, tool dispatch, sessions, and traces |
-| [04 Tool engineering](../labs/notebooks/09_agentops_tool_engineering.ipynb) | Tool boundary design | Function tools and validation | Replacing broad admin APIs with narrow schemas, approval boundaries, and retry rules |
-| [05 Stateful investigation graph](../labs/notebooks/10_agentops_langgraph_state_memory.ipynb) | Stateful agentic workflow | LangGraph | Graph state, conditional routing, confidence loops, thread state, and long-term memory risk |
-| [06 Human-in-the-loop and permissions](../labs/notebooks/11_agentops_human_permissions.ipynb) | Bounded action with approval | LangGraph/LangChain HITL concepts | Permission levels, persisted pause state, approval, modification, rejection, and audit records |
-| [07 Guardrails and untrusted content](../labs/notebooks/12_agentops_guardrails_untrusted_content.ipynb) | Trust-boundary enforcement | OpenAI Agents SDK guardrail concepts | Treating retrieved content as data, detecting poisoned instructions, and wrapping tools with approval guardrails |
-| [08 Agent evaluation: trajectory](../labs/notebooks/13_agentops_evaluate_trajectory.ipynb) | Release-gated agent | Evaluation datasets and traces | Outcome, trajectory, operations, forbidden actions, and cost per successful task |
-| [09 Optimize the trajectory](../labs/notebooks/14_agentops_optimize_trajectory.ipynb) | Efficient bounded agent | Trajectory optimization | Shortening reliable paths while preserving correctness, evidence, and support |
-| [10 When one agent becomes a team](../labs/notebooks/15_agentops_when_one_agent_becomes_team.ipynb) | Manager and specialist agents | Multi-agent design | Comparing a single-agent baseline with observability, deployment, customer impact, analyst, and risk-review specialists |
-| [11 AutoGen selector team](../labs/notebooks/16_agentops_autogen_selector_team.ipynb) | Selector-based group chat | AutoGen AgentChat concepts | Dynamic speaker selection, shared context, ownership rules, turn budgets, and failure-loop prevention |
-| [12 CrewAI team](../labs/notebooks/17_agentops_crewai_team.ipynb) | Task-owned specialist crew | CrewAI concepts | Mapping roles to agents, deliverables to tasks, and specialist outputs to a crew-level incident plan |
-| [13 Hybrid production architecture](../labs/notebooks/18_agentops_hybrid_production_architecture.ipynb) | Deterministic wrapper around agents | Production architecture | Routing simple lookups, investigations, and high-risk cases through the least autonomous reliable path |
-| [14 Final capstone](../labs/notebooks/19_agentops_final_capstone.ipynb) | Evaluated production design | Framework-independent harness | Justifying architecture choice with tools, state, permissions, HITL, guardrails, evaluation, traces, cost/latency, and single-vs-multi-agent comparison |
+| [01 Build the loop yourself](../curriculum/beginner/01-agent-loop/06_agentops_manual_loop.ipynb) | Manual control loop | Plain Python first | Tool calls, observations, state, stop conditions, and cost/tool budgets |
+| [02 Agent or workflow?](../curriculum/beginner/02-workflow-or-agent/07_agentops_workflow_or_agent.ipynb) | Deterministic workflow, bounded workflow, and bounded agent | Plain Python and typed contracts | Matching architecture to problem shape across status reports, runbook summaries, and regional checkout investigations |
+| [03 Rebuild with OpenAI Agents SDK](../curriculum/beginner/03-openai-agents-sdk/08_agentops_openai_agents_sdk.ipynb) | Managed agent runtime | OpenAI Agents SDK concepts | Comparing manual ownership with framework-managed turns, tool dispatch, sessions, and traces |
+| [04 Tool engineering](../curriculum/beginner/04-tool-engineering/09_agentops_tool_engineering.ipynb) | Tool boundary design | Function tools and validation | Replacing broad admin APIs with narrow schemas, approval boundaries, and retry rules |
+| [05 Stateful investigation graph](../curriculum/intermediate/01-langgraph-state-memory/10_agentops_langgraph_state_memory.ipynb) | Stateful agentic workflow | LangGraph | Graph state, conditional routing, confidence loops, thread state, and long-term memory risk |
+| [06 Human-in-the-loop and permissions](../curriculum/intermediate/02-human-approval-permissions/11_agentops_human_permissions.ipynb) | Bounded action with approval | LangGraph/LangChain HITL concepts | Permission levels, persisted pause state, approval, modification, rejection, and audit records |
+| [07 Guardrails and untrusted content](../curriculum/intermediate/03-guardrails-untrusted-content/12_agentops_guardrails_untrusted_content.ipynb) | Trust-boundary enforcement | OpenAI Agents SDK guardrail concepts | Treating retrieved content as data, detecting poisoned instructions, and wrapping tools with approval guardrails |
+| [08 Agent evaluation: trajectory](../curriculum/intermediate/04-agent-evaluation/13_agentops_evaluate_trajectory.ipynb) | Release-gated agent | Evaluation datasets and traces | Outcome, trajectory, operations, forbidden actions, and cost per successful task |
+| [09 Optimize the trajectory](../curriculum/intermediate/05-trajectory-optimization/14_agentops_optimize_trajectory.ipynb) | Efficient bounded agent | Trajectory optimization | Shortening reliable paths while preserving correctness, evidence, and support |
+| [10 When one agent becomes a team](../curriculum/advanced/01-single-vs-multi-agent/15_agentops_when_one_agent_becomes_team.ipynb) | Manager and specialist agents | Multi-agent design | Comparing a single-agent baseline with observability, deployment, customer impact, analyst, and risk-review specialists |
+| [11 AutoGen selector team](../curriculum/advanced/02-autogen-selector-teams/16_agentops_autogen_selector_team.ipynb) | Selector-based group chat | AutoGen AgentChat concepts | Dynamic speaker selection, shared context, ownership rules, turn budgets, and failure-loop prevention |
+| [12 CrewAI team](../curriculum/advanced/03-crewai-teams/17_agentops_crewai_team.ipynb) | Task-owned specialist crew | CrewAI concepts | Mapping roles to agents, deliverables to tasks, and specialist outputs to a crew-level incident plan |
+| [13 Hybrid production architecture](../curriculum/advanced/04-hybrid-production-architecture/18_agentops_hybrid_production_architecture.ipynb) | Deterministic wrapper around agents | Production architecture | Routing simple lookups, investigations, and high-risk cases through the least autonomous reliable path |
+| [14 Final capstone](../curriculum/advanced/05-incident-response-capstone/19_agentops_final_capstone.ipynb) | Evaluated production design | Framework-independent harness | Justifying architecture choice with tools, state, permissions, HITL, guardrails, evaluation, traces, cost/latency, and single-vs-multi-agent comparison |
 
 ## Notebook 01 learning objectives
 

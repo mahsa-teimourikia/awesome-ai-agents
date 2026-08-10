@@ -1,6 +1,6 @@
 """Optional LangGraph version of a bounded review workflow.
 
-Run after installing labs/requirements.txt. The graph makes state transitions
+Run after installing requirements.txt. The graph makes state transitions
 explicit; real model and tool calls should still be policy-checked at the edge.
 """
 from typing import TypedDict
