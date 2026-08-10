@@ -75,7 +75,7 @@ Start with the least autonomous design that can reliably solve the task. More au
 
 Use the [AI Agents Learning Hub](#ai-agents-learning-hub) as the structured path:
 
-- **Beginner:** learn the agent loop, tool contracts, state, memory, and safe stopping; complete the research-assistant capstone.
+- **Beginner:** start with [AI Agents: Foundations](curriculum/beginner/01-ai-agent-foundations/README.md), then learn the agent loop, tool contracts, state, memory, and safe stopping; complete the research-assistant capstone.
 - **Intermediate:** compare workflows and agents, apply architecture patterns, and build evaluation and support-workflow gates.
 - **Advanced:** design multi-agent teams, durable recovery, protocol boundaries, safety readiness, and the research-team capstone.
 
@@ -123,21 +123,21 @@ Every external system starts as a deterministic Python function so learners can
 study tool design, state, stop conditions, budgets, evaluation, and escalation
 without credentials or live infrastructure.
 
-Start with [Notebook 01: Build the loop yourself](curriculum/beginner/01-agent-loop/06_agentops_manual_loop.ipynb).
+Start with [Notebook 01: Build the loop yourself](curriculum/beginner/02-agent-loop/06_agentops_manual_loop.ipynb).
 It implements the agent loop manually, then deliberately breaks the system with
 "keep investigating until you are completely sure" so learners see why
 `MAX_STEPS`, `MAX_TOOL_CALLS`, and `MAX_ESTIMATED_COST` are core production
 controls.
 
-Then continue to [Notebook 02: Agent or workflow?](curriculum/beginner/02-workflow-or-agent/07_agentops_workflow_or_agent.ipynb).
+Then continue to [Notebook 02: Agent or workflow?](curriculum/beginner/03-workflow-or-agent/07_agentops_workflow_or_agent.ipynb).
 It compares three checkout operations tasks: a deterministic status report, a
 bounded unhealthy-check workflow, and a dynamic European checkout investigation.
 Learners practice classifying problems as workflow, agentic workflow, agent, or
 multi-agent before choosing a framework.
 
-[Notebook 03: Rebuild with OpenAI Agents SDK](curriculum/beginner/03-openai-agents-sdk/08_agentops_openai_agents_sdk.ipynb)
+[Notebook 03: Rebuild with OpenAI Agents SDK](curriculum/beginner/04-openai-agents-sdk/08_agentops_openai_agents_sdk.ipynb)
 shows how a framework packages the same loop into managed turns, function-tool
-schemas, dispatch, sessions, and tracing. [Notebook 04: Tool engineering](curriculum/beginner/04-tool-engineering/09_agentops_tool_engineering.ipynb)
+schemas, dispatch, sessions, and tracing. [Notebook 04: Tool engineering](curriculum/beginner/05-tool-engineering/09_agentops_tool_engineering.ipynb)
 then refactors a dangerous broad `admin_api(command)` into narrow, validated
 tools with explicit retry, escalation, and stop rules.
 

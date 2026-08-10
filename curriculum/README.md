@@ -19,7 +19,7 @@ when the preceding design can no longer solve the problem reliably.
 
 | Level | Lessons | Outcome |
 | --- | --- | --- |
-| Beginner | Agent loop, workflow selection, managed SDKs, tool engineering | Build a bounded evidence-gathering agent and understand what the runtime owns. |
+| Beginner | AI agent foundations, agent loop, workflow selection, managed SDKs, tool engineering | Build a bounded evidence-gathering agent and understand what the runtime owns. |
 | Intermediate | State, approvals, guardrails, evaluation, trajectory economics | Turn an agent into a controlled, measurable system. |
 | Advanced | Teams, framework comparisons, hybrid routing, capstone | Justify when specialist coordination earns its added complexity. |
 
