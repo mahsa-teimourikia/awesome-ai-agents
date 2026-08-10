@@ -11,7 +11,7 @@ when the preceding design can no longer solve the problem reliably.
 1. Read the topic `README.md` for outcomes and prerequisites.
 2. Open the notebook and work through the concept, diagram, implementation,
    deliberate failure case, exercises, and checkpoint.
-3. Run the reusable implementation from `curriculum/shared/agentops_lab/`.
+3. Run the reusable implementation from `curriculum/advanced/05-incident-response-capstone/agentops_lab/`.
 4. Use the [Learning Hub](../hub/index.html) for guided navigation and the
    [knowledge check](../quiz/index.html) to test the concepts.
 
@@ -25,7 +25,7 @@ when the preceding design can no longer solve the problem reliably.
 
 ## Shared implementation and fixtures
 
-`shared/agentops_lab/` contains the reusable, deterministic implementation
+`advanced/05-incident-response-capstone/agentops_lab/` contains the reusable, deterministic implementation
 modules plus the incident data, runbooks, and evaluation fixtures. This is
 intentional: every lesson has its own learning surface, while one shared source
 of truth prevents copies of the simulated production environment from drifting.
