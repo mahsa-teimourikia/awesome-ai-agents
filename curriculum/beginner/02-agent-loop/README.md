@@ -121,6 +121,146 @@ trace collector, evaluator hooks, and human handoff. Frameworks such as the
 [Temporal](https://temporal.io/) can help, but none removes the need to define
 authority and termination in your application.
 
+## 6. Worked examples: every loop pattern
+
+All examples use the same support request: “European customers cannot complete
+checkout.” They are deliberately small; production implementations add typed
+schemas, authorization, tracing, and tests around the same transitions.
+
+### Agent execution loop
+
+```python
+state = {"goal": "diagnose checkout", "evidence": [], "steps_left": 4}
+while state["steps_left"] and not state.get("done"):
+    action = decide_next_step(state)       # model-assisted, bounded choice
+    observation = dispatch_if_allowed(action)
+    state["evidence"].append(observation)
+    state["done"] = evidence_is_sufficient(state["evidence"])
+    state["steps_left"] -= 1
+```
+
+### Thought/action/observation (ReAct)
+
+```text
+Decision: “Health is degraded; inspect active checkout incidents.”
+Action:   search_incidents("active checkout")
+Observation: INC-1042 reports payment gateway timeouts.
+Next decision: retrieve the checkout runbook, then prepare a support response.
+```
+
+The trace records the decision and evidence, not hidden private reasoning.
+
+### Termination conditions
+
+```python
+if supported_answer_ready(state): stop("success")
+elif state.tool_calls >= 10: stop("tool_budget_exhausted")
+elif state.cost_usd >= 0.05: stop("cost_budget_exhausted")
+elif state.repeated_actions >= 2: stop("no_progress_escalate")
+```
+
+### State machine
+
+```python
+TRANSITIONS = {
+    "triage": {"need_evidence": "investigate", "safe": "complete"},
+    "investigate": {"evidence_found": "recommend", "blocked": "escalate"},
+    "recommend": {"approved": "complete"},
+}
+```
+
+Unlike an unstructured while-loop, a state machine makes permitted transitions
+reviewable and testable.
+
+### Event-driven agent
+
+```python
+def on_customer_reply(event):
+    if event.id in processed_event_ids:  # idempotency prevents duplicate work
+        return "already processed"
+    processed_event_ids.add(event.id)
+    return resume_case(event.case_id, new_observation=event.message)
+```
+
+Use this for a ticket reply, approval callback, or deployment event—not a
+polling loop that wakes indefinitely.
+
+### Plan-and-Execute
+
+```python
+plan = ["check health", "inspect deployment", "query regional logs", "recommend"]
+for step in plan:
+    result = execute(step)
+    if contradicts_plan(result):
+        plan = replan_from(result)  # record why this plan changed
+```
+
+This is useful when the work has a coherent outline. A small incident usually
+does not need a costly planner before every tool call.
+
+### Reflection loop
+
+```python
+draft = recommend(evidence)
+for _ in range(2):
+    critique = check(draft, rubric="claims must cite evidence; no production action")
+    if critique.passed: break
+    draft = revise(draft, critique)
+```
+
+Reflection needs a rubric and a revision limit. “Reflect until perfect” is a
+runaway-loop instruction, not a control.
+
+### Retry and recovery
+
+```python
+try:
+    logs = query_logs()
+except ToolTimeout:
+    logs = retry_once_with_backoff(query_logs)
+except PermissionDenied:
+    return escalate("on-call approval required")
+except InvalidArguments:
+    return correct_or_stop("tool schema error")
+```
+
+Retry only failures that are plausibly transient. Never retry an unauthorized
+write in the hope that it will become authorized.
+
+### Dynamic replanning
+
+```python
+if observation["latest_deploy"] != assumed_deploy:
+    state["hypothesis"] = "release regression possible"
+    state["replan_reason"] = "new deployment evidence"
+    next_action = "inspect_deployment_diff"
+```
+
+Replanning is a response to a changed world state, not a synonym for asking the
+model to think longer.
+
+### Harness boundary
+
+```python
+proposal = model.choose_action(state, ALLOWED_TOOL_SCHEMAS)
+validated = validate_schema(proposal)
+authorize(current_user, validated.tool, validated.arguments)
+trace.append(validated.redacted())
+result = execute(validated)  # only this layer touches an external system
+```
+
+### Preventing runaway/infinite loops
+
+```python
+fingerprint = (action.name, freeze(action.arguments))
+if fingerprint in state.seen_actions:
+    return escalate("repeated action without new evidence")
+state.seen_actions.add(fingerprint)
+```
+
+Combine this duplicate-action guard with step/time/cost limits, a no-progress
+counter, deadlines, kill switches, and human escalation.
+
 ## Step-by-step lab
 
 1. Run `python curriculum/beginner/02-agent-loop/lab.py` and inspect the tiny
