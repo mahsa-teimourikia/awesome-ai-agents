@@ -160,9 +160,10 @@ approval pauses, and governed cross-thread memory. It also shows how stale
 long-term memory can bias a new diagnosis unless it is scoped, verified,
 auditable, and reversible.
 
-[Notebook 07: Human-in-the-loop and permissions](curriculum/intermediate/04-human-approval-permissions/03_human_approval_permissions.ipynb)
-adds a restart action and shows how policy pauses execution before high-impact
-tools, then resumes from human approval, modification, or rejection.
+[Notebook 03: Human approval and permissions](curriculum/intermediate/03-human-approval-permissions/human_approval_permissions.ipynb)
+adds a scoped rollback proposal and shows how least-privilege policy pauses
+execution before high-impact tools, then resumes only after an authorized
+approve, modify, reject, or escalate decision is recorded.
 
 [Notebook 08: Guardrails and untrusted content](curriculum/intermediate/05-guardrails-untrusted-content/04_guardrails_untrusted_content.ipynb)
 injects a malicious instruction into a retrieved runbook and teaches learners to
