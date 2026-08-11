@@ -37,6 +37,10 @@ least expensive eligible model path for simple text, complex reasoning, visual
 evidence, and coding work. It covers capability, cost, and latency routing,
 bounded cascades, fallbacks, ensembles, and routing evaluation.
 
+[Advanced 10 — Long-Running and Asynchronous Agents](advanced/10-long-running-asynchronous-agents/README.md)
+teaches durable jobs, checkpointing, scheduled/event-triggered waits, human approval,
+pause/resume, state recovery, cancellation, and bounded execution over minutes to days.
+
 ## Enterprise synthesis module
 
 [Enterprise Agent 01 — Designing Reliable Agentic Systems](enterprise-agent/01-designing-reliable-agentic-systems/README.md)
