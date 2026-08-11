@@ -42,6 +42,11 @@ turns individual agents into a governed ecosystem with agent/tool/MCP registries
 identity-bound discovery, shared knowledge boundaries, enterprise orchestration,
 observability, evaluation, and FinOps.
 
+[Enterprise Agent 04 — Agentic Software Engineering](enterprise-agent/04-agentic-software-engineering/README.md)
+uses a long-horizon repository change to teach code search, planning, sandboxed
+terminal work, test generation/execution, debugging, review, PRs, CI/CD, and
+benchmark-aware evaluation.
+
 ## Advanced memory module
 
 [06 — Agent Memory](advanced/06-agent-memory/README.md) treats memory as a
