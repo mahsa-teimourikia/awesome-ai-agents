@@ -77,6 +77,10 @@ governs the full request trajectory: token, action, reasoning, spend, and latenc
 budgets; caching; bounded parallel and speculative work; dynamic model selection;
 fallbacks; and cost-per-success evaluation.
 
+[Enterprise Agent 08 — Production Agent Architecture](enterprise-agent/08-production-agent-architecture/README.md)
+brings gateway, orchestrator, runtime, memory, tools/MCP, RAG, policy/identity,
+observability/evaluation, queues, checkpoints, caching, recovery, scaling, and DR together.
+
 ## Advanced memory module
 
 [06 — Agent Memory](advanced/06-agent-memory/README.md) treats memory as a
