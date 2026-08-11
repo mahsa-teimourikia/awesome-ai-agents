@@ -20,7 +20,7 @@ when the preceding design can no longer solve the problem reliably.
 | Level | Lessons | Outcome |
 | --- | --- | --- |
 | Beginner | AI agent foundations, agent loop, workflow selection, agent development frameworks, and computer-using agents | Build a bounded evidence-gathering or UI-operating agent and understand what the runtime owns. |
-| Intermediate | Tool engineering, context, state, approvals, guardrails, evaluation, trajectory economics, planning and task decomposition | Turn an agent into a controlled, measurable system that can pursue bounded multi-step work. |
+| Intermediate | Tool engineering, context, approvals, guardrails, evaluation, trajectory economics, planning, agentic RAG, and stateful LangGraph execution | Turn an agent into a controlled, measurable system that can pursue bounded multi-step work and recover safely. |
 | Advanced | Teams, framework comparisons, hybrid routing, agent memory, capstone | Build durable, governed systems whose knowledge survives safely across runs. |
 
 ## Advanced memory module
@@ -56,6 +56,14 @@ credential-free reference implementation.
 teaches retrieval as a bounded agent tool: query planning and decomposition,
 multi-hop/iterative/adaptive retrieval, routing across search/SQL/graph/web
 sources, corrective retrieval, citation verification, and grounded proposals.
+
+## Final intermediate module: LangGraph state and memory
+
+[10 — LangGraph State, Persistence, and Memory](intermediate/10-langgraph-state-memory/README.md)
+closes the intermediate sequence. The Northstar incident-investigation notebook
+uses typed state, conditional routing, checkpoints, recovery, interrupts,
+streaming, and a governed store to demonstrate why working state and long-term
+memory need distinct scopes and policies.
 
 ## Intermediate context module
 

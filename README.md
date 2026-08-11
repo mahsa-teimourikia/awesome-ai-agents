@@ -153,10 +153,12 @@ shows how system policy, dynamic tool evidence, state, conversation, and scoped
 external memory form the smallest useful packet for one decision. It covers
 context routing, compression, caching, isolation, and poisoning defenses.
 
-[Notebook 06: Add state and memory with LangGraph](curriculum/intermediate/03-langgraph-state-memory/02_langgraph_state_memory.ipynb)
-turns the incident investigation into explicit state, nodes, and edges. It also
-shows how stale long-term memory can bias a new diagnosis unless memory is
-scoped, validated, auditable, and reversible.
+[Notebook 10: LangGraph state, persistence, and memory](curriculum/intermediate/10-langgraph-state-memory/langgraph_state_memory.ipynb)
+is the final intermediate module. It turns the incident investigation into
+explicit state, nodes, conditional edges, durable checkpoints, safe recovery,
+approval pauses, and governed cross-thread memory. It also shows how stale
+long-term memory can bias a new diagnosis unless it is scoped, verified,
+auditable, and reversible.
 
 [Notebook 07: Human-in-the-loop and permissions](curriculum/intermediate/04-human-approval-permissions/03_human_approval_permissions.ipynb)
 adds a restart action and shows how policy pauses execution before high-impact
