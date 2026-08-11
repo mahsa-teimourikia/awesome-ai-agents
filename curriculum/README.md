@@ -24,6 +24,10 @@ when the preceding design can no longer solve the problem reliably.
 | Advanced | Teams, framework comparisons, hybrid routing, agent memory, capstone | Build durable, governed systems whose knowledge survives safely across runs. |
 | Enterprise Agent | Designing Reliable Agentic Systems; Human + Multi-Agent Organizations | Synthesize architecture selection, governance, economics, security, privacy, evaluation, and human/agent operating models into release-ready systems. |
 
+[Advanced 07 — World Models and Environment Modeling](advanced/07-world-models-environment-modeling/README.md)
+teaches predictive internal representations, simulation, digital twins, model-based and
+counterfactual planning, agent environment simulation, uncertainty, and reality checks.
+
 ## Enterprise synthesis module
 
 [Enterprise Agent 01 — Designing Reliable Agentic Systems](enterprise-agent/01-designing-reliable-agentic-systems/README.md)
