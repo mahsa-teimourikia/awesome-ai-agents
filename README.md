@@ -139,27 +139,27 @@ multi-agent before choosing a framework.
 uses the same Northstar Commerce scenario to compare OpenAI Agents SDK,
 Pydantic AI, LangGraph, and Google ADK. Its framework-specific notebooks show
 how managed turns, typed decisions, durable approval flows, and bounded
-specialist composition solve different engineering problems. [Notebook 04: Tool engineering](curriculum/beginner/05-tool-engineering/05_tool_engineering.ipynb)
+specialist composition solve different engineering problems. [Notebook 04: Tool engineering](curriculum/intermediate/01-tool-engineering/tool_engineering.ipynb)
 then refactors a dangerous broad `admin_api(command)` into narrow, validated
 tools with explicit retry, escalation, and stop rules.
 
-[Notebook 05: Add state and memory with LangGraph](curriculum/intermediate/01-langgraph-state-memory/01_langgraph_state_memory.ipynb)
+[Notebook 05: Add state and memory with LangGraph](curriculum/intermediate/02-langgraph-state-memory/02_langgraph_state_memory.ipynb)
 turns the incident investigation into explicit state, nodes, and edges. It also
 shows how stale long-term memory can bias a new diagnosis unless memory is
 scoped, validated, auditable, and reversible.
 
-[Notebook 06: Human-in-the-loop and permissions](curriculum/intermediate/02-human-approval-permissions/02_human_approval_permissions.ipynb)
+[Notebook 06: Human-in-the-loop and permissions](curriculum/intermediate/03-human-approval-permissions/03_human_approval_permissions.ipynb)
 adds a restart action and shows how policy pauses execution before high-impact
 tools, then resumes from human approval, modification, or rejection.
 
-[Notebook 07: Guardrails and untrusted content](curriculum/intermediate/03-guardrails-untrusted-content/03_guardrails_untrusted_content.ipynb)
+[Notebook 07: Guardrails and untrusted content](curriculum/intermediate/04-guardrails-untrusted-content/04_guardrails_untrusted_content.ipynb)
 injects a malicious instruction into a retrieved runbook and teaches learners to
 treat retrieved documents as data while enforcing restart approval at the tool
 boundary.
 
-[Notebook 08: Agent evaluation](curriculum/intermediate/04-agent-evaluation/04_agent_evaluation.ipynb)
+[Notebook 08: Agent evaluation](curriculum/intermediate/05-agent-evaluation/05_agent_evaluation.ipynb)
 scores outcome, trajectory, and operational behavior, including forbidden tools
-and cost per successful task. [Notebook 09: Optimize the trajectory](curriculum/intermediate/05-trajectory-optimization/05_trajectory_optimization.ipynb)
+and cost per successful task. [Notebook 09: Optimize the trajectory](curriculum/intermediate/06-trajectory-optimization/06_trajectory_optimization.ipynb)
 then compares a wasteful successful run with a shorter reliable trajectory.
 
 [Notebook 10: When one agent becomes a team](curriculum/advanced/01-single-vs-multi-agent/01_single_vs_multi_agent.ipynb)

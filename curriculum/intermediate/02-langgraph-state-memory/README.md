@@ -1,6 +1,6 @@
-# 01 — Stateful investigation with LangGraph
+# 02 — Stateful investigation with LangGraph
 
-**Notebook:** [`01_langgraph_state_memory.ipynb`](01_langgraph_state_memory.ipynb)
+**Notebook:** [`02_langgraph_state_memory.ipynb`](02_langgraph_state_memory.ipynb)
 **Run:** [`lab.py`](lab.py)
 
 Model incident investigation as state, nodes, edges, confidence loops, and a

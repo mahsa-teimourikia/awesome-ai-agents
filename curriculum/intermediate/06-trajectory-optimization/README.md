@@ -1,6 +1,6 @@
-# 05 — Optimize the trajectory
+# 06 — Optimize the trajectory
 
-**Notebook:** [`05_trajectory_optimization.ipynb`](05_trajectory_optimization.ipynb)
+**Notebook:** [`06_trajectory_optimization.ipynb`](06_trajectory_optimization.ipynb)
 **Run:** [`lab.py`](lab.py)
 
 Compare an expensive successful path with a shorter reliable one. Optimize

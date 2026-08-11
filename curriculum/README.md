@@ -19,8 +19,8 @@ when the preceding design can no longer solve the problem reliably.
 
 | Level | Lessons | Outcome |
 | --- | --- | --- |
-| Beginner | AI agent foundations, agent loop, workflow selection, managed SDKs, tool engineering | Build a bounded evidence-gathering agent and understand what the runtime owns. |
-| Intermediate | State, approvals, guardrails, evaluation, trajectory economics | Turn an agent into a controlled, measurable system. |
+| Beginner | AI agent foundations, agent loop, workflow selection, and agent development frameworks | Build a bounded evidence-gathering agent and understand what the runtime owns. |
+| Intermediate | Tool engineering, state, approvals, guardrails, evaluation, trajectory economics | Turn an agent into a controlled, measurable system. |
 | Advanced | Teams, framework comparisons, hybrid routing, capstone | Justify when specialist coordination earns its added complexity. |
 
 ## Shared implementation and fixtures
@@ -32,5 +32,5 @@ of truth prevents copies of the simulated production environment from drifting.
 
 Every runnable example now belongs to the lesson it supports. Look for
 `lab.py` in each notebook-led topic, plus focused supporting scripts such as
-`tool_contracts.py`, `release_gate.py`, or `durable_recovery.py` where a topic
-benefits from an additional experiment.
+`release_gate.py` or `durable_recovery.py` where a topic benefits from an
+additional experiment.

@@ -1,6 +1,6 @@
-# 04 — Evaluate the trajectory
+# 05 — Evaluate the trajectory
 
-**Notebook:** [`04_agent_evaluation.ipynb`](04_agent_evaluation.ipynb)
+**Notebook:** [`05_agent_evaluation.ipynb`](05_agent_evaluation.ipynb)
 **Run:** [`lab.py`](lab.py)
 
 Evaluate outcome quality, evidence trajectory, forbidden actions, latency,

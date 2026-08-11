@@ -1,6 +1,6 @@
-# 02 — Human approval and permissions
+# 03 — Human approval and permissions
 
-**Notebook:** [`02_human_approval_permissions.ipynb`](02_human_approval_permissions.ipynb)
+**Notebook:** [`03_human_approval_permissions.ipynb`](03_human_approval_permissions.ipynb)
 **Run:** [`lab.py`](lab.py)
 
 Implement READ, PROPOSE, and EXECUTE-WITH-APPROVAL permission levels. Pause a
