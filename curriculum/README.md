@@ -44,6 +44,10 @@ pause/resume, state recovery, cancellation, and bounded execution over minutes t
 [Advanced 11 — LLM-as-Judge and Agent Judges](advanced/11-llm-as-judge-agent-judges/README.md)
 teaches rubric, pairwise, trajectory/tool, critic, calibrated human-aligned, and ensemble judging.
 
+[Advanced 12 — Agent Benchmarks](advanced/12-agent-benchmarks/README.md) is a practical
+benchmark literacy guide covering SWE-bench, WebArena, BrowserGym, GAIA, τ-bench,
+OSWorld, AgentBench, domain benchmarks, and custom enterprise release evaluation.
+
 ## Enterprise synthesis module
 
 [Enterprise Agent 01 — Designing Reliable Agentic Systems](enterprise-agent/01-designing-reliable-agentic-systems/README.md)
