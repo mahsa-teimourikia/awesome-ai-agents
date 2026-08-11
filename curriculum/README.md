@@ -21,7 +21,7 @@ when the preceding design can no longer solve the problem reliably.
 | --- | --- | --- |
 | Beginner | AI agent foundations, agent loop, workflow selection, agent development frameworks, and computer-using agents | Build a bounded evidence-gathering or UI-operating agent and understand what the runtime owns. |
 | Intermediate | Tool engineering, context, approvals, guardrails, evaluation, trajectory economics, planning, agentic RAG, and stateful LangGraph execution | Turn an agent into a controlled, measurable system that can pursue bounded multi-step work and recover safely. |
-| Advanced | Teams, framework comparisons, hybrid routing, agent memory, capstone | Build durable, governed systems whose knowledge survives safely across runs. |
+| Advanced | Teams, framework comparisons, hybrid architecture/model routing, agent memory, world models, proactive agents, capstone | Build durable, governed systems that choose capable paths economically and whose knowledge survives safely across runs. |
 | Enterprise Agent | Designing Reliable Agentic Systems; Human + Multi-Agent Organizations | Synthesize architecture selection, governance, economics, security, privacy, evaluation, and human/agent operating models into release-ready systems. |
 
 [Advanced 07 — World Models and Environment Modeling](advanced/07-world-models-environment-modeling/README.md)
@@ -31,6 +31,11 @@ counterfactual planning, agent environment simulation, uncertainty, and reality 
 [Advanced 08 — Proactive Agents](advanced/08-proactive-agents/README.md) moves from
 request/response toward permission-bound persistent digital workers using events,
 schedules, monitoring, notifications, goal persistence, and safe suppression/escalation.
+
+[Advanced 09 — Model Routing](advanced/09-model-routing/README.md) selects the
+least expensive eligible model path for simple text, complex reasoning, visual
+evidence, and coding work. It covers capability, cost, and latency routing,
+bounded cascades, fallbacks, ensembles, and routing evaluation.
 
 ## Enterprise synthesis module
 
