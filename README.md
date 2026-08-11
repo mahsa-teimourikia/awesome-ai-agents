@@ -170,9 +170,9 @@ injects a malicious instruction into a retrieved runbook and teaches learners
 to isolate untrusted data, validate tenant-scoped structured tool calls, and
 enforce restart approval at the application boundary.
 
-[Notebook 09: Agent evaluation](curriculum/intermediate/06-agent-evaluation/05_agent_evaluation.ipynb)
-scores outcome, trajectory, and operational behavior, including forbidden tools
-and cost per successful task. [Notebook 10: Optimize the trajectory](curriculum/intermediate/07-trajectory-optimization/06_trajectory_optimization.ipynb)
+[Notebook 05: Agent evaluation](curriculum/intermediate/05-agent-evaluation/agent_evaluation.ipynb)
+scores outcome, trajectory, safety, and operational behavior, including
+forbidden tools and cost per successful task. [Notebook 10: Optimize the trajectory](curriculum/intermediate/07-trajectory-optimization/06_trajectory_optimization.ipynb)
 then compares a wasteful successful run with a shorter reliable trajectory.
 
 [Notebook 11: Planning and task decomposition](curriculum/intermediate/08-planning-task-decomposition/planning_task_decomposition.ipynb)

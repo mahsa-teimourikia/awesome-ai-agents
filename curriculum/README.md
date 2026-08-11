@@ -37,10 +37,9 @@ modules plus the incident data, runbooks, and evaluation fixtures. This is
 intentional: every lesson has its own learning surface, while one shared source
 of truth prevents copies of the simulated production environment from drifting.
 
-Every runnable example now belongs to the lesson it supports. Look for
-`lab.py` in each notebook-led topic, plus focused supporting scripts such as
-`release_gate.py` or `durable_recovery.py` where a topic benefits from an
-additional experiment.
+Every runnable example now belongs to the lesson it supports. Look for the
+co-located `lab.py` in each notebook-led topic; each notebook imports and
+explains that single implementation rather than maintaining parallel scripts.
 
 ## Intermediate planning module
 
