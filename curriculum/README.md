@@ -47,6 +47,10 @@ uses a long-horizon repository change to teach code search, planning, sandboxed
 terminal work, test generation/execution, debugging, review, PRs, CI/CD, and
 benchmark-aware evaluation.
 
+[Enterprise Agent 05 — Embodied Agents and Robotics](enterprise-agent/05-embodied-agents-robotics/README.md)
+is a concise physical-world module on VLA models, navigation, manipulation,
+simulation, feedback, and independent safety constraints.
+
 ## Advanced memory module
 
 [06 — Agent Memory](advanced/06-agent-memory/README.md) treats memory as a
