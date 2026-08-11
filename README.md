@@ -85,6 +85,7 @@ Use the [AI Agents Learning Hub](#ai-agents-learning-hub) as the structured path
 - **Enterprise Agent operations:** use [Production Agent Architecture](curriculum/enterprise-agent/08-production-agent-architecture/README.md) to assemble gateways, orchestration, durable state, queues, tool/knowledge boundaries, observability, autoscaling, and disaster recovery into one operable system.
 - **Enterprise Agent governance:** use [Agent Governance and Responsible AI](curriculum/enterprise-agent/09-agent-governance-responsible-ai/README.md) to operate accountable, auditable, revocable agents through their full lifecycle.
 - **Enterprise Agent guardrails:** use [Guardrails and Policy Enforcement](curriculum/enterprise-agent/10-guardrails-policy-enforcement/README.md) for defense-in-depth controls around every agent boundary.
+- **Enterprise Agent identity:** use [Agent Identity and Authorization](curriculum/enterprise-agent/11-agent-identity-authorization/README.md) to grant agents narrow, short-lived, attributable authority for real transactions.
 
 The [curriculum map](curriculum/README.md) and
 [AgentOps scenario guide](docs/agentops-lab.md) provide the source material

@@ -92,6 +92,10 @@ observability/evaluation, queues, checkpoints, caching, recovery, scaling, and D
 [Enterprise Agent 10 — Guardrails and Policy Enforcement](enterprise-agent/10-guardrails-policy-enforcement/README.md)
 implements layered input, context, tool, argument, action, output, and audit controls.
 
+[Enterprise Agent 11 — Agent Identity and Authorization](enterprise-agent/11-agent-identity-authorization/README.md)
+teaches non-human identity, OAuth/OIDC delegation, short-lived scoped capabilities,
+least privilege, tool/peer authorization, audit trails, and policy enforcement.
+
 ## Advanced memory module
 
 [06 — Agent Memory](advanced/06-agent-memory/README.md) treats memory as a
