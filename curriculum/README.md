@@ -50,6 +50,13 @@ goal contracts, DAG scheduling, planner/executor separation, checkpoints,
 bounded replanning, and safe terminal states; its co-located `lab.py` is a
 credential-free reference implementation.
 
+## Intermediate agentic RAG module
+
+[09 — Agentic RAG / Knowledge-Grounded Agents](intermediate/09-agentic-rag/README.md)
+teaches retrieval as a bounded agent tool: query planning and decomposition,
+multi-hop/iterative/adaptive retrieval, routing across search/SQL/graph/web
+sources, corrective retrieval, citation verification, and grounded proposals.
+
 ## Intermediate context module
 
 [02 — Context Engineering for Agents](intermediate/02-context-engineering/README.md)
