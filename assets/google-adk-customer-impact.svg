@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="680" viewBox="0 0 1200 680" role="img" aria-labelledby="title desc">
+  <title id="title">Google ADK customer impact coordination architecture</title>
+  <desc id="desc">Three bounded specialist agents provide validated artifacts to a coordinator, which applies policy and human approval before a proposed action.</desc>
+  <defs><style>
+    .bg{fill:#f7fafc}.box{fill:#fff;stroke:#12304a;stroke-width:3;rx:16}.accent{fill:#e87929;stroke:#9d420c;stroke-width:3;rx:16}.safe{fill:#dff2ee;stroke:#267a72;stroke-width:3;rx:16}.text{font-family:Arial,sans-serif;fill:#102a43;text-anchor:middle}.h{font-size:23px;font-weight:700}.p{font-size:16px}.small{font-size:14px}.arrow{stroke:#12304a;stroke-width:4;fill:none;marker-end:url(#arrow)}
+  </style><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#12304a"/></marker></defs>
+  <rect class="bg" width="1200" height="680" rx="24"/>
+  <text class="text h" x="600" y="52">Northstar Customer-Impact Coordinator</text>
+  <text class="text p" x="600" y="80">Bounded specialists → validated findings → proposed plan → human-approved action</text>
+  <rect class="box" x="55" y="145" width="270" height="125"/><text class="text h" x="190" y="187">Observability agent</text><text class="text p" x="190" y="218">metrics + logs</text><text class="text small" x="190" y="246">read-only source IDs</text>
+  <rect class="box" x="465" y="145" width="270" height="125"/><text class="text h" x="600" y="187">Deployment agent</text><text class="text p" x="600" y="218">release history</text><text class="text small" x="600" y="246">read-only source IDs</text>
+  <rect class="box" x="875" y="145" width="270" height="125"/><text class="text h" x="1010" y="187">Customer-impact agent</text><text class="text p" x="1010" y="218">tickets + SLA data</text><text class="text small" x="1010" y="246">read-only source IDs</text>
+  <path class="arrow" d="M190 270 L460 365"/><path class="arrow" d="M600 270 L600 365"/><path class="arrow" d="M1010 270 L740 365"/>
+  <rect class="safe" x="400" y="370" width="400" height="115"/><text class="text h" x="600" y="412">Coordinator + ADK Runner</text><text class="text p" x="600" y="442">sessions · events · callbacks · artifacts</text><text class="text small" x="600" y="468">validate source IDs and produce a proposal only</text>
+  <path class="arrow" d="M600 485 L600 535"/>
+  <rect class="accent" x="400" y="540" width="400" height="95"/><text class="text h" x="600" y="579">Policy and human approval</text><text class="text p" x="600" y="608">authorize notification / rollback; record audit outcome</text>
+</svg>
