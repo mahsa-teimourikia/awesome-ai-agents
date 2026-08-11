@@ -41,6 +41,9 @@ bounded cascades, fallbacks, ensembles, and routing evaluation.
 teaches durable jobs, checkpointing, scheduled/event-triggered waits, human approval,
 pause/resume, state recovery, cancellation, and bounded execution over minutes to days.
 
+[Advanced 11 — LLM-as-Judge and Agent Judges](advanced/11-llm-as-judge-agent-judges/README.md)
+teaches rubric, pairwise, trajectory/tool, critic, calibrated human-aligned, and ensemble judging.
+
 ## Enterprise synthesis module
 
 [Enterprise Agent 01 — Designing Reliable Agentic Systems](enterprise-agent/01-designing-reliable-agentic-systems/README.md)
