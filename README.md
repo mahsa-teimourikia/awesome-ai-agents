@@ -181,7 +181,7 @@ It introduces goal contracts, hierarchical plans, DAG scheduling, planner/execut
 separation, checkpoints, bounded replanning, failure recovery, and safe terminal
 states through a credential-free research-agent lab.
 
-[Notebook 11: When one agent becomes a team](curriculum/advanced/01-single-vs-multi-agent/01_single_vs_multi_agent.ipynb)
+[Notebook 11: When one agent becomes a team](curriculum/advanced/01-single-vs-multi-agent/single_vs_multi_agent.ipynb)
 compares a single-agent baseline with a specialist incident team. [Notebook 12:
 Multi-agent implementation with AutoGen](curriculum/advanced/02-autogen-selector-teams/02_autogen_selector_teams.ipynb)
 shows selector-style team coordination, ownership rules, and bounded failure-loop
