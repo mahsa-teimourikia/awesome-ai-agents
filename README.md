@@ -77,7 +77,7 @@ Use the [AI Agents Learning Hub](#ai-agents-learning-hub) as the structured path
 
 - **Beginner:** start with [AI Agents: Foundations](curriculum/beginner/01-ai-agent-foundations/README.md), then learn the agent loop, tool contracts, state, memory, [computer-use boundaries](curriculum/beginner/05-computer-using-agents/README.md), and safe stopping; complete the research-assistant capstone.
 - **Intermediate:** compare workflows and agents, engineer tools, [context](curriculum/intermediate/02-context-engineering/README.md), state, approvals, guardrails, evaluation, trajectory economics, and [planning/task decomposition](curriculum/intermediate/08-planning-task-decomposition/README.md).
-- **Advanced:** design multi-agent teams, durable recovery, protocol boundaries, safety readiness, and the research-team capstone.
+- **Advanced:** design multi-agent teams, durable recovery, protocol boundaries, safety readiness, [agent memory](curriculum/advanced/06-agent-memory/README.md), and the research-team capstone.
 
 The [curriculum map](curriculum/README.md) and
 [AgentOps scenario guide](docs/agentops-lab.md) provide the source material

@@ -21,7 +21,14 @@ when the preceding design can no longer solve the problem reliably.
 | --- | --- | --- |
 | Beginner | AI agent foundations, agent loop, workflow selection, agent development frameworks, and computer-using agents | Build a bounded evidence-gathering or UI-operating agent and understand what the runtime owns. |
 | Intermediate | Tool engineering, context, state, approvals, guardrails, evaluation, trajectory economics, planning and task decomposition | Turn an agent into a controlled, measurable system that can pursue bounded multi-step work. |
-| Advanced | Teams, framework comparisons, hybrid routing, capstone | Justify when specialist coordination earns its added complexity. |
+| Advanced | Teams, framework comparisons, hybrid routing, agent memory, capstone | Build durable, governed systems whose knowledge survives safely across runs. |
+
+## Advanced memory module
+
+[06 — Agent Memory](advanced/06-agent-memory/README.md) treats memory as a
+governed write → manage → read system, covering working/episodic/semantic/
+procedural memory, ranking, consolidation, forgetting, contradictions, privacy,
+and personalization.
 
 ## Shared implementation and fixtures
 
