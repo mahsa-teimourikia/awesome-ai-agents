@@ -115,6 +115,10 @@ monitoring, dashboards, and cost/latency/outcome measurement.
 teaches risk-tiered autonomy, approval/escalation, intervention, supervision, handoffs,
 explainable action, trust calibration, and autonomy boundaries.
 
+[Enterprise Agent 15 — Agent Orchestration](enterprise-agent/15-agent-orchestration/README.md)
+separates agent intelligence from graph/workflow, queue, event, checkpoint, scheduling,
+approval, recovery, parallel, and durable-execution orchestration.
+
 ## Advanced memory module
 
 [06 — Agent Memory](advanced/06-agent-memory/README.md) treats memory as a
