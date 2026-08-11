@@ -22,7 +22,7 @@ when the preceding design can no longer solve the problem reliably.
 | Beginner | AI agent foundations, agent loop, workflow selection, agent development frameworks, and computer-using agents | Build a bounded evidence-gathering or UI-operating agent and understand what the runtime owns. |
 | Intermediate | Tool engineering, context, approvals, guardrails, evaluation, trajectory economics, planning, agentic RAG, and stateful LangGraph execution | Turn an agent into a controlled, measurable system that can pursue bounded multi-step work and recover safely. |
 | Advanced | Teams, framework comparisons, hybrid routing, agent memory, capstone | Build durable, governed systems whose knowledge survives safely across runs. |
-| Enterprise Agent | Designing Reliable Agentic Systems | Synthesize architecture selection, governance, economics, security, privacy, and evaluation into a release-ready system design. |
+| Enterprise Agent | Designing Reliable Agentic Systems; Human + Multi-Agent Organizations | Synthesize architecture selection, governance, economics, security, privacy, evaluation, and human/agent operating models into release-ready systems. |
 
 ## Enterprise synthesis module
 
@@ -31,6 +31,11 @@ is the end-to-end architecture module. The Northstar Commerce incident asks lear
 to decide whether deterministic code, a bounded agent, a durable graph, or a
 specialist team is warranted, then protect that choice with tenant scope,
 authorization, approvals, budgets, evaluations, traceability, and recovery.
+
+[Enterprise Agent 02 — Human + Multi-Agent Organizations](enterprise-agent/02-human-multi-agent-organizations/README.md)
+extends that synthesis from system architecture to organizational design: people set
+purpose and authority, a manager agent coordinates scoped digital workers, specialists
+return attributable artifacts, and a human reviews consequential proposals.
 
 ## Advanced memory module
 
