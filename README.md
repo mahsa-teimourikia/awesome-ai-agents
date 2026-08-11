@@ -172,7 +172,7 @@ enforce restart approval at the application boundary.
 
 [Notebook 05: Agent evaluation](curriculum/intermediate/05-agent-evaluation/agent_evaluation.ipynb)
 scores outcome, trajectory, safety, and operational behavior, including
-forbidden tools and cost per successful task. [Notebook 10: Optimize the trajectory](curriculum/intermediate/07-trajectory-optimization/06_trajectory_optimization.ipynb)
+forbidden tools and cost per successful task. [Notebook 06: Optimize the trajectory](curriculum/intermediate/06-trajectory-optimization/trajectory_optimization.ipynb)
 then compares a wasteful successful run with a shorter reliable trajectory.
 
 [Notebook 11: Planning and task decomposition](curriculum/intermediate/08-planning-task-decomposition/planning_task_decomposition.ipynb)
