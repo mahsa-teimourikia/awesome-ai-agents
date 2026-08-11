@@ -9,7 +9,7 @@
 
 A model tool call is only a proposal. Application code must validate the schema, actor, tenant, permission, budget, idempotency key, result, and approval before any capability executes. Tool engineering is interface design, distributed-systems design, and security engineering—not merely writing tool descriptions.
 
-<pre class="mermaid">
+```mermaid
 flowchart LR
   M["Model proposes call"] --> S["Schema validation"]
   S --> A["Authorization + tenant scope"]
@@ -22,7 +22,7 @@ flowchart LR
   S --> B["Typed error / safe stop"]
   A --> B
   R --> B
-</pre>
+```
 
 ## Outcomes
 
@@ -63,7 +63,7 @@ Use short action-oriented names, explicit required fields and enums, compact res
 
 Tool selection is constrained routing, not a free-form model capability. Filter a catalog deterministically by actor, tenant, environment, and task before the model can choose from it.
 
-<pre class="mermaid">
+```mermaid
 flowchart TD
   Q["Task + trusted actor context"] --> F["Filter scopes and tenant"]
   F --> C["Small candidate catalog"]
@@ -72,7 +72,7 @@ flowchart TD
   D -->|"no"| L["Model chooses candidate"]
   L --> G["Argument and policy gates"]
   G --> E["Execute or escalate"]
-</pre>
+```
 
 For large catalogs, use namespaced capabilities, progressive disclosure, and dynamic discovery with allowlists. Every capability should describe purpose, risk tier, required scopes, cost/latency class, and result schema. The [MCP tools specification](https://modelcontextprotocol.io/specification/2025-11-25/server/tools) standardizes discovery, but it does not authorize calls for you.
 
