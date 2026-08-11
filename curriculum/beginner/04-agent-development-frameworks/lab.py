@@ -84,8 +84,18 @@ def adk_shaped_customer_impact() -> dict:
     }
 
 
+def microsoft_agent_framework_shaped_operations_workflow() -> dict:
+    return {"workflow": ["triage", "retrieve_customer_context", "draft_escalation", "human_review"], "tools": ["get_service_status", "search_tickets"], "result": "Draft escalation for Gold customer impact; waiting for on-call review.", "major_features": ["agents", "function tools", "workflow builder", "stateful execution", "middleware/observability seam"]}
+
+
+def crewai_shaped_incident_crew() -> dict:
+    return {"roles": ["Observability Engineer", "Release Engineer", "Incident Commander"], "tasks": ["collect telemetry", "inspect deployment", "synthesize approved response"], "process": "sequential with explicit task context", "result": "Rollback proposal prepared with evidence; no production action executed.", "major_features": ["agents", "tasks", "crews", "processes", "flows", "tools", "memory/knowledge boundary", "guardrails/observability seam"]}
+
+
 if __name__ == "__main__":
     print(openai_sdk_shaped_triage("European customers cannot complete checkout."))
     print(pydanticai_shaped_compliance_case("case-17", 12_500, "CA"))
     print(langgraph_shaped_approval("restart_checkout"))
     print(adk_shaped_customer_impact())
+    print(microsoft_agent_framework_shaped_operations_workflow())
+    print(crewai_shaped_incident_crew())

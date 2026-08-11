@@ -18,10 +18,14 @@ flowchart LR
     F -->|"typed output and dependency injection"| PY["Pydantic AI"]
     F -->|"state graph and durable interrupts"| LG["LangGraph"]
     F -->|"Google ecosystem and agent composition"| ADK["Google ADK"]
+    F -->|"Microsoft agents and workflows"| MAF["Microsoft Agent Framework"]
+    F -->|"role / task / crew / flow"| CR["CrewAI"]
     O --> E["Evidence-backed result"]
     PY --> E
     LG --> E
     ADK --> E
+    MAF --> E
+    CR --> E
     E --> P
 ```
 
@@ -58,6 +62,8 @@ This is a practical comparison, not a benchmark. Version, model provider, deploy
 | **Pydantic AI** | Python typing, validated structured output, dependency injection, and model/provider choice. | A compliance caseworker that returns a schema-valid review decision with evidence IDs. | Strong fit for Pydantic/FastAPI-shaped domains; typed dependencies and outputs; broad provider support. | Validation is not factual correctness. You still need evidence checks, authorization, and tests. | [Overview](https://ai.pydantic.dev/), [agents](https://ai.pydantic.dev/agents/), [output](https://ai.pydantic.dev/output/) |
 | **LangGraph** | Explicit state, conditional edges, persistence, interrupts, and replayable long-running workflows. | A remediation planner that pauses for a human before a high-impact action. | Makes graph state and routing reviewable; useful for recovery and approval flows; model-provider flexible. | More orchestration surface than a short single-agent assistant; do not use a graph to hide a simple function. | [Overview](https://docs.langchain.com/oss/python/langgraph/overview), [persistence](https://docs.langchain.com/oss/python/langgraph/persistence), [interrupts](https://docs.langchain.com/oss/python/langgraph/interrupts) |
 | **Google ADK** | Agent composition, tools, sessions, evaluation, and Google ecosystem integration. | A customer-impact coordinator that composes specialist findings into a constrained action plan. | Designed for composable agents; supports tools, sessions, evaluation, and deployment paths in the Google ecosystem. | Do not choose it only for multi-agent novelty; coordination must outperform a simpler baseline. | [ADK documentation](https://adk.dev/), [agents](https://adk.dev/agents/), [tools](https://adk.dev/tools/) |
+| **Microsoft Agent Framework** | Microsoft agent/workflow runtime for Python and .NET. | A support escalation that mixes deterministic stages, function tools, and an agent-created draft. | Agents, tools, workflow builder/execution, state, hosting, and Microsoft ecosystem integration. | Verify current API maturity; it never replaces application identity, approvals, or workflow tests. | [Microsoft Learn](https://learn.microsoft.com/en-gb/agent-framework/), [Python guide](https://github.com/microsoft/agent-framework/tree/main/python) |
+| **CrewAI** | Agents + Tasks + Crews, with Flows around controlled collaboration. | An incident crew that produces bounded specialist artifacts for a commander. | Clear role/task model; processes, flows, tools, knowledge/memory, guardrails, and observability. | A crew adds coordination cost; constrain delegation, memory, tools, and terminal conditions. | [Docs](https://docs.crewai.com/), [agents](https://docs.crewai.com/concepts/agents), [flows](https://docs.crewai.com/concepts/flows) |
 | **AutoGen** | Conversational multi-agent patterns and team coordination. | Advanced-course selector-team comparison. | Clear group-chat/team abstractions and flexible coordination patterns. | Coordination increases cost and can create loops; use after a single-agent baseline. | [AgentChat](https://microsoft.github.io/autogen/stable/user-guide/agentchat-user-guide/index.html) |
 | **CrewAI** | Role/task/crew model with deterministic flows around collaboration. | Advanced-course incident specialist crew. | Approachable mapping from role to task to deliverable. | Keep process ownership, tool permissions, and recovery explicit. | [Documentation](https://docs.crewai.com/) |
 
@@ -69,6 +75,8 @@ This is a practical comparison, not a benchmark. Version, model provider, deploy
 | [04b Pydantic AI — compliance caseworker](04_pydanticai_compliance_caseworker.ipynb) | A decision must become a schema-valid object before it can be routed. | Typed dependencies, output contracts, retries, evidence validation, model portability. | `pip install pydantic-ai` |
 | [04c LangGraph — remediation approval](04_langgraph_remediation_approval.ipynb) | A proposal must branch, pause for approval, and resume safely. | State schemas, conditional routing, interrupts, idempotency, durable-workflow design. | `pip install langgraph` |
 | [04d Google ADK — customer-impact coordination](04_google_adk_customer_impact.ipynb) | Specialists contribute bounded findings to a customer-impact plan. | Agent composition, tool boundaries, session context, evaluation criteria, coordination costs. | `pip install google-adk` |
+| [04e Microsoft Agent Framework — support escalation](04_microsoft_agent_framework_support_escalation.ipynb) | A deterministic escalation workflow needs narrow tools and an agent-created draft. | Agents, function tools, workflow builder/execution, state, middleware/observability, hosting considerations. | Follow [Microsoft Learn](https://learn.microsoft.com/en-gb/agent-framework/) for current API setup. |
+| [04f CrewAI — incident response crew](04_crewai_incident_response_crew.ipynb) | Specialists produce bounded artifacts for an incident commander in a flow. | Agents, tasks, crews, processes, flows, tools, memory/knowledge boundaries, guardrails, observability. | `pip install crewai` |
 
 ### Suggested order
 
@@ -77,6 +85,7 @@ This is a practical comparison, not a benchmark. Version, model provider, deploy
 3. Complete **04b** when typed, machine-consumed outputs are the central risk.
 4. Complete **04c** when a run needs stateful branching or an approval pause.
 5. Complete **04d** when separate bounded perspectives might improve a customer-impact decision; compare the cost against the single-agent baseline.
+6. Complete **04e** for a Microsoft agent/workflow architecture, then **04f** to compare CrewAI’s role/task/crew model with the same baseline.
 
 ## Step-by-step framework selection exercise
 
