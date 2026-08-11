@@ -111,6 +111,10 @@ cross-agent and supply-chain threats, exfiltration, excessive agency, and contai
 teaches traces, trajectories, tool/state/context inspection, replay/debugging, OpenTelemetry,
 monitoring, dashboards, and cost/latency/outcome measurement.
 
+[Enterprise Agent 14 — Human-Agent Collaboration](enterprise-agent/14-human-agent-collaboration/README.md)
+teaches risk-tiered autonomy, approval/escalation, intervention, supervision, handoffs,
+explainable action, trust calibration, and autonomy boundaries.
+
 ## Advanced memory module
 
 [06 — Agent Memory](advanced/06-agent-memory/README.md) treats memory as a
