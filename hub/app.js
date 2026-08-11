@@ -37,7 +37,7 @@ function selectLesson(id) {
 }
 
 function renderFilters() {
-  filters.innerHTML = ["All", "Beginner", "Intermediate", "Advanced"]
+  filters.innerHTML = ["All", "Beginner", "Intermediate", "Advanced", "Enterprise Agent"]
     .map(item => `<button class="${level === item ? "active" : ""}" data-level="${item}">${item}</button>`)
     .join("");
   filters.querySelectorAll("button").forEach(button => {

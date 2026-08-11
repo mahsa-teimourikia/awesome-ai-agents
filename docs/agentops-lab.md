@@ -49,7 +49,7 @@ and stopping behavior before connecting a real provider or infrastructure.
 ```mermaid
 flowchart TD
     N1["01 Build the loop yourself"] --> N2["02 Bounded incident workflow"]
-    N2 --> N3["03 Rebuild with OpenAI Agents SDK"]
+    N2 --> N3["03 Agent development frameworks"]
     N3 --> N4["04 Tool engineering"]
     N4 --> N5["05 Stateful LangGraph investigation"]
     N5 --> N6["06 Human-in-the-loop and permissions"]
@@ -65,20 +65,21 @@ flowchart TD
 
 | Notebook | Architecture | Main library focus | What learners practice |
 | --- | --- | --- | --- |
-| [01 Build the loop yourself](../curriculum/beginner/01-agent-loop/06_agentops_manual_loop.ipynb) | Manual control loop | Plain Python first | Tool calls, observations, state, stop conditions, and cost/tool budgets |
-| [02 Agent or workflow?](../curriculum/beginner/02-workflow-or-agent/07_agentops_workflow_or_agent.ipynb) | Deterministic workflow, bounded workflow, and bounded agent | Plain Python and typed contracts | Matching architecture to problem shape across status reports, runbook summaries, and regional checkout investigations |
-| [03 Rebuild with OpenAI Agents SDK](../curriculum/beginner/03-openai-agents-sdk/08_agentops_openai_agents_sdk.ipynb) | Managed agent runtime | OpenAI Agents SDK concepts | Comparing manual ownership with framework-managed turns, tool dispatch, sessions, and traces |
-| [04 Tool engineering](../curriculum/beginner/04-tool-engineering/09_agentops_tool_engineering.ipynb) | Tool boundary design | Function tools and validation | Replacing broad admin APIs with narrow schemas, approval boundaries, and retry rules |
-| [05 Stateful investigation graph](../curriculum/intermediate/01-langgraph-state-memory/10_agentops_langgraph_state_memory.ipynb) | Stateful agentic workflow | LangGraph | Graph state, conditional routing, confidence loops, thread state, and long-term memory risk |
-| [06 Human-in-the-loop and permissions](../curriculum/intermediate/02-human-approval-permissions/11_agentops_human_permissions.ipynb) | Bounded action with approval | LangGraph/LangChain HITL concepts | Permission levels, persisted pause state, approval, modification, rejection, and audit records |
-| [07 Guardrails and untrusted content](../curriculum/intermediate/03-guardrails-untrusted-content/12_agentops_guardrails_untrusted_content.ipynb) | Trust-boundary enforcement | OpenAI Agents SDK guardrail concepts | Treating retrieved content as data, detecting poisoned instructions, and wrapping tools with approval guardrails |
-| [08 Agent evaluation: trajectory](../curriculum/intermediate/04-agent-evaluation/13_agentops_evaluate_trajectory.ipynb) | Release-gated agent | Evaluation datasets and traces | Outcome, trajectory, operations, forbidden actions, and cost per successful task |
-| [09 Optimize the trajectory](../curriculum/intermediate/05-trajectory-optimization/14_agentops_optimize_trajectory.ipynb) | Efficient bounded agent | Trajectory optimization | Shortening reliable paths while preserving correctness, evidence, and support |
-| [10 When one agent becomes a team](../curriculum/advanced/01-single-vs-multi-agent/15_agentops_when_one_agent_becomes_team.ipynb) | Manager and specialist agents | Multi-agent design | Comparing a single-agent baseline with observability, deployment, customer impact, analyst, and risk-review specialists |
-| [11 AutoGen selector team](../curriculum/advanced/02-autogen-selector-teams/16_agentops_autogen_selector_team.ipynb) | Selector-based group chat | AutoGen AgentChat concepts | Dynamic speaker selection, shared context, ownership rules, turn budgets, and failure-loop prevention |
-| [12 CrewAI team](../curriculum/advanced/03-crewai-teams/17_agentops_crewai_team.ipynb) | Task-owned specialist crew | CrewAI concepts | Mapping roles to agents, deliverables to tasks, and specialist outputs to a crew-level incident plan |
-| [13 Hybrid production architecture](../curriculum/advanced/04-hybrid-production-architecture/18_agentops_hybrid_production_architecture.ipynb) | Deterministic wrapper around agents | Production architecture | Routing simple lookups, investigations, and high-risk cases through the least autonomous reliable path |
-| [14 Final capstone](../curriculum/advanced/05-incident-response-capstone/19_agentops_final_capstone.ipynb) | Evaluated production design | Framework-independent harness | Justifying architecture choice with tools, state, permissions, HITL, guardrails, evaluation, traces, cost/latency, and single-vs-multi-agent comparison |
+| [01 Build the loop yourself](../curriculum/beginner/02-agent-loop/02_agent_loop.ipynb) | Manual control loop | Plain Python first | Tool calls, observations, state, stop conditions, and cost/tool budgets |
+| [02 Agent or workflow?](../curriculum/beginner/03-workflow-or-agent/03_workflow_or_agent.ipynb) | Deterministic workflow, bounded workflow, and bounded agent | Plain Python and typed contracts | Matching architecture to problem shape across status reports, runbook summaries, and regional checkout investigations |
+| [03 Agent development frameworks](../curriculum/beginner/04-agent-development-frameworks/README.md) | Framework selection | OpenAI Agents SDK, Pydantic AI, LangGraph, Google ADK | Selecting a managed loop, typed output, durable approval graph, or bounded composition based on the scenario |
+| [04 Tool engineering](../curriculum/intermediate/01-tool-engineering/tool_engineering.ipynb) | Tool boundary design | Function tools and validation | Replacing broad admin APIs with narrow schemas, approval boundaries, and retry rules |
+| [05 Context engineering](../curriculum/intermediate/02-context-engineering/context_engineering.ipynb) | Scoped model context | Deterministic context router | System policy, dynamic evidence, JIT retrieval, compression, cache isolation, and poison quarantine |
+| [10 LangGraph state, persistence, and memory](../curriculum/intermediate/10-langgraph-state-memory/langgraph_state_memory.ipynb) | Stateful agentic workflow | LangGraph | Graph state, conditional routing, confidence loops, checkpoints, safe recovery, approval pauses, and governed long-term memory |
+| [03 Human approval and permissions](../curriculum/intermediate/03-human-approval-permissions/human_approval_permissions.ipynb) | Bounded action with approval | LangGraph/LangChain HITL concepts | Least-privilege capabilities, persisted pauses, approve/modify/reject/escalate, action validation, idempotency, tenant scope, and audit records |
+| [04 Guardrails and untrusted content](../curriculum/intermediate/04-guardrails-untrusted-content/guardrails_untrusted_content.ipynb) | Trust-boundary enforcement | Framework-neutral guardrail concepts | Treating retrieved content as data, quarantining poison, context isolation, tenant-scoped tool validation, least privilege, and approval guardrails |
+| [05 Agent evaluation: trajectory](../curriculum/intermediate/05-agent-evaluation/agent_evaluation.ipynb) | Release-gated agent | Evaluation datasets and traces | Outcome, trajectory, safety, operations, forbidden actions, and cost per successful task |
+| [06 Optimize the trajectory](../curriculum/intermediate/06-trajectory-optimization/trajectory_optimization.ipynb) | Efficient bounded agent | Trajectory optimization | Shortening reliable paths while preserving correctness, evidence, policy, and support |
+| [10 When one agent becomes a team](../curriculum/advanced/01-single-vs-multi-agent/single_vs_multi_agent.ipynb) | Manager and specialist agents | Multi-agent design | Comparing a single-agent baseline with supervisor, router, hierarchy, blackboard, debate, sequential, and parallel specialist patterns |
+| [11 AutoGen selector team](../curriculum/advanced/02-autogen-selector-teams/02_autogen_selector_teams.ipynb) | Selector-based group chat | AutoGen AgentChat concepts | Dynamic speaker selection, shared context, ownership rules, turn budgets, and failure-loop prevention |
+| [12 CrewAI team](../curriculum/advanced/03-crewai-teams/03_crewai_teams.ipynb) | Task-owned specialist crew | CrewAI concepts | Mapping roles to agents, deliverables to tasks, and specialist outputs to a crew-level incident plan |
+| [13 Hybrid production architecture](../curriculum/advanced/04-hybrid-production-architecture/04_hybrid_production_architecture.ipynb) | Deterministic wrapper around agents | Production architecture | Routing simple lookups, investigations, and high-risk cases through the least autonomous reliable path |
+| [14 Final capstone](../curriculum/advanced/05-incident-response-capstone/05_incident_response_capstone.ipynb) | Evaluated production design | Framework-independent harness | Justifying architecture choice with tools, state, permissions, HITL, guardrails, evaluation, traces, cost/latency, and single-vs-multi-agent comparison |
 
 ## Notebook 01 learning objectives
 

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="690" viewBox="0 0 1200 690" role="img" aria-labelledby="title desc">
+<title id="title">Agent protocol stack</title><desc id="desc">Protocol layers connect users, agent-generated interfaces, agents, tools and context, commerce, and payment authorization under shared identity, policy, observability and governance.</desc>
+<rect width="1200" height="690" rx="28" fill="#f6f8f6"/><style>.h{font:700 31px Arial;fill:#082640}.t{font:700 20px Arial;fill:#082640}.s{font:16px Arial;fill:#33566b}.b{fill:#fff;stroke:#0a637b;stroke-width:3}.o{fill:#fff3e8;stroke:#c3601a;stroke-width:3}.g{fill:#e7f1ed;stroke:#39846c;stroke-width:3}.l{stroke:#0a637b;stroke-width:3;marker-end:url(#a)}</style><defs><marker id="a" markerWidth="10" markerHeight="10" refX="8" refY="4" orient="auto"><path d="M0 0L0 8 9 4z" fill="#0a637b"/></marker></defs>
+<text x="62" y="62" class="h">The Agent Protocol Stack: interoperable boundaries, not one replacement protocol</text>
+<rect x="100" y="105" width="1000" height="58" rx="16" class="g"/><text x="390" y="141" class="t">Identity · delegated authority · policy · audit · observability</text>
+<rect x="100" y="200" width="1000" height="65" rx="16" class="b"/><text x="145" y="240" class="t">AG-UI</text><text x="285" y="240" class="s">Agent ↔ user interaction events, streaming, state and approval experiences</text>
+<rect x="100" y="290" width="1000" height="65" rx="16" class="o"/><text x="145" y="330" class="t">A2UI</text><text x="285" y="330" class="s">Agent-generated, schema-rendered UI components—not arbitrary executable UI code</text>
+<rect x="100" y="380" width="1000" height="65" rx="16" class="b"/><text x="145" y="420" class="t">A2A</text><text x="285" y="420" class="s">Agent ↔ agent discovery, capability card, tasks, messages, delegation and status</text>
+<rect x="100" y="470" width="1000" height="65" rx="16" class="o"/><text x="145" y="510" class="t">MCP</text><text x="285" y="510" class="s">Agent ↔ tools, resources, prompts and context through server capability contracts</text>
+<rect x="100" y="560" width="485" height="65" rx="16" class="g"/><text x="145" y="600" class="t">UCP</text><text x="250" y="600" class="s">Commerce interaction</text><rect x="615" y="560" width="485" height="65" rx="16" class="g"/><text x="665" y="600" class="t">AP2</text><text x="770" y="600" class="s">Payment intent / authorization</text>
+<path class="l" d="M600 163V198M600 265V288M600 355V378M600 445V468M350 535V558M850 535V558"/>
+</svg>

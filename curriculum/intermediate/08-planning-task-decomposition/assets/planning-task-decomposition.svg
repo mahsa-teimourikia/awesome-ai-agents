@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="680" viewBox="0 0 1200 680" role="img" aria-labelledby="title desc">
+  <title id="title">Dynamic planning graph for an Adaptive RAG research agent</title>
+  <desc id="desc">A research request enters goal constraints and a planner. The planner creates a validated task graph with parallel evidence tasks, a comparison and quality checkpoint. A missing source returns through a bounded replan to a replacement evidence task; sufficient evidence produces a cited technical report.</desc>
+  <defs><style>text{font-family:Inter,Arial,sans-serif;fill:#eaf2f7}.t{font-size:19px;font-weight:700}.s{font-size:14px;fill:#b8cad7}.box{fill:#102b45;stroke:#6eb7df;stroke-width:2}.work{fill:#153f55;stroke:#80c6a4;stroke-width:2}.gate{fill:#4d3617;stroke:#f1a841;stroke-width:2}.risk{fill:#4a2530;stroke:#ec8e9b;stroke-width:2}.line{stroke:#9cb8c9;stroke-width:3;fill:none;marker-end:url(#a)}.loop{stroke:#f1a841;stroke-width:3;fill:none;marker-end:url(#a)}</style><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#9cb8c9"/></marker></defs>
+  <rect width="1200" height="680" fill="#071826" rx="24"/>
+  <text x="60" y="65" class="t" font-size="30">Adaptive RAG research agent: bounded dynamic task graph</text>
+  <text x="60" y="94" class="s">The planner proposes; validators, the scheduler, and policy own execution.</text>
+  <rect x="60" y="150" width="190" height="80" rx="14" class="box"/><text x="88" y="184" class="t">Research request</text><text x="84" y="210" class="s">Adaptive RAG report</text>
+  <rect x="310" y="150" width="205" height="80" rx="14" class="box"/><text x="334" y="184" class="t">Goal contract</text><text x="331" y="210" class="s">scope · sources · budget</text>
+  <rect x="575" y="150" width="200" height="80" rx="14" class="box"/><text x="616" y="184" class="t">Planner</text><text x="602" y="210" class="s">typed task proposals</text>
+  <rect x="835" y="150" width="250" height="80" rx="14" class="gate"/><text x="858" y="184" class="t">DAG + policy gate</text><text x="871" y="210" class="s">cycles · tools · budgets</text>
+  <path d="M250 190H310M515 190H575M775 190H835" class="line"/>
+  <rect x="165" y="315" width="210" height="80" rx="14" class="work"/><text x="193" y="349" class="t">Primary paper</text><text x="195" y="375" class="s">routing evidence</text>
+  <rect x="455" y="315" width="210" height="80" rx="14" class="work"/><text x="484" y="349" class="t">RAG foundation</text><text x="490" y="375" class="s">retrieval baseline</text>
+  <rect x="745" y="315" width="240" height="80" rx="14" class="work"/><text x="772" y="349" class="t">Implementation guide</text><text x="780" y="375" class="s">controlled topology</text>
+  <path d="M960 230V270H270V315M960 270H560V315M960 270H865V315" class="line"/>
+  <rect x="415" y="470" width="225" height="80" rx="14" class="box"/><text x="457" y="504" class="t">Compare routes</text><text x="444" y="530" class="s">no retrieval · one-shot · iterative</text>
+  <path d="M270 395V435H528V470M560 395V470M865 395V435H528" class="line"/>
+  <polygon points="760,470 885,510 760,550 635,510" class="gate"/><text x="692" y="508" class="t">Quality checkpoint</text><text x="720" y="531" class="s">coverage + provenance</text>
+  <path d="M640 510H635" class="line"/>
+  <rect x="950" y="470" width="185" height="80" rx="14" class="risk"/><text x="981" y="504" class="t">Bounded replan</text><text x="974" y="530" class="s">replace failed source</text>
+  <path d="M850 510H950M1042 470V430H865V395" class="loop"/>
+  <rect x="700" y="590" width="240" height="58" rx="14" class="box"/><text x="738" y="626" class="t">Cited technical report</text>
+  <path d="M760 550V590" class="line"/>
+  <text x="65" y="640" class="s">Terminal states: sufficient evidence · safe escalation · task/replan/time/cost budget exhausted</text>
+</svg>

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 560" role="img" aria-labelledby="title desc">
+  <title id="title">Stateful LangGraph incident investigation lifecycle</title>
+  <desc id="desc">An incident thread proceeds from triage through evidence collection and analysis, loops while confidence is low, pauses for human approval, and completes. A checkpointer saves thread state and a governed store supplies verified cross-thread memory.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0L10 5 0 10z" fill="#d7e8f1"/></marker>
+    <style>
+      .bg{fill:#071827}.card{fill:#102b40;stroke:#8ed0e8;stroke-width:2}.safe{fill:#163c45;stroke:#74d5bd;stroke-width:2}.warn{fill:#4b3218;stroke:#ffb15f;stroke-width:2}.side{fill:#152238;stroke:#a9b8ff;stroke-width:2}.t{font-family:Arial,sans-serif;fill:#f7fbff}.s{font-family:Arial,sans-serif;fill:#c7d9e8}.h{font-family:Arial,sans-serif;fill:#74d5bd;font-weight:700}.line{stroke:#d7e8f1;stroke-width:3;marker-end:url(#arrow)}.dash{stroke:#a9b8ff;stroke-width:2;stroke-dasharray:8 7;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect class="bg" width="1200" height="560" rx="28"/>
+  <text class="t" x="58" y="66" font-size="32" font-weight="700">LangGraph state, persistence, and memory</text>
+  <text class="s" x="58" y="98" font-size="18">Northstar checkout incident: bounded investigation with durable state and governed memory</text>
+  <rect class="card" x="62" y="182" width="158" height="92" rx="15"/><text class="t" x="104" y="220" font-size="20" font-weight="700">Triage</text><text class="s" x="86" y="248" font-size="15">classify request</text>
+  <rect class="card" x="296" y="182" width="186" height="92" rx="15"/><text class="t" x="327" y="220" font-size="20" font-weight="700">Collect evidence</text><text class="s" x="324" y="248" font-size="15">one new signal</text>
+  <rect class="card" x="561" y="182" width="158" height="92" rx="15"/><text class="t" x="596" y="220" font-size="20" font-weight="700">Analyze</text><text class="s" x="582" y="248" font-size="15">score confidence</text>
+  <rect class="warn" x="799" y="182" width="184" height="92" rx="15"/><text class="t" x="826" y="220" font-size="20" font-weight="700">Recommendation</text><text class="s" x="836" y="248" font-size="15">proposal only</text>
+  <rect class="safe" x="1014" y="182" width="138" height="92" rx="15"/><text class="t" x="1036" y="220" font-size="20" font-weight="700">Approval</text><text class="s" x="1040" y="248" font-size="15">resume / end</text>
+  <line class="line" x1="220" y1="228" x2="294" y2="228"/><line class="line" x1="482" y1="228" x2="559" y2="228"/><line class="line" x1="719" y1="228" x2="797" y2="228"/><line class="line" x1="983" y1="228" x2="1012" y2="228"/>
+  <path class="line" d="M640 274V340H390V276"/><text class="h" x="432" y="330" font-size="16">low confidence + budget remains</text>
+  <rect class="side" x="166" y="406" width="340" height="105" rx="15"/><text class="t" x="196" y="444" font-size="21" font-weight="700">Checkpointer</text><text class="s" x="196" y="472" font-size="16">thread-scoped snapshots after each node</text><text class="s" x="196" y="495" font-size="16">recovery · interrupt resume · audit trail</text>
+  <rect class="side" x="673" y="406" width="362" height="105" rx="15"/><text class="t" x="703" y="444" font-size="21" font-weight="700">Governed memory store</text><text class="s" x="703" y="472" font-size="16">verified, namespaced cross-thread facts</text><text class="s" x="703" y="495" font-size="16">preferences · provenance · retention policy</text>
+  <path class="dash" d="M335 405V310H140V276"/><path class="dash" d="M854 405V330H141V276"/>
+</svg>

@@ -9,7 +9,7 @@ keep provider calls behind the same `decide`, `tool`, and `policy` boundaries.
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-python curriculum/intermediate/01-langgraph-state-memory/langgraph_workflow.py
+python curriculum/intermediate/10-langgraph-state-memory/lab.py
 ```
 
 Replace the deterministic `write_draft` node only after the graph state,

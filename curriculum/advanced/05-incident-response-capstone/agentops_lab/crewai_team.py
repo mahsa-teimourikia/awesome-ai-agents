@@ -124,6 +124,11 @@ def kickoff_crew() -> dict[str, object]:
     }
 
 
+def run_crewai_shaped_team() -> dict[str, object]:
+    """Compatibility name used by the notebook-led CrewAI lesson."""
+    return kickoff_crew()
+
+
 if __name__ == "__main__":
     result = kickoff_crew()
     print(result["mental_model"])
