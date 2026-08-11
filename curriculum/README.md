@@ -100,6 +100,10 @@ least privilege, tool/peer authorization, audit trails, and policy enforcement.
 covers injection/hijacking, poisoned context/memory/tools/MCP, credential/identity abuse,
 cross-agent and supply-chain threats, exfiltration, excessive agency, and containment.
 
+[Enterprise Agent 13 — Agent Observability](enterprise-agent/13-agent-observability/README.md)
+teaches traces, trajectories, tool/state/context inspection, replay/debugging, OpenTelemetry,
+monitoring, dashboards, and cost/latency/outcome measurement.
+
 ## Advanced memory module
 
 [06 — Agent Memory](advanced/06-agent-memory/README.md) treats memory as a
