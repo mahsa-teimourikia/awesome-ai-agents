@@ -83,6 +83,37 @@ thresholds by risk tier. Re-run on model, prompt, tool, policy, retrieval, and
 dependency changes; sample production traces and feed confirmed failures back
 into the versioned dataset.
 
+## 6. Deep trajectory-first evaluation
+
+### Outcome and goal completion
+
+Score task success, correctness, grounded diagnosis, completion of all required deliverables, calibrated uncertainty, and whether the recommendation is supported by permitted evidence. Use exact/deterministic checks where possible and a human-calibrated rubric for genuinely semantic dimensions. A good outcome with unsupported evidence is not a reliable success.
+
+### Steps, planning, and tool use
+
+Evaluate the *path*: appropriate decomposition, dependency order, replan trigger, selected tool, typed arguments, interpretation of tool result, duplicate/unnecessary action, recovery, and terminal condition. Keep expected and forbidden tool/action lists in each case. A tool-use judge should inspect arguments and result handling—not only the tool name.
+
+### Efficiency, robustness, and safety
+
+Measure tokens, model/tool calls, p50/p95/p99 latency, queue/retry time, spend, and cost per successful policy-compliant task. Create perturbation cases for timeouts, malformed/empty results, changed UI/environment, ambiguous instructions, missing/conflicting evidence, unavailable tools, injected content, cross-tenant targets, expired approval, and budget exhaustion. Hard-fail unauthorized action, policy/tenant violation, unsafe data/credential exposure, or non-idempotent replay.
+
+## 7. State of the art and technology choices
+
+| Technology | Use for | Strength | Watch for |
+| --- | --- | --- | --- |
+| [OpenAI Evals](https://github.com/openai/evals) / [evaluation guidance](https://developers.openai.com/api/docs/guides/evaluation-best-practices) | Dataset and grader-driven evaluation | Flexible custom evaluators | You still own representative data, calibration, and safety gates |
+| [LangSmith](https://docs.smith.langchain.com/evaluation) | Trace-linked datasets, experiments, human/LLM feedback | Strong workflow for agent traces | Privacy and vendor deployment review |
+| [Arize Phoenix](https://docs.arize.com/phoenix) | Tracing, evaluation, retrieval/LLM analysis | Open-source-oriented observability/evaluation | Instrumentation and retention design |
+| [DeepEval](https://deepeval.com/) / [Ragas](https://docs.ragas.io/) | Test-like LLM/RAG metrics and custom cases | Developer-friendly assertions | Agent trajectory/policy tests need extra implementation |
+| [MLflow GenAI](https://mlflow.org/docs/latest/genai/eval-monitor/) | Experiment tracking, tracing, evaluation/monitoring | ML platform integration | Design task-specific graders and release gates |
+| Human review + LLM judge | Ambiguous quality and rubric scaling | Human calibration plus scale | Bias, agreement, cost, drift, and judge correlation |
+
+Recent agent-evaluation work emphasizes realistic and evolving environments, trajectory/tool granularity, safety/robustness, cost efficiency, and reproducible evaluation rather than one static final-answer benchmark. Use public benchmarks diagnostically, then build representative enterprise fixtures and shadow/canary monitoring.
+
+## 8. Comprehensive use-case extensions
+
+Extend the Northstar suite with: a tool timeout requiring bounded retry; an ambiguous “fix checkout” request requiring clarification; a changed deployment API schema requiring safe stop; a poison runbook requiring quarantine; a cross-tenant SLA lookup requiring deny; a replan after logs contradict the first hypothesis; and a high-cost trajectory that succeeds but fails the efficiency gate. For every case, record expected outcome/evidence/tools, forbidden actions, plan/replan expectation, budgets, human rubric, and failure class.
+
 ## Anti-patterns
 
 - judging only final text while ignoring tool calls;
@@ -108,3 +139,4 @@ into the versioned dataset.
 - [Anthropic: Demystifying evals for AI agents](https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents)
 - [LangSmith evaluation](https://docs.langchain.com/langsmith/evaluation)
 - [INSTRUCTEVAL](https://arxiv.org/abs/2306.04757)
+- [AgentBench](https://arxiv.org/abs/2308.03688) · [τ-bench](https://arxiv.org/abs/2406.12045) · [Agent evaluation survey](https://arxiv.org/abs/2508.10416)
