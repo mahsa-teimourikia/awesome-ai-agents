@@ -19,7 +19,7 @@ when the preceding design can no longer solve the problem reliably.
 
 | Level | Lessons | Outcome |
 | --- | --- | --- |
-| Beginner | AI agent foundations, agent loop, workflow selection, and agent development frameworks | Build a bounded evidence-gathering agent and understand what the runtime owns. |
+| Beginner | AI agent foundations, agent loop, workflow selection, agent development frameworks, and computer-using agents | Build a bounded evidence-gathering or UI-operating agent and understand what the runtime owns. |
 | Intermediate | Tool engineering, state, approvals, guardrails, evaluation, trajectory economics, planning and task decomposition | Turn an agent into a controlled, measurable system that can pursue bounded multi-step work. |
 | Advanced | Teams, framework comparisons, hybrid routing, capstone | Justify when specialist coordination earns its added complexity. |
 
@@ -42,3 +42,10 @@ uses a dynamic Adaptive RAG research-agent scenario. Its notebook demonstrates
 goal contracts, DAG scheduling, planner/executor separation, checkpoints,
 bounded replanning, and safe terminal states; its co-located `lab.py` is a
 credential-free reference implementation.
+
+## Beginner computer-use module
+
+[05 — Computer-Using Agents](beginner/05-computer-using-agents/README.md) teaches
+browser, GUI, OS, and mobile interaction boundaries using a simulated support
+portal. Its notebook and lab cover visual grounding, screenshot understanding,
+typed UI actions, sandboxing, confirmations, and safe recovery from UI drift.

@@ -75,7 +75,7 @@ Start with the least autonomous design that can reliably solve the task. More au
 
 Use the [AI Agents Learning Hub](#ai-agents-learning-hub) as the structured path:
 
-- **Beginner:** start with [AI Agents: Foundations](curriculum/beginner/01-ai-agent-foundations/README.md), then learn the agent loop, tool contracts, state, memory, and safe stopping; complete the research-assistant capstone.
+- **Beginner:** start with [AI Agents: Foundations](curriculum/beginner/01-ai-agent-foundations/README.md), then learn the agent loop, tool contracts, state, memory, [computer-use boundaries](curriculum/beginner/05-computer-using-agents/README.md), and safe stopping; complete the research-assistant capstone.
 - **Intermediate:** compare workflows and agents, engineer tools, state, approvals, guardrails, evaluation, trajectory economics, and [planning/task decomposition](curriculum/intermediate/07-planning-task-decomposition/README.md).
 - **Advanced:** design multi-agent teams, durable recovery, protocol boundaries, safety readiness, and the research-team capstone.
 
@@ -143,6 +143,11 @@ specialist composition solve different engineering problems. [Notebook 04: Tool 
 then refactors a dangerous broad `admin_api(command)` into narrow, validated
 tools with explicit retry, escalation, and stop rules.
 
+[Notebook 05: Computer-Using Agents](curriculum/beginner/05-computer-using-agents/computer_using_agents.ipynb)
+uses a simulated support portal to teach the observe → ground → validate → act →
+verify loop. It compares browser automation and visual computer use, then adds
+sandbox boundaries, confirmation gates, and bounded recovery after a UI change.
+
 [Notebook 05: Add state and memory with LangGraph](curriculum/intermediate/02-langgraph-state-memory/02_langgraph_state_memory.ipynb)
 turns the incident investigation into explicit state, nodes, and edges. It also
 shows how stale long-term memory can bias a new diagnosis unless memory is
@@ -186,7 +191,7 @@ cost/latency, and single-vs-multi-agent comparison.
 
 ## Test your knowledge
 
-Finished the guides? Open the [interactive AI Agents Knowledge Check](https://mahsa-teimourikia.github.io/awsome-ai-agents/quiz/)—48 multiple-answer questions covering foundations, the agent loop, scenario-based AgentOps investigation, tools and memory, workflows, multi-agent orchestration, and evaluation and safety.
+Finished the guides? Open the [interactive AI Agents Knowledge Check](https://mahsa-teimourikia.github.io/awsome-ai-agents/quiz/)—51 multiple-answer questions covering foundations, the agent loop, computer use, scenario-based AgentOps investigation, tools and memory, workflows, multi-agent orchestration, and evaluation and safety.
 
 The quiz:
 
