@@ -173,3 +173,11 @@ structured compression, cache isolation, and poison quarantine.
 browser, GUI, OS, and mobile interaction boundaries using a simulated support
 portal. Its notebook and lab cover visual grounding, screenshot understanding,
 typed UI actions, sandboxing, confirmations, and safe recovery from UI drift.
+
+## Enterprise coordination module
+
+[Enterprise Agent 16 — Agent Communication and Coordination](enterprise-agent/16-agent-communication-coordination/README.md)
+uses a cross-domain checkout incident to teach typed messaging, scoped shared
+state and blackboards, delegation, handoffs, negotiation, consensus, voting,
+debate, team discovery/allocation, conflict resolution, and disciplined
+single-agent-versus-team evaluation.

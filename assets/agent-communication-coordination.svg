@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="640" viewBox="0 0 1200 640" role="img" aria-labelledby="title desc">
+  <title id="title">Agent communication and coordination</title>
+  <desc id="desc">A supervisor routes a Northstar incident task to specialized agents that contribute verified artifacts to a shared blackboard, followed by critique, consensus, human approval, and a final recommendation.</desc>
+  <rect width="1200" height="640" rx="28" fill="#f7f8f4"/>
+  <style>.h{font:700 30px Arial;fill:#082640}.t{font:600 17px Arial;fill:#082640}.s{font:15px Arial;fill:#325267}.n{fill:#fff;stroke:#0b5f78;stroke-width:3}.o{fill:#fff4e8;stroke:#c66019;stroke-width:3}.l{stroke:#0b5f78;stroke-width:3;fill:none;marker-end:url(#a)}.d{stroke:#c66019;stroke-width:3;stroke-dasharray:8 7;fill:none;marker-end:url(#a)}</style>
+  <defs><marker id="a" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3z" fill="#0b5f78"/></marker></defs>
+  <text x="60" y="65" class="h">Agent communication &amp; coordination: evidence, ownership, bounded convergence</text>
+  <rect x="450" y="100" width="300" height="75" rx="18" class="o"/><text x="490" y="132" class="t">Coordinator / router</text><text x="485" y="157" class="s">assign task contracts &amp; budgets</text>
+  <rect x="80" y="250" width="250" height="85" rx="18" class="n"/><text x="115" y="283" class="t">Observability agent</text><text x="120" y="309" class="s">metrics + logs artifact</text>
+  <rect x="475" y="250" width="250" height="85" rx="18" class="n"/><text x="515" y="283" class="t">Deployment agent</text><text x="525" y="309" class="s">release evidence artifact</text>
+  <rect x="870" y="250" width="250" height="85" rx="18" class="n"/><text x="900" y="283" class="t">Impact agent</text><text x="910" y="309" class="s">customer/SLA artifact</text>
+  <rect x="365" y="410" width="470" height="90" rx="18" class="o"/><text x="495" y="445" class="t">Shared blackboard</text><text x="415" y="473" class="s">versioned, scoped, provenance-tagged claims—not raw chat</text>
+  <rect x="440" y="545" width="320" height="55" rx="16" class="n"/><text x="490" y="579" class="t">Critic → consensus → human gate</text>
+  <path d="M600 175 L205 250 M600 175 L600 250 M600 175 L995 250" class="l"/><path d="M205 335 L510 410 M600 335 L600 410 M995 335 L690 410" class="l"/><path d="M600 500 L600 545" class="d"/>
+</svg>
