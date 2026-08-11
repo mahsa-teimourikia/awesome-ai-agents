@@ -49,7 +49,7 @@ and stopping behavior before connecting a real provider or infrastructure.
 ```mermaid
 flowchart TD
     N1["01 Build the loop yourself"] --> N2["02 Bounded incident workflow"]
-    N2 --> N3["03 Rebuild with OpenAI Agents SDK"]
+    N2 --> N3["03 Agent development frameworks"]
     N3 --> N4["04 Tool engineering"]
     N4 --> N5["05 Stateful LangGraph investigation"]
     N5 --> N6["06 Human-in-the-loop and permissions"]
@@ -67,7 +67,7 @@ flowchart TD
 | --- | --- | --- | --- |
 | [01 Build the loop yourself](../curriculum/beginner/02-agent-loop/02_agent_loop.ipynb) | Manual control loop | Plain Python first | Tool calls, observations, state, stop conditions, and cost/tool budgets |
 | [02 Agent or workflow?](../curriculum/beginner/03-workflow-or-agent/03_workflow_or_agent.ipynb) | Deterministic workflow, bounded workflow, and bounded agent | Plain Python and typed contracts | Matching architecture to problem shape across status reports, runbook summaries, and regional checkout investigations |
-| [03 Rebuild with OpenAI Agents SDK](../curriculum/beginner/04-openai-agents-sdk/04_openai_agents_sdk.ipynb) | Managed agent runtime | OpenAI Agents SDK concepts | Comparing manual ownership with framework-managed turns, tool dispatch, sessions, and traces |
+| [03 Agent development frameworks](../curriculum/beginner/04-agent-development-frameworks/README.md) | Framework selection | OpenAI Agents SDK, Pydantic AI, LangGraph, Google ADK | Selecting a managed loop, typed output, durable approval graph, or bounded composition based on the scenario |
 | [04 Tool engineering](../curriculum/beginner/05-tool-engineering/05_tool_engineering.ipynb) | Tool boundary design | Function tools and validation | Replacing broad admin APIs with narrow schemas, approval boundaries, and retry rules |
 | [05 Stateful investigation graph](../curriculum/intermediate/01-langgraph-state-memory/01_langgraph_state_memory.ipynb) | Stateful agentic workflow | LangGraph | Graph state, conditional routing, confidence loops, thread state, and long-term memory risk |
 | [06 Human-in-the-loop and permissions](../curriculum/intermediate/02-human-approval-permissions/02_human_approval_permissions.ipynb) | Bounded action with approval | LangGraph/LangChain HITL concepts | Permission levels, persisted pause state, approval, modification, rejection, and audit records |

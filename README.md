@@ -135,9 +135,11 @@ bounded unhealthy-check workflow, and a dynamic European checkout investigation.
 Learners practice classifying problems as workflow, agentic workflow, agent, or
 multi-agent before choosing a framework.
 
-[Notebook 03: Rebuild with OpenAI Agents SDK](curriculum/beginner/04-openai-agents-sdk/04_openai_agents_sdk.ipynb)
-shows how a framework packages the same loop into managed turns, function-tool
-schemas, dispatch, sessions, and tracing. [Notebook 04: Tool engineering](curriculum/beginner/05-tool-engineering/05_tool_engineering.ipynb)
+[Notebook 03: Agent development frameworks](curriculum/beginner/04-agent-development-frameworks/README.md)
+uses the same Northstar Commerce scenario to compare OpenAI Agents SDK,
+Pydantic AI, LangGraph, and Google ADK. Its framework-specific notebooks show
+how managed turns, typed decisions, durable approval flows, and bounded
+specialist composition solve different engineering problems. [Notebook 04: Tool engineering](curriculum/beginner/05-tool-engineering/05_tool_engineering.ipynb)
 then refactors a dangerous broad `admin_api(command)` into narrow, validated
 tools with explicit retry, escalation, and stop rules.
 
