@@ -189,3 +189,11 @@ maps MCP, A2A, AG-UI, A2UI, UCP, and AP2 to the distinct tool/context,
 agent-delegation, user-interaction, dynamic-interface, commerce, and payment
 boundaries they address—while keeping identity, policy, authorization, and
 audit application-owned.
+
+## Advanced MCP module
+
+[Advanced 13 — MCP: Model Context Protocol](advanced/13-mcp-model-context-protocol/README.md)
+teaches MCP client/server architecture, capability negotiation, tools,
+resources, prompts, remote servers, OAuth-style authorization, gateways,
+enterprise controls, security risks, and safe agent integration as one layer
+of the broader interoperability ecosystem.
