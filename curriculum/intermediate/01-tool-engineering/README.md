@@ -136,6 +136,104 @@ Bind a single-use idempotency key to normalized intent, target, actor, and appro
 
 A model can invent a tool, fabricate arguments, or claim a result never returned. Mitigate this with an allowlisted catalog, strict dispatch validation, correlated call IDs, stable source IDs, and abstention when evidence is absent. Tool results can be stale, malformed, or adversarial. Treat search, browser, retrieved documents, and remote tool output as data—not authority.
 
+## 8. Deep dive — design a tool contract
+
+A schema is an interface agreement between four parties: the model, the runtime, the service owner, and the operator. Treat it like a public API rather than a convenience wrapper.
+
+```python
+class QueryLogsRequest(BaseModel):
+    service: Literal["checkout", "payments", "catalog"]
+    region: Literal["eu-west", "us-east"]
+    minutes: int = Field(ge=1, le=240)
+
+class EvidenceResult(BaseModel):
+    source_id: str
+    observed_at: datetime
+    data: dict[str, JsonValue]
+    freshness_seconds: int = Field(ge=0)
+    tenant_id: str
+```
+
+The model should supply only task parameters such as service and time window. The server should inject identity, tenant, locale, budget, approval token, and credential scope from trusted request context. Never let a model choose its own principal or a raw connection string.
+
+Version schemas deliberately (`query_logs.v2`) when changing semantics. Make errors typed and predictable: `InvalidArguments`, `PermissionDenied`, `NotFound`, `Conflict`, `RateLimited`, `Timeout`, and `Unavailable`. This lets the orchestrator choose repair, retry, re-plan, escalation, or stop rather than treating every failure as generic text.
+
+## 9. Deep dive — choose, discover, and compose tools
+
+### Selection and discovery
+
+Tool selection has two stages. First, deterministic code computes the eligible catalog from actor scopes, tenant, environment, risk tier, feature flags, and budget. Second, an agent may choose *within that catalog*. This is the difference between constrained routing and delegated authority.
+
+For a large catalog, disclose tools progressively: start with a namespace such as `observability.*`; load a detailed schema only after a read-only discovery step; impose an allowlist and a maximum number of disclosed tools. A discovery protocol such as MCP can describe tools, but remote metadata is still untrusted until the application approves it.
+
+### Composition patterns
+
+| Pattern | Use it when | Guardrails |
+| --- | --- | --- |
+| Sequential | each observation narrows the next query | propagate source IDs and stop if a prerequisite fails |
+| Parallel reads | calls are independent and read-only | concurrency cap, deadlines, partial-result policy |
+| Fan-out / fan-in | multiple scoped sources need normalization | merge typed facts, not raw prompt text |
+| Planner/executor | a plan is useful but action is bounded | validate every planned call at dispatch time |
+| Evaluator/optimizer | output can be checked against explicit criteria | limit iterations; do not make evaluators grant authority |
+
+Example: checkout status can determine whether log retrieval is needed (sequential); customer ticket count and deployment history can be gathered at the same time (parallel); an incident draft is produced only after validated evidence is merged (fan-in).
+
+## 10. Deep dive — controls for each execution surface
+
+### Search and retrieval tools
+
+Use source IDs, domains or corpus allowlists, result caps, time filters, and citation-ready metadata. Search snippets may contain indirect prompt injection; separate them from system instructions and require the final answer to cite the returned source IDs.
+
+### Database tools
+
+Prefer narrowly scoped stored procedures or query builders over unrestricted SQL. Bind tenant filters server-side, use parameterized queries, enforce row and execution-time limits, use read replicas where possible, and log a query fingerprint rather than sensitive parameters. An agent should not be able to choose another tenant ID or issue `DROP`, `UPDATE`, or arbitrary joins.
+
+### API tools
+
+Use per-tool credentials, short-lived scoped tokens, request/response schemas, deadlines, rate limits, circuit breakers, and a compatibility/version policy. Convert provider-specific failures to the typed error contract your agent runtime understands. For writes, use an idempotency key and capture an immutable receipt.
+
+### Code execution tools
+
+Run code in an isolated sandbox with CPU, memory, wall-clock, filesystem, package, and egress limits. Mount only required inputs read-only; collect a limited artifact set; never expose host credentials or production networks. A notebook or calculator tool is useful for analysis, not a bypass around policy.
+
+### Browser and computer tools
+
+Use only when an API is unavailable. Restrict domains and navigation, capture a reviewable trace, treat page content and screenshots as untrusted input, and pause for confirmation before form submission, purchase, deletion, or account changes. UI automation has weak idempotency: a timeout after clicking “submit” may leave the world changed.
+
+## 11. Deep dive — permission, approval, retries, and idempotency
+
+Least privilege means each tool receives only the scope required for one job, for one tenant, for a bounded period. Separate *read*, *propose*, and *execute* capabilities. The most useful default is that an agent can observe and prepare artifacts but cannot mutate production.
+
+An approval should bind an action digest containing the target, normalized arguments, actor, tenant, risk tier, evidence IDs, policy version, and expiry. If any field changes, invalidate the approval. Authenticate the reviewer in the application; never accept an approval identity supplied by a model or browser form without server-side verification.
+
+Retry only failures likely to become successful without changing intent. Use exponential backoff with jitter, a small attempt limit, a deadline, and a global budget. Do not retry permission failures, malformed arguments, policy denials, or poisoned results. For uncertain write outcomes, query by idempotency key before retrying. Return the first durable receipt for duplicate requests.
+
+## 12. Deep dive — result validation and tool hallucinations
+
+Validate a result at several layers:
+
+1. **Correlation:** result matches a known call ID and eligible tool.
+2. **Schema:** required fields, types, ranges, and explicit null semantics are valid.
+3. **Provenance:** source ID, query parameters, tenant, owner, and observed-at timestamp exist.
+4. **Freshness:** the result meets the task’s staleness limit.
+5. **Content safety:** retrieved text is data, not a command; detect and quarantine instruction-like payloads.
+6. **Business semantics:** evidence actually supports the proposed conclusion; a schema-valid object can still be wrong.
+
+Never send a model an invented tool result just to continue a conversation. If a tool is unavailable, return a typed observation that says so and route to a bounded fallback or escalation. Evaluate against adversarial fixtures: invented tool names, extra arguments, cross-tenant IDs, stale records, injected results, rate limits, duplicate keys, and post-write response loss.
+
+## 13. Worked design: Northstar checkout investigation
+
+1. An authenticated support operator opens incident `INC-482` for tenant `northstar`.
+2. The application filters to four read tools and one propose-only tool; `restart_service` is absent.
+3. The graph runs `get_service_status` first. If checkout is healthy, it stops with an evidence gap.
+4. If degraded, it reads logs and deployment history sequentially; ticket search runs in parallel with a regional metric query.
+5. A validation node checks source IDs, tenant, freshness, and injection signals before facts become model observations.
+6. The model returns a structured `IncidentPlan` containing evidence IDs and a *proposal only*.
+7. Deterministic policy checks risk, approval requirement, and idempotency. It may create an incident draft; it cannot restart service.
+8. An approval workflow, outside the agent, can later authorize an exact restart action and record the receipt.
+
+This is the practical rule: **the shortest reliable trajectory to a safe outcome wins**. A complex multi-tool plan is not better if a known workflow could have produced the same evidence more cheaply and predictably.
+
 ## Technologies and references
 
 | Need | Prominent options |
