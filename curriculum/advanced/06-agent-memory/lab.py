@@ -18,7 +18,7 @@ class MemoryStore:
         if item.namespace[0] != "tenant": raise PermissionError("Memory must be tenant scoped")
         if "ignore policy" in item.text.casefold(): raise ValueError("Untrusted instruction cannot become memory")
         self.records[item.id]=item; self.audit.append(f"write:{item.id}")
-    def retrieve(self, namespace: tuple[str,str], query_tags: set[str], limit: int=3) -> list[Memory]:
+    def retrieve(self, namespace: tuple[str,str], query_tags: set[str], limit: int=5) -> list[Memory]:
         candidates=[m for m in self.records.values() if m.namespace==namespace and not m.expires and query_tags.intersection(m.tags)]
         ranked=sorted(candidates,key=lambda m:(m.importance,m.confidence,m.created_at),reverse=True)[:limit]
         self.audit.append("read:"+",".join(m.id for m in ranked)); return ranked
@@ -40,9 +40,9 @@ def seed_store() -> MemoryStore:
     return s
 def run_demo() -> MemoryStore:
     s=seed_store(); ns=("tenant","acme")
-    before=s.retrieve(ns,{"payments","eu"}); assert "wrong-old" in [m.id for m in before]
+    before=s.retrieve(ns,{"payments","eu"}, limit=5); assert "wrong-old" in [m.id for m in before]
     s.consolidate("wrong-old",Memory("fact-2",MemoryType.SEMANTIC,ns,"EU payment incidents require evidence from provider errors and region configuration; do not assume one cause.",.95,8,now(),"postmortem",tags=("payments","eu")))
-    after=s.retrieve(ns,{"payments","eu"}); assert "wrong-old" not in [m.id for m in after]
+    after=s.retrieve(ns,{"payments","eu"}, limit=5); assert "wrong-old" not in [m.id for m in after]
     return s
 if __name__=="__main__":
  s=run_demo(); print("\n".join(s.audit))
