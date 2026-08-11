@@ -78,6 +78,14 @@ budgets; caching; bounded parallel and speculative work; dynamic model selection
 fallbacks; and cost-per-success evaluation.
 
 [Enterprise Agent 08 — Production Agent Architecture](enterprise-agent/08-production-agent-architecture/README.md)
+connects gateway, orchestrator, runtime, durable state, queues, tools/MCP, RAG,
+policy/identity, observability, evaluation, caching, scaling, recovery, and DR.
+
+[Enterprise Agent 09 — Agent Governance and Responsible AI](enterprise-agent/09-agent-governance-responsible-ai/README.md)
+operationalizes inventory, ownership, risk/autonomy/access/data classification, auditability,
+oversight, change management, incident response, revocation, and retirement.
+
+[Enterprise Agent 08 — Production Agent Architecture](enterprise-agent/08-production-agent-architecture/README.md)
 brings gateway, orchestrator, runtime, memory, tools/MCP, RAG, policy/identity,
 observability/evaluation, queues, checkpoints, caching, recovery, scaling, and DR together.
 
