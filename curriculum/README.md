@@ -20,7 +20,7 @@ when the preceding design can no longer solve the problem reliably.
 | Level | Lessons | Outcome |
 | --- | --- | --- |
 | Beginner | AI agent foundations, agent loop, workflow selection, agent development frameworks, and computer-using agents | Build a bounded evidence-gathering or UI-operating agent and understand what the runtime owns. |
-| Intermediate | Tool engineering, state, approvals, guardrails, evaluation, trajectory economics, planning and task decomposition | Turn an agent into a controlled, measurable system that can pursue bounded multi-step work. |
+| Intermediate | Tool engineering, context, state, approvals, guardrails, evaluation, trajectory economics, planning and task decomposition | Turn an agent into a controlled, measurable system that can pursue bounded multi-step work. |
 | Advanced | Teams, framework comparisons, hybrid routing, capstone | Justify when specialist coordination earns its added complexity. |
 
 ## Shared implementation and fixtures
@@ -37,11 +37,18 @@ additional experiment.
 
 ## Intermediate planning module
 
-[07 — Planning and task decomposition](intermediate/07-planning-task-decomposition/README.md)
+[08 — Planning and task decomposition](intermediate/08-planning-task-decomposition/README.md)
 uses a dynamic Adaptive RAG research-agent scenario. Its notebook demonstrates
 goal contracts, DAG scheduling, planner/executor separation, checkpoints,
 bounded replanning, and safe terminal states; its co-located `lab.py` is a
 credential-free reference implementation.
+
+## Intermediate context module
+
+[02 — Context Engineering for Agents](intermediate/02-context-engineering/README.md)
+teaches how to construct the smallest trustworthy context packet for each agent
+decision: stable policy, task state, just-in-time evidence, scoped memory,
+structured compression, cache isolation, and poison quarantine.
 
 ## Beginner computer-use module
 

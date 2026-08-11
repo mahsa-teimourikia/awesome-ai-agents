@@ -76,7 +76,7 @@ Start with the least autonomous design that can reliably solve the task. More au
 Use the [AI Agents Learning Hub](#ai-agents-learning-hub) as the structured path:
 
 - **Beginner:** start with [AI Agents: Foundations](curriculum/beginner/01-ai-agent-foundations/README.md), then learn the agent loop, tool contracts, state, memory, [computer-use boundaries](curriculum/beginner/05-computer-using-agents/README.md), and safe stopping; complete the research-assistant capstone.
-- **Intermediate:** compare workflows and agents, engineer tools, state, approvals, guardrails, evaluation, trajectory economics, and [planning/task decomposition](curriculum/intermediate/07-planning-task-decomposition/README.md).
+- **Intermediate:** compare workflows and agents, engineer tools, [context](curriculum/intermediate/02-context-engineering/README.md), state, approvals, guardrails, evaluation, trajectory economics, and [planning/task decomposition](curriculum/intermediate/08-planning-task-decomposition/README.md).
 - **Advanced:** design multi-agent teams, durable recovery, protocol boundaries, safety readiness, and the research-team capstone.
 
 The [curriculum map](curriculum/README.md) and
@@ -148,26 +148,31 @@ uses a simulated support portal to teach the observe → ground → validate →
 verify loop. It compares browser automation and visual computer use, then adds
 sandbox boundaries, confirmation gates, and bounded recovery after a UI change.
 
-[Notebook 05: Add state and memory with LangGraph](curriculum/intermediate/02-langgraph-state-memory/02_langgraph_state_memory.ipynb)
+[Notebook 05: Context engineering for agents](curriculum/intermediate/02-context-engineering/context_engineering.ipynb)
+shows how system policy, dynamic tool evidence, state, conversation, and scoped
+external memory form the smallest useful packet for one decision. It covers
+context routing, compression, caching, isolation, and poisoning defenses.
+
+[Notebook 06: Add state and memory with LangGraph](curriculum/intermediate/03-langgraph-state-memory/02_langgraph_state_memory.ipynb)
 turns the incident investigation into explicit state, nodes, and edges. It also
 shows how stale long-term memory can bias a new diagnosis unless memory is
 scoped, validated, auditable, and reversible.
 
-[Notebook 06: Human-in-the-loop and permissions](curriculum/intermediate/03-human-approval-permissions/03_human_approval_permissions.ipynb)
+[Notebook 07: Human-in-the-loop and permissions](curriculum/intermediate/04-human-approval-permissions/03_human_approval_permissions.ipynb)
 adds a restart action and shows how policy pauses execution before high-impact
 tools, then resumes from human approval, modification, or rejection.
 
-[Notebook 07: Guardrails and untrusted content](curriculum/intermediate/04-guardrails-untrusted-content/04_guardrails_untrusted_content.ipynb)
+[Notebook 08: Guardrails and untrusted content](curriculum/intermediate/05-guardrails-untrusted-content/04_guardrails_untrusted_content.ipynb)
 injects a malicious instruction into a retrieved runbook and teaches learners to
 treat retrieved documents as data while enforcing restart approval at the tool
 boundary.
 
-[Notebook 08: Agent evaluation](curriculum/intermediate/05-agent-evaluation/05_agent_evaluation.ipynb)
+[Notebook 09: Agent evaluation](curriculum/intermediate/06-agent-evaluation/05_agent_evaluation.ipynb)
 scores outcome, trajectory, and operational behavior, including forbidden tools
-and cost per successful task. [Notebook 09: Optimize the trajectory](curriculum/intermediate/06-trajectory-optimization/06_trajectory_optimization.ipynb)
+and cost per successful task. [Notebook 10: Optimize the trajectory](curriculum/intermediate/07-trajectory-optimization/06_trajectory_optimization.ipynb)
 then compares a wasteful successful run with a shorter reliable trajectory.
 
-[Notebook 10: Planning and task decomposition](curriculum/intermediate/07-planning-task-decomposition/planning_task_decomposition.ipynb)
+[Notebook 11: Planning and task decomposition](curriculum/intermediate/08-planning-task-decomposition/planning_task_decomposition.ipynb)
 turns an Adaptive RAG research request into a constrained dynamic execution graph.
 It introduces goal contracts, hierarchical plans, DAG scheduling, planner/executor
 separation, checkpoints, bounded replanning, failure recovery, and safe terminal
