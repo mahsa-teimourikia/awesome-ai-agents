@@ -89,6 +89,9 @@ oversight, change management, incident response, revocation, and retirement.
 brings gateway, orchestrator, runtime, memory, tools/MCP, RAG, policy/identity,
 observability/evaluation, queues, checkpoints, caching, recovery, scaling, and DR together.
 
+[Enterprise Agent 10 — Guardrails and Policy Enforcement](enterprise-agent/10-guardrails-policy-enforcement/README.md)
+implements layered input, context, tool, argument, action, output, and audit controls.
+
 ## Advanced memory module
 
 [06 — Agent Memory](advanced/06-agent-memory/README.md) treats memory as a
