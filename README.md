@@ -165,10 +165,10 @@ adds a scoped rollback proposal and shows how least-privilege policy pauses
 execution before high-impact tools, then resumes only after an authorized
 approve, modify, reject, or escalate decision is recorded.
 
-[Notebook 08: Guardrails and untrusted content](curriculum/intermediate/05-guardrails-untrusted-content/04_guardrails_untrusted_content.ipynb)
-injects a malicious instruction into a retrieved runbook and teaches learners to
-treat retrieved documents as data while enforcing restart approval at the tool
-boundary.
+[Notebook 04: Guardrails and untrusted content](curriculum/intermediate/04-guardrails-untrusted-content/guardrails_untrusted_content.ipynb)
+injects a malicious instruction into a retrieved runbook and teaches learners
+to isolate untrusted data, validate tenant-scoped structured tool calls, and
+enforce restart approval at the application boundary.
 
 [Notebook 09: Agent evaluation](curriculum/intermediate/06-agent-evaluation/05_agent_evaluation.ipynb)
 scores outcome, trajectory, and operational behavior, including forbidden tools
