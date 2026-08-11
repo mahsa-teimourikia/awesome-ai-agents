@@ -51,6 +51,10 @@ benchmark-aware evaluation.
 is a concise physical-world module on VLA models, navigation, manipulation,
 simulation, feedback, and independent safety constraints.
 
+[Enterprise Agent 06 — Multimodal Agents](enterprise-agent/06-multimodal-agents/README.md)
+covers vision, audio, video, documents, UI/screens, speech, sensors, multimodal
+memory, and tool use through a provenance-aware See → Hear → Reason → Plan → Act loop.
+
 ## Advanced memory module
 
 [06 — Agent Memory](advanced/06-agent-memory/README.md) treats memory as a
