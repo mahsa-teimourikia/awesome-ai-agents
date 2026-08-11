@@ -197,3 +197,11 @@ teaches MCP client/server architecture, capability negotiation, tools,
 resources, prompts, remote servers, OAuth-style authorization, gateways,
 enterprise controls, security risks, and safe agent integration as one layer
 of the broader interoperability ecosystem.
+
+## Advanced skills module
+
+[Advanced 14 — Agent Skills](advanced/14-agent-skills/README.md) introduces
+skills as portable, versioned procedural capability packages. It covers tools
+versus skills, descriptions, discovery, progressive loading, composition,
+libraries, routing, MCP/subagent integration, evaluation, and supply-chain
+governance.
