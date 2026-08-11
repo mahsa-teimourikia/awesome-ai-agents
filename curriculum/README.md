@@ -181,3 +181,11 @@ uses a cross-domain checkout incident to teach typed messaging, scoped shared
 state and blackboards, delegation, handoffs, negotiation, consensus, voting,
 debate, team discovery/allocation, conflict resolution, and disciplined
 single-agent-versus-team evaluation.
+
+## Enterprise protocol module
+
+[Enterprise Agent 17 — The Agent Protocol Stack](enterprise-agent/17-agent-protocol-stack/README.md)
+maps MCP, A2A, AG-UI, A2UI, UCP, and AP2 to the distinct tool/context,
+agent-delegation, user-interaction, dynamic-interface, commerce, and payment
+boundaries they address—while keeping identity, policy, authorization, and
+audit application-owned.
