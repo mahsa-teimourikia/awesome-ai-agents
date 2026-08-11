@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="590" viewBox="0 0 1200 590" role="img" aria-labelledby="title desc">
+  <title id="title">OpenAI Agents SDK managed incident triage</title>
+  <desc id="desc">A support request enters application policy, then an OpenAI Agents SDK incident investigator uses read-only tools and guardrails. Its trace is reviewed before a policy gate produces a safe recommendation or escalates.</desc>
+  <defs><style>.bg{fill:#f8faf8}.title{font:700 27px Arial,sans-serif;fill:#082b46}.sub{font:15px Arial,sans-serif;fill:#355467}.h{font:700 17px Arial,sans-serif;fill:#082b46}.t{font:14px Arial,sans-serif;fill:#24485d}.small{font:13px Arial,sans-serif;fill:#24485d}.arr{stroke:#1c6e8c;stroke-width:3;fill:none;marker-end:url(#a)}.warn{stroke:#b45a1b;stroke-width:3;fill:none;marker-end:url(#o)}.light{font:700 13px Arial,sans-serif;fill:#f7fbfc}</style><marker id="a" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0 0L0 6L8 3z" fill="#1c6e8c"/></marker><marker id="o" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0 0L0 6L8 3z" fill="#b45a1b"/></marker></defs>
+  <rect class="bg" width="1200" height="590" rx="24"/>
+  <text x="52" y="59" class="title">OpenAI Agents SDK: managed triage, application-owned safety</text><text x="52" y="87" class="sub">The SDK runs bounded agent turns; your application owns identity, permissions, budgets, external effects, and evaluation.</text>
+  <rect x="52" y="145" width="185" height="94" rx="14" fill="#e4f3f7" stroke="#1c6e8c" stroke-width="2"/><text x="76" y="180" class="h">Support request</text><text x="76" y="207" class="t">EU checkout failures</text>
+  <rect x="290" y="145" width="205" height="94" rx="14" fill="#f4f5f6" stroke="#62727d" stroke-width="2"/><text x="317" y="180" class="h">Application policy</text><text x="317" y="207" class="t">identity · tenant · budget</text>
+  <rect x="548" y="130" width="280" height="125" rx="17" fill="#eef3ff" stroke="#3768a7" stroke-width="3"/><text x="577" y="169" class="h">Incident Investigator</text><text x="577" y="195" class="t">instructions + model + tools</text><text x="577" y="219" class="t">Runner manages repeated turns</text>
+  <rect x="898" y="145" width="238" height="94" rx="14" fill="#e9f6ee" stroke="#2b7a53" stroke-width="2"/><text x="925" y="180" class="h">Cited recommendation</text><text x="925" y="207" class="t">prepare; do not execute</text>
+  <path class="arr" d="M237 192H290M495 192H548M828 192H898"/>
+  <rect x="420" y="325" width="155" height="82" rx="13" fill="#fff4e7" stroke="#b45a1b" stroke-width="2"/><text x="448" y="360" class="h">Status tool</text><text x="448" y="384" class="t">read-only</text>
+  <rect x="614" y="325" width="165" height="82" rx="13" fill="#fff4e7" stroke="#b45a1b" stroke-width="2"/><text x="638" y="360" class="h">Incidents tool</text><text x="638" y="384" class="t">read-only</text>
+  <rect x="818" y="325" width="160" height="82" rx="13" fill="#fff4e7" stroke="#b45a1b" stroke-width="2"/><text x="842" y="360" class="h">Runbook tool</text><text x="842" y="384" class="t">data, not instructions</text>
+  <path class="arr" d="M638 255C580 280 524 287 498 325M688 255V325M740 255C800 279 856 290 896 325"/>
+  <rect x="75" y="325" width="260" height="82" rx="13" fill="#fff0e9" stroke="#b45a1b" stroke-width="2"/><text x="103" y="360" class="h">Input + tool guardrails</text><text x="103" y="384" class="t">evidence required · deny writes</text>
+  <path class="warn" d="M335 366H420"/>
+  <rect x="252" y="478" width="690" height="66" rx="14" fill="#082b46"/><text x="278" y="518" class="light">TRACE: session → model turn → tool calls → observations → guardrails → final output</text><text x="850" y="518" class="light">redact + evaluate</text>
+</svg>
