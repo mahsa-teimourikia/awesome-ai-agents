@@ -81,6 +81,7 @@ Use the [AI Agents Learning Hub](#ai-agents-learning-hub) as the structured path
 - **Enterprise Agent:** complete [Designing Reliable Agentic Systems](curriculum/enterprise-agent/01-designing-reliable-agentic-systems/README.md) to synthesize autonomy, reliability, context, memory, security, latency, and determinism trade-offs; then build [Human + Multi-Agent Organizations](curriculum/enterprise-agent/02-human-multi-agent-organizations/README.md) with accountable delegation, supervision, and human approval.
 - **Enterprise Agent platform:** continue with [Agentic Enterprise Architecture](curriculum/enterprise-agent/03-agentic-enterprise-architecture/README.md) to operate agents, tools, MCP services, knowledge, identity, governance, observability, evaluation, and FinOps as a single ecosystem.
 - **Enterprise Agent delivery:** use [Agentic Software Engineering](curriculum/enterprise-agent/04-agentic-software-engineering/README.md) to operate repository-aware coding agents under sandbox, test, review, PR, CI/CD, and human merge controls.
+- **Enterprise Agent economics:** use [Cost, Latency, and Agent Economics](curriculum/enterprise-agent/07-cost-latency-agent-economics/README.md) to budget complete trajectories, route models dynamically, cache safely, and optimize cost per successful safe task.
 
 The [curriculum map](curriculum/README.md) and
 [AgentOps scenario guide](docs/agentops-lab.md) provide the source material

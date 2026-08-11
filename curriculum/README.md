@@ -22,7 +22,7 @@ when the preceding design can no longer solve the problem reliably.
 | Beginner | AI agent foundations, agent loop, workflow selection, agent development frameworks, and computer-using agents | Build a bounded evidence-gathering or UI-operating agent and understand what the runtime owns. |
 | Intermediate | Tool engineering, context, approvals, guardrails, evaluation, trajectory economics, planning, agentic RAG, and stateful LangGraph execution | Turn an agent into a controlled, measurable system that can pursue bounded multi-step work and recover safely. |
 | Advanced | Teams, framework comparisons, hybrid architecture/model routing, agent memory, world models, proactive agents, capstone | Build durable, governed systems that choose capable paths economically and whose knowledge survives safely across runs. |
-| Enterprise Agent | Designing Reliable Agentic Systems; Human + Multi-Agent Organizations | Synthesize architecture selection, governance, economics, security, privacy, evaluation, and human/agent operating models into release-ready systems. |
+| Enterprise Agent | Reliable systems, organizations, enterprise architecture, software engineering, embodied/multimodal agents, and agent economics | Synthesize architecture selection, governance, economics, security, privacy, evaluation, and human/agent operating models into release-ready systems. |
 
 [Advanced 07 — World Models and Environment Modeling](advanced/07-world-models-environment-modeling/README.md)
 teaches predictive internal representations, simulation, digital twins, model-based and
@@ -67,6 +67,11 @@ simulation, feedback, and independent safety constraints.
 [Enterprise Agent 06 — Multimodal Agents](enterprise-agent/06-multimodal-agents/README.md)
 covers vision, audio, video, documents, UI/screens, speech, sensors, multimodal
 memory, and tool use through a provenance-aware See → Hear → Reason → Plan → Act loop.
+
+[Enterprise Agent 07 — Cost, Latency, and Agent Economics](enterprise-agent/07-cost-latency-agent-economics/README.md)
+governs the full request trajectory: token, action, reasoning, spend, and latency
+budgets; caching; bounded parallel and speculative work; dynamic model selection;
+fallbacks; and cost-per-success evaluation.
 
 ## Advanced memory module
 
