@@ -76,7 +76,7 @@ Start with the least autonomous design that can reliably solve the task. More au
 Use the [AI Agents Learning Hub](#ai-agents-learning-hub) as the structured path:
 
 - **Beginner:** start with [AI Agents: Foundations](curriculum/beginner/01-ai-agent-foundations/README.md), then learn the agent loop, tool contracts, state, memory, and safe stopping; complete the research-assistant capstone.
-- **Intermediate:** compare workflows and agents, apply architecture patterns, and build evaluation and support-workflow gates.
+- **Intermediate:** compare workflows and agents, engineer tools, state, approvals, guardrails, evaluation, trajectory economics, and [planning/task decomposition](curriculum/intermediate/07-planning-task-decomposition/README.md).
 - **Advanced:** design multi-agent teams, durable recovery, protocol boundaries, safety readiness, and the research-team capstone.
 
 The [curriculum map](curriculum/README.md) and
@@ -162,18 +162,24 @@ scores outcome, trajectory, and operational behavior, including forbidden tools
 and cost per successful task. [Notebook 09: Optimize the trajectory](curriculum/intermediate/06-trajectory-optimization/06_trajectory_optimization.ipynb)
 then compares a wasteful successful run with a shorter reliable trajectory.
 
-[Notebook 10: When one agent becomes a team](curriculum/advanced/01-single-vs-multi-agent/01_single_vs_multi_agent.ipynb)
-compares a single-agent baseline with a specialist incident team. [Notebook 11:
+[Notebook 10: Planning and task decomposition](curriculum/intermediate/07-planning-task-decomposition/planning_task_decomposition.ipynb)
+turns an Adaptive RAG research request into a constrained dynamic execution graph.
+It introduces goal contracts, hierarchical plans, DAG scheduling, planner/executor
+separation, checkpoints, bounded replanning, failure recovery, and safe terminal
+states through a credential-free research-agent lab.
+
+[Notebook 11: When one agent becomes a team](curriculum/advanced/01-single-vs-multi-agent/01_single_vs_multi_agent.ipynb)
+compares a single-agent baseline with a specialist incident team. [Notebook 12:
 Multi-agent implementation with AutoGen](curriculum/advanced/02-autogen-selector-teams/02_autogen_selector_teams.ipynb)
 shows selector-style team coordination, ownership rules, and bounded failure-loop
 controls.
 
-[Notebook 12: Implement the same team in CrewAI](curriculum/advanced/03-crewai-teams/03_crewai_teams.ipynb)
+[Notebook 13: Implement the same team in CrewAI](curriculum/advanced/03-crewai-teams/03_crewai_teams.ipynb)
 maps the same incident team to CrewAI's Agents + Tasks + Crew model.
-[Notebook 13: Hybrid production architecture](curriculum/advanced/04-hybrid-production-architecture/04_hybrid_production_architecture.ipynb)
+[Notebook 14: Hybrid production architecture](curriculum/advanced/04-hybrid-production-architecture/04_hybrid_production_architecture.ipynb)
 wraps deterministic routing, bounded agents, specialist teams, policy checks,
 and human approval into one production-oriented design.
-[Notebook 14: Final capstone](curriculum/advanced/05-incident-response-capstone/05_incident_response_capstone.ipynb)
+[Notebook 15: Final capstone](curriculum/advanced/05-incident-response-capstone/05_incident_response_capstone.ipynb)
 asks learners to design and justify the full incident-response system
 experimentally: tools, state, permissions, HITL, guardrails, evaluation, traces,
 cost/latency, and single-vs-multi-agent comparison.
