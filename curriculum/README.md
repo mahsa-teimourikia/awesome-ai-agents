@@ -37,6 +37,11 @@ extends that synthesis from system architecture to organizational design: people
 purpose and authority, a manager agent coordinates scoped digital workers, specialists
 return attributable artifacts, and a human reviews consequential proposals.
 
+[Enterprise Agent 03 — Agentic Enterprise Architecture](enterprise-agent/03-agentic-enterprise-architecture/README.md)
+turns individual agents into a governed ecosystem with agent/tool/MCP registries,
+identity-bound discovery, shared knowledge boundaries, enterprise orchestration,
+observability, evaluation, and FinOps.
+
 ## Advanced memory module
 
 [06 — Agent Memory](advanced/06-agent-memory/README.md) treats memory as a
