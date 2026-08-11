@@ -1,6 +1,6 @@
 # 05 — Optimize the trajectory
 
-**Notebook:** [`14_agentops_optimize_trajectory.ipynb`](14_agentops_optimize_trajectory.ipynb)  
+**Notebook:** [`05_trajectory_optimization.ipynb`](05_trajectory_optimization.ipynb)
 **Run:** [`lab.py`](lab.py)
 
 Compare an expensive successful path with a shorter reliable one. Optimize

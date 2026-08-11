@@ -1,6 +1,6 @@
 # 04 — Tool engineering
 
-**Notebook:** [`09_agentops_tool_engineering.ipynb`](09_agentops_tool_engineering.ipynb)  
+**Notebook:** [`05_tool_engineering.ipynb`](05_tool_engineering.ipynb)
 **Run:** [`lab.py`](lab.py)
 
 Replace a broad administrative command with narrow, typed, authorized tools.

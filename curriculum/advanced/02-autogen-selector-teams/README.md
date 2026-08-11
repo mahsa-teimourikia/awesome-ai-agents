@@ -1,6 +1,6 @@
 # 02 — AutoGen selector teams
 
-**Notebook:** [`16_agentops_autogen_selector_team.ipynb`](16_agentops_autogen_selector_team.ipynb)  
+**Notebook:** [`02_autogen_selector_teams.ipynb`](02_autogen_selector_teams.ipynb)
 **Run:** [`lab.py`](lab.py)
 
 Explore selector-based group coordination, explicit ownership, termination

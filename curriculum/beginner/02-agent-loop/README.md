@@ -1,6 +1,6 @@
 # 02 — The Agent Loop
 
-**Notebook:** [`agent_loop.ipynb`](agent_loop.ipynb)
+**Notebook:** [`02_agent_loop.ipynb`](02_agent_loop.ipynb)
 **Run:** [`lab.py`](lab.py)
 
 An agent is not a magical prompt. It is a bounded execution loop in which a

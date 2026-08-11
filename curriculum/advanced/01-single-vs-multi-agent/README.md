@@ -1,6 +1,6 @@
 # 01 — When one agent becomes a team
 
-**Notebook:** [`15_agentops_when_one_agent_becomes_team.ipynb`](15_agentops_when_one_agent_becomes_team.ipynb)  
+**Notebook:** [`01_single_vs_multi_agent.ipynb`](01_single_vs_multi_agent.ipynb)
 **Run:** [`lab.py`](lab.py)
 
 Compare a single investigator with observability, deployment, customer-impact,

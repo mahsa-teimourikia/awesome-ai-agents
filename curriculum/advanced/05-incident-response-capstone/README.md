@@ -1,6 +1,6 @@
 # 05 — Incident-response capstone
 
-**Notebook:** [`19_agentops_final_capstone.ipynb`](19_agentops_final_capstone.ipynb)  
+**Notebook:** [`05_incident_response_capstone.ipynb`](05_incident_response_capstone.ipynb)
 **Run:** [`lab.py`](lab.py)
 
 At 09:04, European checkout conversion falls 31% while dashboards look mostly

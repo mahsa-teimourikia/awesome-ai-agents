@@ -1,6 +1,6 @@
 # 03 — Managed agent runtime
 
-**Notebook:** [`08_agentops_openai_agents_sdk.ipynb`](08_agentops_openai_agents_sdk.ipynb)  
+**Notebook:** [`04_openai_agents_sdk.ipynb`](04_openai_agents_sdk.ipynb)
 **Run:** [`lab.py`](lab.py)
 
 Rebuild the manual loop using the OpenAI Agents SDK mental model. Identify what

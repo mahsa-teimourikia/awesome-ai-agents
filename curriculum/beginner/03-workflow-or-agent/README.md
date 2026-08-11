@@ -2,7 +2,7 @@
 
 **Scenario:** European customers report checkout failures. Is a status report,
 runbook workflow, bounded investigator, or specialist team warranted?
-**Notebook:** [`07_agentops_workflow_or_agent.ipynb`](07_agentops_workflow_or_agent.ipynb)
+**Notebook:** [`03_workflow_or_agent.ipynb`](03_workflow_or_agent.ipynb)
 **Run:** [`lab.py`](lab.py)
 
 ## Outcomes

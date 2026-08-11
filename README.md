@@ -123,55 +123,55 @@ Every external system starts as a deterministic Python function so learners can
 study tool design, state, stop conditions, budgets, evaluation, and escalation
 without credentials or live infrastructure.
 
-Start with [Notebook 01: Build the loop yourself](curriculum/beginner/02-agent-loop/agent_loop.ipynb).
+Start with [AgentOps Notebook 01: Build the loop yourself](curriculum/beginner/02-agent-loop/02_agent_loop.ipynb).
 It implements the agent loop manually, then deliberately breaks the system with
 "keep investigating until you are completely sure" so learners see why
 `MAX_STEPS`, `MAX_TOOL_CALLS`, and `MAX_ESTIMATED_COST` are core production
 controls.
 
-Then continue to [Notebook 02: Agent or workflow?](curriculum/beginner/03-workflow-or-agent/07_agentops_workflow_or_agent.ipynb).
+Then continue to [Notebook 02: Agent or workflow?](curriculum/beginner/03-workflow-or-agent/03_workflow_or_agent.ipynb).
 It compares three checkout operations tasks: a deterministic status report, a
 bounded unhealthy-check workflow, and a dynamic European checkout investigation.
 Learners practice classifying problems as workflow, agentic workflow, agent, or
 multi-agent before choosing a framework.
 
-[Notebook 03: Rebuild with OpenAI Agents SDK](curriculum/beginner/04-openai-agents-sdk/08_agentops_openai_agents_sdk.ipynb)
+[Notebook 03: Rebuild with OpenAI Agents SDK](curriculum/beginner/04-openai-agents-sdk/04_openai_agents_sdk.ipynb)
 shows how a framework packages the same loop into managed turns, function-tool
-schemas, dispatch, sessions, and tracing. [Notebook 04: Tool engineering](curriculum/beginner/05-tool-engineering/09_agentops_tool_engineering.ipynb)
+schemas, dispatch, sessions, and tracing. [Notebook 04: Tool engineering](curriculum/beginner/05-tool-engineering/05_tool_engineering.ipynb)
 then refactors a dangerous broad `admin_api(command)` into narrow, validated
 tools with explicit retry, escalation, and stop rules.
 
-[Notebook 05: Add state and memory with LangGraph](curriculum/intermediate/01-langgraph-state-memory/10_agentops_langgraph_state_memory.ipynb)
+[Notebook 05: Add state and memory with LangGraph](curriculum/intermediate/01-langgraph-state-memory/01_langgraph_state_memory.ipynb)
 turns the incident investigation into explicit state, nodes, and edges. It also
 shows how stale long-term memory can bias a new diagnosis unless memory is
 scoped, validated, auditable, and reversible.
 
-[Notebook 06: Human-in-the-loop and permissions](curriculum/intermediate/02-human-approval-permissions/11_agentops_human_permissions.ipynb)
+[Notebook 06: Human-in-the-loop and permissions](curriculum/intermediate/02-human-approval-permissions/02_human_approval_permissions.ipynb)
 adds a restart action and shows how policy pauses execution before high-impact
 tools, then resumes from human approval, modification, or rejection.
 
-[Notebook 07: Guardrails and untrusted content](curriculum/intermediate/03-guardrails-untrusted-content/12_agentops_guardrails_untrusted_content.ipynb)
+[Notebook 07: Guardrails and untrusted content](curriculum/intermediate/03-guardrails-untrusted-content/03_guardrails_untrusted_content.ipynb)
 injects a malicious instruction into a retrieved runbook and teaches learners to
 treat retrieved documents as data while enforcing restart approval at the tool
 boundary.
 
-[Notebook 08: Agent evaluation](curriculum/intermediate/04-agent-evaluation/13_agentops_evaluate_trajectory.ipynb)
+[Notebook 08: Agent evaluation](curriculum/intermediate/04-agent-evaluation/04_agent_evaluation.ipynb)
 scores outcome, trajectory, and operational behavior, including forbidden tools
-and cost per successful task. [Notebook 09: Optimize the trajectory](curriculum/intermediate/05-trajectory-optimization/14_agentops_optimize_trajectory.ipynb)
+and cost per successful task. [Notebook 09: Optimize the trajectory](curriculum/intermediate/05-trajectory-optimization/05_trajectory_optimization.ipynb)
 then compares a wasteful successful run with a shorter reliable trajectory.
 
-[Notebook 10: When one agent becomes a team](curriculum/advanced/01-single-vs-multi-agent/15_agentops_when_one_agent_becomes_team.ipynb)
+[Notebook 10: When one agent becomes a team](curriculum/advanced/01-single-vs-multi-agent/01_single_vs_multi_agent.ipynb)
 compares a single-agent baseline with a specialist incident team. [Notebook 11:
-Multi-agent implementation with AutoGen](curriculum/advanced/02-autogen-selector-teams/16_agentops_autogen_selector_team.ipynb)
+Multi-agent implementation with AutoGen](curriculum/advanced/02-autogen-selector-teams/02_autogen_selector_teams.ipynb)
 shows selector-style team coordination, ownership rules, and bounded failure-loop
 controls.
 
-[Notebook 12: Implement the same team in CrewAI](curriculum/advanced/03-crewai-teams/17_agentops_crewai_team.ipynb)
+[Notebook 12: Implement the same team in CrewAI](curriculum/advanced/03-crewai-teams/03_crewai_teams.ipynb)
 maps the same incident team to CrewAI's Agents + Tasks + Crew model.
-[Notebook 13: Hybrid production architecture](curriculum/advanced/04-hybrid-production-architecture/18_agentops_hybrid_production_architecture.ipynb)
+[Notebook 13: Hybrid production architecture](curriculum/advanced/04-hybrid-production-architecture/04_hybrid_production_architecture.ipynb)
 wraps deterministic routing, bounded agents, specialist teams, policy checks,
 and human approval into one production-oriented design.
-[Notebook 14: Final capstone](curriculum/advanced/05-incident-response-capstone/19_agentops_final_capstone.ipynb)
+[Notebook 14: Final capstone](curriculum/advanced/05-incident-response-capstone/05_incident_response_capstone.ipynb)
 asks learners to design and justify the full incident-response system
 experimentally: tools, state, permissions, HITL, guardrails, evaluation, traces,
 cost/latency, and single-vs-multi-agent comparison.

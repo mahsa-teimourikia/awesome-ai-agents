@@ -2,8 +2,8 @@
 
 **Scenario:** A SaaS support team wants to reduce time-to-resolution for
 checkout questions without giving an untrusted system permission to change
-production data.  
-**Notebook:** [`agent_foundations.ipynb`](agent_foundations.ipynb)  
+production data.
+**Notebook:** [`01_agent_foundations.ipynb`](01_agent_foundations.ipynb)
 **Runnable lab:** [`lab.py`](lab.py)
 
 ## Outcomes
