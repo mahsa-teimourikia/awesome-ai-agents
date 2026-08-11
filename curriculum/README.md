@@ -28,6 +28,10 @@ when the preceding design can no longer solve the problem reliably.
 teaches predictive internal representations, simulation, digital twins, model-based and
 counterfactual planning, agent environment simulation, uncertainty, and reality checks.
 
+[Advanced 08 — Proactive Agents](advanced/08-proactive-agents/README.md) moves from
+request/response toward permission-bound persistent digital workers using events,
+schedules, monitoring, notifications, goal persistence, and safe suppression/escalation.
+
 ## Enterprise synthesis module
 
 [Enterprise Agent 01 — Designing Reliable Agentic Systems](enterprise-agent/01-designing-reliable-agentic-systems/README.md)
