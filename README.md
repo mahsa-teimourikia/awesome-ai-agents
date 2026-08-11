@@ -1,474 +1,187 @@
 # ✨ Awesome AI Agents & Agentic Workflows ✨
 
-> A curated, practical guide to understanding, building, evaluating, and securing AI agents and agentic workflows.
+> A notebook-first course and curated reference for building, evaluating, securing, and operating AI agents.
 
 [![Awesome](https://awesome.re/badge.svg)](https://awesome.re) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-AI agents combine a model with instructions, tools, memory or state, and a control loop so they can pursue a goal over multiple steps. Agentic workflows use many of the same components, but keep the path more explicitly defined in code. This collection focuses on primary sources, maintained open-source projects, and practical material that explains both the promise and the engineering trade-offs.
-
-## Contents
-
-- [AI Agents Learning Hub](#ai-agents-learning-hub)
-- [Agents explained](#agents-explained)
-- [Agent or workflow?](#agent-or-workflow)
-- [Learning roadmap](#learning-roadmap)
-- [Labs and implementation](#labs-and-implementation)
-- [AgentOps scenario notebooks](#agentops-scenario-notebooks)
-- [Test your knowledge](#test-your-knowledge)
-- [Learning paths](#learning-paths)
-- [Official educational resources](#official-educational-resources)
-- [Open-source frameworks](#open-source-frameworks)
-- [Tools, memory, and protocols](#tools-memory-and-protocols)
-- [Architecture patterns](#architecture-patterns)
-- [Multi-agent systems](#multi-agent-systems)
-- [Use-case playbook](#use-case-playbook)
-- [Evaluation and observability](#evaluation-and-observability)
-- [Security and production checklist](#security-and-production-checklist)
-- [Research and benchmarks](#research-and-benchmarks)
-- [Related awesome lists](#related-awesome-lists)
-- [Contributing](#contributing)
-
-## AI Agents Learning Hub
+## Start here: AI Agents Learning Hub
 
 **[Open the AI Agents Learning Hub →](https://mahsa-teimourikia.github.io/awsome-ai-agents/)**
 
-Use the Hub as the structured starting point: choose Beginner, Intermediate, or
-Advanced, read the linked theory, inspect the practical guide, and follow the
-Learn → Design → Check loop. The existing [Knowledge Check](quiz/index.html)
-remains available for a full 18-question assessment.
+The Hub is the main learning experience. Choose a level, select a topic, read
+the explanation, run the linked notebook and `lab.py`, then complete its
+checkpoint. It keeps progress in the browser and links every lesson to its
+source material.
 
-## Agents explained
+**[Take the full Knowledge Check →](https://mahsa-teimourikia.github.io/awsome-ai-agents/quiz/)**
 
-An agent repeatedly observes its state, decides what to do, takes an action through a tool or response, and uses the result to decide the next step. A production system surrounds this loop with policy enforcement, limits, tracing, evaluation, and human escalation.
+## What is an AI agent?
+
+An AI agent combines a model with instructions, tools, state or memory, and a
+control loop so it can pursue a goal over multiple steps. An agentic workflow
+uses similar parts but keeps more of the path explicit in code. Production
+systems add identity, policy, budgets, evaluation, tracing, recovery, and human
+oversight around the model.
 
 ![AI agent loop showing the user goal, model, tools, environment feedback, memory, guardrails, and evaluation](assets/agent-loop.svg)
 
-<sub>Diagram source: [Mermaid](assets/agent-loop.mmd).</sub>
+Start with the least autonomous design that reliably solves the task:
 
-The core components are:
+| Choose | When it fits |
+| --- | --- |
+| Single model call | A well-defined response needs no external action |
+| Deterministic workflow | Steps and branches are known and need auditability |
+| Agentic workflow | Code owns the path but selected decisions need model judgment |
+| Single agent | Tool feedback determines an open-ended path |
+| Multi-agent system | Distinct context, tools, parallelism, or independent review measurably help |
 
-- **Model** — interprets the goal, reasons over context, and chooses the next action.
-- **Instructions** — define the role, policies, success criteria, and behavior boundaries.
-- **Tools** — expose typed operations such as search, code execution, APIs, or database queries.
-- **State and memory** — retain task progress, observations, artifacts, and approved long-term knowledge.
-- **Control loop** — continues until success, a stop condition, a budget, or an escalation is reached.
-- **Guardrails and permissions** — constrain inputs, outputs, tool calls, identities, and side effects.
-- **Evaluation and tracing** — make trajectories inspectable and measure whether the task was actually completed.
+For a deeper explanation, read [What is an AI agent?](docs/what-is-an-ai-agent.md).
 
-Read [What is an AI agent?](docs/what-is-an-ai-agent.md) for the detailed model and its sources.
+## Explore the curriculum
 
-## Agent or workflow?
+Every topic has a co-located `README.md`, self-contained notebook, and
+credential-free `lab.py`. The notebooks are the primary theory-and-practice
+surface; scripts hold reusable deterministic implementation.
 
-Anthropic makes a useful distinction: **workflows** orchestrate models and tools through predefined code paths, while **agents** let the model dynamically direct its process and tool use.
+### Beginner — build the mental model
 
-| Choose | When it fits | Main advantage | Main cost |
-| --- | --- | --- | --- |
-| Single model call | The task is well-defined and needs no external action | Lowest latency and easiest testing | Limited adaptability |
-| Deterministic workflow | Steps and branches are known in advance | Predictable, auditable, and efficient | Brittle when the path cannot be anticipated |
-| Agentic workflow | Some steps are fixed, but selected decisions need model judgment | Balances control and flexibility | More states and failure paths |
-| Single agent | The path is open-ended and tool feedback determines the next step | Flexible generalization | Variable cost, latency, and behavior |
-| Multi-agent system | Work separates into roles with distinct context or tools | Parallelism and context isolation | Coordination overhead and compounded failures |
-
-Start with the least autonomous design that can reliably solve the task. More autonomy is justified when it produces measurable gains on representative evaluations, not merely a more impressive demo.
-
-## Learning roadmap
-
-Use the [AI Agents Learning Hub](#ai-agents-learning-hub) as the structured path:
-
-- **Beginner:** start with [AI Agents: Foundations](curriculum/beginner/01-ai-agent-foundations/README.md), then learn the agent loop, tool contracts, state, memory, [computer-use boundaries](curriculum/beginner/05-computer-using-agents/README.md), and safe stopping; complete the research-assistant capstone.
-- **Intermediate:** compare workflows and agents, engineer tools, [context](curriculum/intermediate/02-context-engineering/README.md), state, approvals, guardrails, evaluation, trajectory economics, and [planning/task decomposition](curriculum/intermediate/08-planning-task-decomposition/README.md).
-- **Advanced:** design multi-agent teams, durable recovery, protocol boundaries, safety readiness, [agent memory](curriculum/advanced/06-agent-memory/README.md), [world models](curriculum/advanced/07-world-models-environment-modeling/README.md), [proactive agents](curriculum/advanced/08-proactive-agents/README.md), [model routing](curriculum/advanced/09-model-routing/README.md), [long-running agents](curriculum/advanced/10-long-running-asynchronous-agents/README.md), [MCP: Model Context Protocol](curriculum/advanced/13-mcp-model-context-protocol/README.md), [Agent Skills](curriculum/advanced/14-agent-skills/README.md), and the research-team capstone.
-- **Enterprise Agent:** complete [Designing Reliable Agentic Systems](curriculum/enterprise-agent/01-designing-reliable-agentic-systems/README.md) to synthesize autonomy, reliability, context, memory, security, latency, and determinism trade-offs; then build [Human + Multi-Agent Organizations](curriculum/enterprise-agent/02-human-multi-agent-organizations/README.md) with accountable delegation, supervision, and human approval.
-- **Enterprise Agent platform:** continue with [Agentic Enterprise Architecture](curriculum/enterprise-agent/03-agentic-enterprise-architecture/README.md) to operate agents, tools, MCP services, knowledge, identity, governance, observability, evaluation, and FinOps as a single ecosystem.
-- **Enterprise Agent delivery:** use [Agentic Software Engineering](curriculum/enterprise-agent/04-agentic-software-engineering/README.md) to operate repository-aware coding agents under sandbox, test, review, PR, CI/CD, and human merge controls.
-- **Enterprise Agent economics:** use [Cost, Latency, and Agent Economics](curriculum/enterprise-agent/07-cost-latency-agent-economics/README.md) to budget complete trajectories, route models dynamically, cache safely, and optimize cost per successful safe task.
-- **Enterprise Agent operations:** use [Production Agent Architecture](curriculum/enterprise-agent/08-production-agent-architecture/README.md) to assemble gateways, orchestration, durable state, queues, tool/knowledge boundaries, observability, autoscaling, and disaster recovery into one operable system.
-- **Enterprise Agent governance:** use [Agent Governance and Responsible AI](curriculum/enterprise-agent/09-agent-governance-responsible-ai/README.md) to operate accountable, auditable, revocable agents through their full lifecycle.
-- **Enterprise Agent guardrails:** use [Guardrails and Policy Enforcement](curriculum/enterprise-agent/10-guardrails-policy-enforcement/README.md) for defense-in-depth controls around every agent boundary.
-- **Enterprise Agent identity:** use [Agent Identity and Authorization](curriculum/enterprise-agent/11-agent-identity-authorization/README.md) to grant agents narrow, short-lived, attributable authority for real transactions.
-- **Enterprise Agent security:** use [Agent Security](curriculum/enterprise-agent/12-agent-security/README.md) to threat-model and contain agent-specific attacks across context, memory, tools, identity, peers, and supply chain.
-
-The [curriculum map](curriculum/README.md) and
-[AgentOps scenario guide](docs/agentops-lab.md) provide the source material
-behind each level.
-
-## Labs and implementation
-
-The [AgentOps curriculum](curriculum/README.md) is the front-and-center lab
-experience. Use them as the canonical training path because they combine theory,
-architecture diagrams, implementation walkthroughs, deliberate failure cases,
-evaluation output, and exercises. The shared
-[Python implementation modules](curriculum/advanced/05-incident-response-capstone/agentops_lab/) remain
-dependency-light and runnable without API keys except for optional provider or
-LangGraph extensions.
-
-The labs also include a [provider and LangGraph setup guide](docs/provider-guide.md)
-and lesson-specific checkpoint prompts in the Hub. Start with deterministic
-stubs, then swap in a provider adapter only after the policy and evaluation
-tests are in place.
-
-Notebook JSON is validated in CI, and provider seams for the OpenAI Agents SDK
-and LangGraph are included under [`curriculum/shared/providers/`](curriculum/shared/providers/). These
-examples intentionally keep credentials and side effects outside the learning
-artifacts.
-
-## AgentOps notebook-first scenario track
-
-[AgentOps Lab](docs/agentops-lab.md) is a scenario-based notebook track
-based on the design argument in One+i's
-[Building AI Agents: From Loops to Teams](https://www.linkedin.com/pulse/building-ai-agents-from-loops-teams-oneplusi-y3atc/):
-start with the least autonomous architecture that reliably solves the problem,
-then add agentic behavior only when the scenario proves it needs runtime
-adaptation.
-
-The notebooks are the reference material for both theory and practice. Start
-from the [AgentOps notebook track map](curriculum/README.md), then use the
-linked Python modules when you want to inspect or extend implementation details.
-
-The fictional business problem is an AI Operations Analyst for a SaaS company:
-customers are reporting checkout failures, and the assistant must investigate
-service health, incident records, and runbooks before advising the support team.
-Every external system starts as a deterministic Python function so learners can
-study tool design, state, stop conditions, budgets, evaluation, and escalation
-without credentials or live infrastructure.
-
-Start with [AgentOps Notebook 01: Build the loop yourself](curriculum/beginner/02-agent-loop/02_agent_loop.ipynb).
-It implements the agent loop manually, then deliberately breaks the system with
-"keep investigating until you are completely sure" so learners see why
-`MAX_STEPS`, `MAX_TOOL_CALLS`, and `MAX_ESTIMATED_COST` are core production
-controls.
-
-Then continue to [Notebook 02: Agent or workflow?](curriculum/beginner/03-workflow-or-agent/03_workflow_or_agent.ipynb).
-It compares three checkout operations tasks: a deterministic status report, a
-bounded unhealthy-check workflow, and a dynamic European checkout investigation.
-Learners practice classifying problems as workflow, agentic workflow, agent, or
-multi-agent before choosing a framework.
-
-[Notebook 03: Agent development frameworks](curriculum/beginner/04-agent-development-frameworks/README.md)
-uses the same Northstar Commerce scenario to compare OpenAI Agents SDK,
-Pydantic AI, LangGraph, and Google ADK. Its framework-specific notebooks show
-how managed turns, typed decisions, durable approval flows, and bounded
-specialist composition solve different engineering problems. [Notebook 04: Tool engineering](curriculum/intermediate/01-tool-engineering/tool_engineering.ipynb)
-then refactors a dangerous broad `admin_api(command)` into narrow, validated
-tools with explicit retry, escalation, and stop rules.
-
-[Notebook 05: Computer-Using Agents](curriculum/beginner/05-computer-using-agents/computer_using_agents.ipynb)
-uses a simulated support portal to teach the observe → ground → validate → act →
-verify loop. It compares browser automation and visual computer use, then adds
-sandbox boundaries, confirmation gates, and bounded recovery after a UI change.
-
-[Notebook 05: Context engineering for agents](curriculum/intermediate/02-context-engineering/context_engineering.ipynb)
-shows how system policy, dynamic tool evidence, state, conversation, and scoped
-external memory form the smallest useful packet for one decision. It covers
-context routing, compression, caching, isolation, and poisoning defenses.
-
-[Notebook 10: LangGraph state, persistence, and memory](curriculum/intermediate/10-langgraph-state-memory/langgraph_state_memory.ipynb)
-is the final intermediate module. It turns the incident investigation into
-explicit state, nodes, conditional edges, durable checkpoints, safe recovery,
-approval pauses, and governed cross-thread memory. It also shows how stale
-long-term memory can bias a new diagnosis unless it is scoped, verified,
-auditable, and reversible.
-
-[Notebook 03: Human approval and permissions](curriculum/intermediate/03-human-approval-permissions/human_approval_permissions.ipynb)
-adds a scoped rollback proposal and shows how least-privilege policy pauses
-execution before high-impact tools, then resumes only after an authorized
-approve, modify, reject, or escalate decision is recorded.
-
-[Notebook 04: Guardrails and untrusted content](curriculum/intermediate/04-guardrails-untrusted-content/guardrails_untrusted_content.ipynb)
-injects a malicious instruction into a retrieved runbook and teaches learners
-to isolate untrusted data, validate tenant-scoped structured tool calls, and
-enforce restart approval at the application boundary.
-
-[Notebook 05: Agent evaluation](curriculum/intermediate/05-agent-evaluation/agent_evaluation.ipynb)
-scores outcome, trajectory, safety, and operational behavior, including
-forbidden tools and cost per successful task. [Notebook 06: Optimize the trajectory](curriculum/intermediate/06-trajectory-optimization/trajectory_optimization.ipynb)
-then compares a wasteful successful run with a shorter reliable trajectory.
-
-[Notebook 11: Planning and task decomposition](curriculum/intermediate/08-planning-task-decomposition/planning_task_decomposition.ipynb)
-turns an Adaptive RAG research request into a constrained dynamic execution graph.
-It introduces goal contracts, hierarchical plans, DAG scheduling, planner/executor
-separation, checkpoints, bounded replanning, failure recovery, and safe terminal
-states through a credential-free research-agent lab.
-
-[Notebook 11: When one agent becomes a team](curriculum/advanced/01-single-vs-multi-agent/single_vs_multi_agent.ipynb)
-compares a single-agent baseline with a specialist incident team. [Notebook 12:
-Multi-agent implementation with AutoGen](curriculum/advanced/02-autogen-selector-teams/02_autogen_selector_teams.ipynb)
-shows selector-style team coordination, ownership rules, and bounded failure-loop
-controls.
-
-[Notebook 13: Implement the same team in CrewAI](curriculum/advanced/03-crewai-teams/03_crewai_teams.ipynb)
-maps the same incident team to CrewAI's Agents + Tasks + Crew model.
-[Notebook 14: Hybrid production architecture](curriculum/advanced/04-hybrid-production-architecture/04_hybrid_production_architecture.ipynb)
-wraps deterministic routing, bounded agents, specialist teams, policy checks,
-and human approval into one production-oriented design.
-[Notebook 15: Final capstone](curriculum/advanced/05-incident-response-capstone/05_incident_response_capstone.ipynb)
-asks learners to design and justify the full incident-response system
-experimentally: tools, state, permissions, HITL, guardrails, evaluation, traces,
-cost/latency, and single-vs-multi-agent comparison.
-
-## Test your knowledge
-
-Finished the guides? Open the [interactive AI Agents Knowledge Check](https://mahsa-teimourikia.github.io/awsome-ai-agents/quiz/)—51 multiple-answer questions covering foundations, the agent loop, computer use, scenario-based AgentOps investigation, tools and memory, workflows, multi-agent orchestration, and evaluation and safety.
-
-The quiz:
-
-- grades the entire test with exact multi-answer scoring;
-- reports scores by technical area;
-- reveals correct answers only when requested;
-- explains each answer and links back to source material; and
-- stores progress only in the learner's browser.
-
-It is dependency-free and ready for GitHub Pages using the included workflow.
-
-## Learning paths
-
-### Foundations
-
-- [A Practical Guide to Building AI Agents](https://openai.com/business/guides-and-resources/a-practical-guide-to-building-ai-agents/) — model, tools, instructions, orchestration, guardrails, and a practical adoption path.
-- [Building effective agents](https://www.anthropic.com/engineering/building-effective-agents) — a clear taxonomy of workflows and agents, with composable patterns and design advice.
-- [ReAct: Synergizing Reasoning and Acting](https://arxiv.org/abs/2210.03629) — foundational reasoning-and-action loop that interleaves thought, action, and observation.
-- [Hugging Face Agents Course](https://huggingface.co/learn/agents-course/) — free course covering agent fundamentals, frameworks, use cases, and a final project.
-- [Lilian Weng: LLM Powered Autonomous Agents](https://lilianweng.github.io/posts/2023-06-23-agent/) — influential technical overview of planning, memory, and tool use.
-
-### Build a first agent
-
-- [OpenAI Agents SDK quickstart](https://openai.github.io/openai-agents-python/quickstart/) — create agents, add tools, use handoffs, and inspect traces.
-- [LangGraph quickstart](https://langchain-ai.github.io/langgraph/tutorials/introduction/) — build a stateful graph and introduce persistence and human-in-the-loop control.
-- [smolagents: building good agents](https://huggingface.co/docs/smolagents/main/en/tutorials/building_good_agents) — concise tutorial on tool descriptions, task decomposition, and agent design.
-- [AutoGen AgentChat tutorial](https://microsoft.github.io/autogen/stable/user-guide/agentchat-user-guide/tutorial/index.html) — high-level API for single- and multi-agent applications.
-- [Google Agent Development Kit](https://google.github.io/adk-docs/) — official tutorials for agents, tools, sessions, workflows, evaluation, and deployment.
-
-### Engineer for production
-
-- [Agent architecture patterns](docs/architecture-patterns.md) — routing, parallelization, orchestrator-worker, evaluator-optimizer, and human approval.
-- [Multi-agent systems](docs/multi-agent-systems.md) — teams, topologies, communication contracts, delegation, shared state, and when not to add another agent.
-- [Evaluation and security](docs/evaluation-and-security.md) — trajectory evaluation, outcome checks, threat modeling, and release gates.
-- [OpenAI Agents SDK: running agents](https://openai.github.io/openai-agents-python/running_agents/) — lifecycle, turns, exceptions, sessions, and run configuration.
-- [LangGraph durable execution](https://langchain-ai.github.io/langgraph/concepts/durable_execution/) — persistence and replay for long-running workflows.
-- [Anthropic: demystifying evals for AI agents](https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents) — practical guidance for tasks, graders, transcripts, and evaluation design.
-
-## Appendix: curated references and resources
-
-The following sections collect optional official documentation, open-source
-frameworks, protocols, benchmarks, and research to deepen the Hub curriculum.
-
-## Official educational resources
-
-### OpenAI
-
-- [Agents SDK documentation](https://openai.github.io/openai-agents-python/) — official Python SDK with agents, tools, handoffs, sessions, guardrails, human-in-the-loop, and tracing.
-- [Agents SDK examples](https://openai.github.io/openai-agents-python/examples/) — runnable examples from hello world through orchestration and research agents.
-- [Tools](https://openai.github.io/openai-agents-python/tools/) — hosted tools, function tools, agents-as-tools, and tool behavior.
-- [Handoffs](https://openai.github.io/openai-agents-python/handoffs/) — delegate a conversation or task to a specialist agent.
-- [Guardrails](https://openai.github.io/openai-agents-python/guardrails/) — input, output, and tool guardrails.
-- [Tracing](https://openai.github.io/openai-agents-python/tracing/) — traces, spans, processors, and sensitive-data controls.
-
-### Anthropic
-
-- [Building effective agents](https://www.anthropic.com/engineering/building-effective-agents) — design principles and workflow patterns.
-- [Building a multi-agent research system](https://www.anthropic.com/engineering/multi-agent-research-system) — lessons from an orchestrator-worker research system.
-- [Writing tools for agents](https://www.anthropic.com/engineering/writing-tools-for-agents) — designing tool interfaces and descriptions for reliable use.
-- [Demystifying evals for AI agents](https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents) — task suites, graders, transcripts, and common failure modes.
-- [Measuring AI agent autonomy in practice](https://www.anthropic.com/research/measuring-agent-autonomy) — framework for describing and measuring agent autonomy.
-
-### Other official learning hubs
-
-- [LangGraph documentation](https://langchain-ai.github.io/langgraph/) — low-level orchestration for long-running, stateful agents.
-- [Microsoft AutoGen documentation](https://microsoft.github.io/autogen/stable/index.html) — AgentChat and event-driven Core APIs.
-- [Hugging Face smolagents documentation](https://huggingface.co/docs/smolagents/main/index) — compact agent framework with code and tool-calling agents.
-- [Semantic Kernel agent framework](https://learn.microsoft.com/en-us/semantic-kernel/frameworks/agent/) — Microsoft documentation for agents and orchestration.
-- [LlamaIndex agents](https://docs.llamaindex.ai/en/stable/module_guides/deploying/agents/) — agents that use tools over data and services.
-- [CrewAI documentation](https://docs.crewai.com/) — agents, crews, flows, tools, memory, and production operations.
-- [PydanticAI documentation](https://ai.pydantic.dev/) — typed Python agent framework built around dependency injection and structured outputs.
-
-## Open-source frameworks
-
-### General-purpose agent frameworks
-
-- [OpenAI Agents SDK](https://github.com/openai/openai-agents-python) — lightweight primitives for agents, tools, handoffs, guardrails, sessions, and tracing.
-- [LangGraph](https://github.com/langchain-ai/langgraph) — graph-based runtime for durable, stateful, human-in-the-loop agents.
-- [AutoGen](https://github.com/microsoft/autogen) — layered framework for conversational and event-driven multi-agent applications.
-- [Semantic Kernel](https://github.com/microsoft/semantic-kernel) — enterprise SDK for model, plugin, memory, process, and agent orchestration.
-- [Google ADK](https://github.com/google/adk-python) — code-first toolkit for developing and evaluating sophisticated agents.
-- [LlamaIndex](https://github.com/run-llama/llama_index) — data-centric agents, workflows, retrieval, and tool abstractions.
-- [PydanticAI](https://github.com/pydantic/pydantic-ai) — typed, model-agnostic agent framework for Python.
-- [smolagents](https://github.com/huggingface/smolagents) — minimal framework supporting code agents, tool-calling agents, and sandboxed execution.
-
-### Multi-agent and workflow-focused
-
-- [CrewAI](https://github.com/crewAIInc/crewAI) — role-based agents plus event-driven flows.
-- [Agno](https://github.com/agno-agi/agno) — agent teams, workflows, memory, knowledge, and runtime tooling.
-- [Mastra](https://github.com/mastra-ai/mastra) — TypeScript framework for agents, workflows, RAG, memory, and evals.
-- [BeeAI Framework](https://github.com/i-am-bee/beeai-framework) — TypeScript/Python framework for production agent workflows.
-- [Microsoft Agent Framework](https://github.com/microsoft/agent-framework) — framework for agents and graph-based workflows.
-
-### Coding and computer-use agents
-
-- [SWE-agent](https://github.com/SWE-agent/SWE-agent) — research system that turns language models into software-engineering agents.
-- [OpenHands](https://github.com/All-Hands-AI/OpenHands) — open platform for software development agents.
-- [browser-use](https://github.com/browser-use/browser-use) — browser automation designed for AI agents.
-- [Stagehand](https://github.com/browserbase/stagehand) — browser automation framework mixing code and natural-language actions.
-- [OSWorld](https://github.com/xlang-ai/OSWorld) — environment and benchmark for multimodal computer-use agents.
-
-### Development, tracing, and evaluation
-
-- [Langfuse](https://github.com/langfuse/langfuse) — open-source traces, prompts, evaluations, and metrics.
-- [Arize Phoenix](https://github.com/Arize-ai/phoenix) — open-source tracing and evaluation for LLM applications and agents.
-- [OpenLIT](https://github.com/openlit/openlit) — OpenTelemetry-native observability and evaluation.
-- [AgentOps](https://github.com/AgentOps-AI/agentops) — session replay, costs, errors, and agent monitoring.
-- [Inspect AI](https://github.com/UKGovernmentBEIS/inspect_ai) — evaluation framework from the UK AI Security Institute.
-- [DeepEval](https://github.com/confident-ai/deepeval) — test framework with metrics for LLM applications and agents.
-
-## Tools, memory, and protocols
-
-### Tool design and execution
-
-- [Model Context Protocol](https://modelcontextprotocol.io/) — open protocol for connecting AI applications to tools and contextual data.
-- [MCP specification](https://github.com/modelcontextprotocol/specification) — source specification and schema.
-- [Composio](https://github.com/ComposioHQ/composio) — integrations and managed authentication for agent tools.
-- [ToolUniverse](https://github.com/mims-harvard/ToolUniverse) — tool ecosystem for scientific AI agents.
-- [E2B](https://github.com/e2b-dev/E2B) — isolated cloud sandboxes for executing agent-generated code.
-- [Daytona](https://github.com/daytonaio/daytona) — secure infrastructure for running AI-generated code.
-
-Good tools have unambiguous names, narrow responsibilities, typed schemas, useful error messages, idempotency where possible, and explicit risk metadata. Treat every tool call as an untrusted request to a privileged subsystem.
-
-### State and memory
-
-- [LangGraph persistence](https://langchain-ai.github.io/langgraph/concepts/persistence/) — checkpoints, threads, state history, replay, and memory.
-- [Mem0](https://github.com/mem0ai/mem0) — memory layer for personalized AI applications.
-- [Letta](https://github.com/letta-ai/letta) — stateful agent platform influenced by the MemGPT research.
-- [Zep](https://github.com/getzep/zep) — context engineering and memory infrastructure.
-
-Separate **working state** needed for the current run from **long-term memory** that may affect future runs. Long-term writes should be validated, scoped to an identity, auditable, and reversible.
-
-### Agent-to-agent interoperability
-
-- [Agent2Agent Protocol](https://a2a-protocol.org/) — protocol for agents to discover capabilities, negotiate tasks, and exchange artifacts.
-- [A2A source](https://github.com/a2aproject/A2A) — specification, SDKs, and samples.
-- [MCP](https://modelcontextprotocol.io/) — primarily connects an AI application to context and tools; complementary to agent-to-agent protocols.
-
-## Architecture patterns
-
-| Pattern | Control | Best for | Watch for |
-| --- | --- | --- | --- |
-| Prompt chaining | Code | Fixed sequences with validation gates | Error propagation between steps |
-| Routing | Code/model boundary | Choosing one specialist path | Misroutes and overlapping categories |
-| Parallelization | Code | Independent subtasks or diverse opinions | Cost and merge conflicts |
-| Orchestrator-worker | Model + code | Unknown decomposition and synthesis | Delegation quality and context loss |
-| Evaluator-optimizer | Iterative model loop | Outputs with clear quality criteria | Infinite refinement and grader bias |
-| ReAct loop | Model | Open-ended tool use with feedback | Looping, bad tool calls, hidden state |
-| Human approval | Human boundary | High-impact or ambiguous actions | Approval fatigue and poor context |
-
-See [Agent architecture patterns](docs/architecture-patterns.md) for decision rules, flow descriptions, failure modes, and sources.
-
-## Multi-agent systems
-
-Multi-agent systems divide a task across specialized agents coordinated by code, a manager, a group-chat selector, or a graph. The most important design choice is ownership: does one manager retain the user-facing conversation, or does a handoff let a specialist take over?
-
-![Multi-agent team patterns showing manager delegation, peer handoffs, parallel workers, and a graph team](assets/multi-agent-patterns.svg)
-
-<sub>Diagram source: [Mermaid](assets/multi-agent-patterns.mmd).</sub>
-
-Use the [multi-agent systems guide](docs/multi-agent-systems.md) to choose a topology, define agent contracts, control context and state, design termination, and evaluate a team against a simpler single-agent baseline.
-
-Useful official references:
-
-- [OpenAI Agents SDK orchestration](https://openai.github.io/openai-agents-python/multi_agent/) — agents-as-tools, handoffs, code orchestration, and parallel agents.
-- [OpenAI Agents SDK tools](https://openai.github.io/openai-agents-python/tools/) — manager-style `Agent.as_tool()` orchestration.
-- [OpenAI Agents SDK handoffs](https://openai.github.io/openai-agents-python/handoffs/) — transfer control to a specialist.
-- [Anthropic: multi-agent research system](https://www.anthropic.com/engineering/multi-agent-research-system) — orchestrator-worker delegation and parallel research.
-- [AutoGen: group chat](https://microsoft.github.io/autogen/stable/user-guide/core-user-guide/design-patterns/group-chat.html) — selector/manager-driven team communication.
-- [AutoGen: teams](https://microsoft.github.io/autogen/dev/user-guide/agentchat-user-guide/tutorial/teams.html) — round-robin and team-based collaboration.
-
-## Use-case playbook
-
-| Use case | Starting design | Essential controls |
+| Step | Topic | Learn and run |
 | --- | --- | --- |
-| Customer support | Router → retrieval/tool workflow → escalation | Identity, grounding, policy checks, human handoff |
-| Research assistant | Planner or orchestrator → parallel search workers → synthesis | Source provenance, citation checks, time/cost budget |
-| Coding agent | Single agent with shell/editor/test tools | Sandbox, repository scope, tests, diff review, approval before publish |
-| Data analyst | Workflow with schema retrieval and read-only query tool | Query validation, row/column permissions, result verification |
-| Browser automation | State machine with model-selected actions | Domain allowlist, confirmation for transactions, screenshot/DOM trace |
-| Incident response | Deterministic runbook with agentic diagnosis | Read-only default, least privilege, immutable audit log, approvals |
-| Back-office operations | Event-driven workflow with bounded agent decisions | Idempotency, reconciliation, compensation, case escalation |
-| Personalized assistant | Single agent plus scoped long-term memory | Consent, tenant isolation, memory review and deletion |
+| 01 | [AI Agents: Foundations](curriculum/beginner/01-ai-agent-foundations/README.md) | From LLM to agentic system, reliability, autonomy, architecture anatomy |
+| 02 | [The Agent Loop](curriculum/beginner/02-agent-loop/README.md) | Observe → reason → act → recover; ReAct, planning, termination, harnesses |
+| 03 | [Workflow or Agent?](curriculum/beginner/03-workflow-or-agent/README.md) | Choose deterministic workflows, bounded agents, or teams |
+| 04 | [Agent Development Frameworks](curriculum/beginner/04-agent-development-frameworks/README.md) | Compare OpenAI Agents SDK, LangGraph, Google ADK, PydanticAI, CrewAI, and Microsoft Agent Framework |
+| 05 | [Computer-Using Agents](curriculum/beginner/05-computer-using-agents/README.md) | Browser, GUI, OS, visual grounding, sandboxing, and recovery |
 
-## Evaluation and observability
+### Intermediate — make agents dependable
 
-Measure the **outcome**, the **trajectory**, and the **operational envelope**:
+| Step | Topic | Learn and run |
+| --- | --- | --- |
+| 01 | [Tool Engineering](curriculum/intermediate/01-tool-engineering/README.md) | Schemas, routing, composition, failures, permissions, and least privilege |
+| 02 | [Context Engineering](curriculum/intermediate/02-context-engineering/README.md) | Dynamic context, compression, isolation, caching, and poisoning defenses |
+| 03 | [Human Approval and Permissions](curriculum/intermediate/03-human-approval-permissions/README.md) | Risk tiers, approvals, intervention, and scoped authority |
+| 04 | [Guardrails and Untrusted Content](curriculum/intermediate/04-guardrails-untrusted-content/README.md) | Prompt injection, tool validation, and trusted boundaries |
+| 05 | [Agent Evaluation](curriculum/intermediate/05-agent-evaluation/README.md) | Outcome, trajectory, tool, safety, robustness, and operational evaluation |
+| 06 | [Trajectory Optimization](curriculum/intermediate/06-trajectory-optimization/README.md) | Cost, latency, reliable shortest paths, and budgets |
+| 08 | [Planning and Task Decomposition](curriculum/intermediate/08-planning-task-decomposition/README.md) | Goal decomposition, DAGs, replanning, constraints, and recovery |
+| 09 | [Agentic RAG](curriculum/intermediate/09-agentic-rag/README.md) | Retrieval as an agent tool, adaptive search, grounding, and citations |
+| 10 | [LangGraph State, Persistence, and Memory](curriculum/intermediate/10-langgraph-state-memory/README.md) | Graph state, checkpoints, interrupts, recovery, and governed memory |
 
-- **Outcome:** task success, correctness, policy compliance, and artifact validity.
-- **Trajectory:** tool choice, argument accuracy, planning, recovery, grounding, and unnecessary steps.
-- **Operations:** latency, token/tool cost, loop length, failure rate, escalation rate, and side effects.
+### Advanced — scale intelligence and autonomy responsibly
 
-Useful resources:
+| Step | Topic | Learn and run |
+| --- | --- | --- |
+| 01 | [Single vs Multi-Agent Systems](curriculum/advanced/01-single-vs-multi-agent/README.md) | Topologies, coordination, and evidence-based team promotion |
+| 02 | [AutoGen Selector Teams](curriculum/advanced/02-autogen-selector-teams/README.md) | Selector-based collaboration and termination controls |
+| 03 | [CrewAI Teams](curriculum/advanced/03-crewai-teams/README.md) | Agents, tasks, crews, flows, and constrained collaboration |
+| 04 | [Hybrid Production Architecture](curriculum/advanced/04-hybrid-production-architecture/README.md) | Route tasks to workflows, agents, or teams with policy/approval controls |
+| 05 | [Incident Response Capstone](curriculum/advanced/05-incident-response-capstone/README.md) | End-to-end architecture, evaluation, observability, and trade-offs |
+| 06 | [Agent Memory](curriculum/advanced/06-agent-memory/README.md) | Working, episodic, semantic, procedural, and governed memory |
+| 07 | [World Models and Environment Modeling](curriculum/advanced/07-world-models-environment-modeling/README.md) | Simulation, counterfactuals, digital twins, and model-based planning |
+| 08 | [Proactive Agents](curriculum/advanced/08-proactive-agents/README.md) | Events, schedules, persistent goals, and permission boundaries |
+| 09 | [Model Routing](curriculum/advanced/09-model-routing/README.md) | Capability, cost, latency, fallback, and ensemble routing |
+| 10 | [Long-Running and Asynchronous Agents](curriculum/advanced/10-long-running-asynchronous-agents/README.md) | Jobs, pause/resume, checkpoints, queues, and durable execution |
+| 11 | [LLM-as-Judge and Agent Judges](curriculum/advanced/11-llm-as-judge-agent-judges/README.md) | Rubrics, pairwise judging, calibration, bias, and ensembles |
+| 12 | [Agent Benchmarks](curriculum/advanced/12-agent-benchmarks/README.md) | SWE-bench, WebArena, BrowserGym, GAIA, τ-bench, OSWorld, and enterprise benchmarks |
+| 13 | [MCP: Model Context Protocol](curriculum/advanced/13-mcp-model-context-protocol/README.md) | Tools, resources, prompts, gateways, security, and interoperability |
+| 14 | [Agent Skills](curriculum/advanced/14-agent-skills/README.md) | Procedural knowledge, dynamic loading, composition, MCP, and subagents |
 
-- [Anthropic: demystifying evals for AI agents](https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents) — a practical evaluation framework.
-- [OpenAI Agents SDK tracing](https://openai.github.io/openai-agents-python/tracing/) — inspect generations, tool calls, handoffs, and guardrails.
-- [OpenAI Evals](https://github.com/openai/evals) — open-source framework and registry for model/application evaluation.
-- [Inspect AI](https://inspect.aisi.org.uk/) — official documentation for the open-source evaluation framework.
-- [BFCL](https://gorilla.cs.berkeley.edu/leaderboard) — function-calling and agentic evaluation.
-- [SWE-bench](https://www.swebench.com/) — execution-based evaluation on real software issues.
+### Enterprise Agent — operate an ecosystem of agents
 
-Read [Evaluation and security](docs/evaluation-and-security.md) for a release-oriented evaluation loop.
+The Enterprise track builds on the earlier levels. Start with reliability and
+move through architecture, identity, governance, communication, and protocols.
 
-## Security and production checklist
+| Step | Topic | Learn and run |
+| --- | --- | --- |
+| 01 | [Designing Reliable Agentic Systems](curriculum/enterprise-agent/01-designing-reliable-agentic-systems/README.md) | Core engineering trade-offs and reliable system design |
+| 02 | [Human + Multi-Agent Organizations](curriculum/enterprise-agent/02-human-multi-agent-organizations/README.md) | Delegation, management, supervision, and mixed teams |
+| 03 | [Agentic Enterprise Architecture](curriculum/enterprise-agent/03-agentic-enterprise-architecture/README.md) | Registries, gateways, discovery, governance, and FinOps |
+| 04 | [Agentic Software Engineering](curriculum/enterprise-agent/04-agentic-software-engineering/README.md) | Repository understanding, coding agents, tests, review, and CI/CD |
+| 05 | [Embodied Agents and Robotics](curriculum/enterprise-agent/05-embodied-agents-robotics/README.md) | VLA, simulation, feedback, and physical-world safety |
+| 06 | [Multimodal Agents](curriculum/enterprise-agent/06-multimodal-agents/README.md) | Vision, audio, documents, UI, sensors, memory, and tools |
+| 07 | [Cost, Latency, and Agent Economics](curriculum/enterprise-agent/07-cost-latency-agent-economics/README.md) | Budgets, caching, routing, and cost per safe success |
+| 08 | [Production Agent Architecture](curriculum/enterprise-agent/08-production-agent-architecture/README.md) | Gateways, sessions, queues, scaling, and disaster recovery |
+| 09 | [Agent Governance and Responsible AI](curriculum/enterprise-agent/09-agent-governance-responsible-ai/README.md) | Inventory, ownership, risk, lifecycle, and incident response |
+| 10 | [Guardrails and Policy Enforcement](curriculum/enterprise-agent/10-guardrails-policy-enforcement/README.md) | Layered validation, limits, sandboxing, and kill switches |
+| 11 | [Agent Identity and Authorization](curriculum/enterprise-agent/11-agent-identity-authorization/README.md) | Delegated authority, non-human identity, scopes, and audit |
+| 12 | [Agent Security](curriculum/enterprise-agent/12-agent-security/README.md) | Injection, poisoning, exfiltration, supply chain, and excessive agency |
+| 13 | [Agent Observability](curriculum/enterprise-agent/13-agent-observability/README.md) | Traces, trajectories, costs, replay, debugging, and dashboards |
+| 14 | [Human-Agent Collaboration](curriculum/enterprise-agent/14-human-agent-collaboration/README.md) | HITL/HOTL, intervention, escalation, trust, and autonomy boundaries |
+| 15 | [Agent Orchestration](curriculum/enterprise-agent/15-agent-orchestration/README.md) | Graphs, queues, checkpoints, approvals, recovery, and durable execution |
+| 16 | [Agent Communication and Coordination](curriculum/enterprise-agent/16-agent-communication-coordination/README.md) | Messaging, blackboards, delegation, consensus, conflict, and team design |
+| 17 | [The Agent Protocol Stack](curriculum/enterprise-agent/17-agent-protocol-stack/README.md) | MCP, A2A, AG-UI, A2UI, UCP, AP2, and interoperable boundaries |
 
-- [ ] Define success, stop, timeout, turn, token, and spend limits.
-- [ ] Give every tool the least privilege needed; use short-lived, scoped credentials.
-- [ ] Validate tool arguments and tool results at the trust boundary.
-- [ ] Require human approval for destructive, financial, external-communication, or permission-changing actions.
-- [ ] Treat user input, retrieved content, web pages, tool output, and agent messages as untrusted.
-- [ ] Isolate code and browser execution; restrict files, network, processes, and secrets.
-- [ ] Keep an immutable record of model decisions, tool calls, approvals, and resulting side effects.
-- [ ] Partition state and long-term memory by user and tenant; support inspection and deletion.
-- [ ] Make write operations idempotent or add compensation and reconciliation.
-- [ ] Evaluate indirect prompt injection, tool misuse, privilege escalation, data leakage, loops, and denial-of-wallet.
-- [ ] Provide a kill switch, safe fallback, and human escalation path.
-- [ ] Continuously sample production traces and rerun regression and adversarial suites.
+For a directory-level view, use the [full curriculum map](curriculum/README.md).
 
-Use [OWASP's Agentic AI Threats and Mitigations](https://genai.owasp.org/resource/agentic-ai-threats-and-mitigations/), the [OWASP guide to securing agentic applications](https://genai.owasp.org/resource/securing-agentic-applications-guide-1-0/), [NIST AI RMF](https://www.nist.gov/itl/ai-risk-management-framework), and [MITRE ATLAS](https://atlas.mitre.org/) when building the threat model.
+## How to use a lesson locally
 
-## Research and benchmarks
+Each topic folder contains:
 
-### Foundational and influential papers
+```text
+curriculum/<level>/<topic>/
+├── README.md     # guided theory, diagrams, references, and exercises
+├── *.ipynb       # self-contained notebook: theory and implementation together
+└── lab.py        # deterministic reusable implementation
+```
 
-- [ReAct](https://arxiv.org/abs/2210.03629) — interleaves reasoning traces with actions and observations.
-- [Toolformer](https://arxiv.org/abs/2302.04761) — studies self-supervised learning of tool use.
-- [Reflexion](https://arxiv.org/abs/2303.11366) — uses linguistic feedback and episodic memory to improve subsequent attempts.
-- [Voyager](https://arxiv.org/abs/2305.16291) — embodied lifelong-learning agent with an automatic curriculum and skill library.
-- [AutoGen](https://arxiv.org/abs/2308.08155) — framework for multi-agent conversations.
-- [Generative Agents](https://arxiv.org/abs/2304.03442) — simulated agents with memory, reflection, and planning.
-- [MemGPT](https://arxiv.org/abs/2310.08560) — virtual context management for long-running language-model applications.
-- [Tree of Thoughts](https://arxiv.org/abs/2305.10601) — deliberate search over intermediate reasoning states.
+Clone the repository, create a Python environment, and install the project
+dependencies listed in the relevant topic or repository setup guide. Run the
+lab first, then open the notebook:
 
-### Benchmarks and environments
+```bash
+python curriculum/beginner/02-agent-loop/lab.py
+jupyter notebook curriculum/beginner/02-agent-loop/
+```
 
-- [AgentBench](https://github.com/THUDM/AgentBench) — evaluates agents across multiple interactive environments.
-- [GAIA](https://huggingface.co/gaia-benchmark) — real-world questions requiring reasoning, tools, and multimodal understanding.
-- [BFCL](https://gorilla.cs.berkeley.edu/leaderboard) — tool selection, arguments, relevance detection, multi-turn use, and agentic tasks.
-- [SWE-bench](https://www.swebench.com/) — real GitHub issues graded by applying patches and running tests.
-- [WebArena](https://webarena.dev/) — realistic, reproducible websites and long-horizon browser tasks.
-- [VisualWebArena](https://jykoh.com/vwa) — visually grounded web-agent tasks.
-- [OSWorld](https://os-world.github.io/) — real computer environments for multimodal agents.
-- [τ-bench](https://github.com/sierra-research/tau-bench) — tool-agent-user interaction benchmark for realistic domains.
-- [TheAgentCompany](https://github.com/TheAgentCompany/TheAgentCompany) — benchmark for agents completing workplace-style tasks.
+Default labs are designed to run without credentials or external side effects.
+Provider-specific extensions are explicitly marked and should use your own
+environment variables and scoped credentials.
 
-Benchmarks are useful directional signals, not substitutes for your own task distribution, policies, tools, and failure costs.
+## Practical reference guides
 
-## Related awesome lists
+Use these alongside the curriculum when designing a system:
 
-- [ai-boost/awesome-a2a](https://github.com/ai-boost/awesome-a2a)
-- [ai-boost/awesome-prompts](https://github.com/ai-boost/awesome-prompts)
-- [ai-boost/awesome-harness-engineering](https://github.com/ai-boost/awesome-harness-engineering)
-- [e2b-dev/awesome-ai-agents](https://github.com/e2b-dev/awesome-ai-agents)
-- [slavakurilyak/awesome-ai-agents](https://github.com/slavakurilyak/awesome-ai-agents)
-- [kyrolabs/awesome-agents](https://github.com/kyrolabs/awesome-agents)
-- [punkpeye/awesome-mcp-servers](https://github.com/punkpeye/awesome-mcp-servers)
+- [Architecture patterns](docs/architecture-patterns.md) — routing, parallelization, workers, evaluators, and approvals.
+- [Multi-agent systems](docs/multi-agent-systems.md) — roles, topology, delegation, shared state, and when not to add agents.
+- [Evaluation and security](docs/evaluation-and-security.md) — trajectory evaluation, threat modeling, and release gates.
+- [AgentOps scenario guide](docs/agentops-lab.md) — the recurring SaaS incident scenario used throughout the labs.
+- [Provider guide](docs/provider-guide.md) — optional OpenAI Agents SDK and LangGraph setup.
+
+## Curated resources
+
+### Primary learning resources
+
+- [OpenAI: A Practical Guide to Building AI Agents](https://openai.com/business/guides-and-resources/a-practical-guide-to-building-ai-agents/)
+- [Anthropic: Building Effective Agents](https://www.anthropic.com/engineering/building-effective-agents)
+- [Hugging Face Agents Course](https://huggingface.co/learn/agents-course/)
+- [ReAct paper](https://arxiv.org/abs/2210.03629)
+- [Lilian Weng: LLM Powered Autonomous Agents](https://lilianweng.github.io/posts/2023-06-23-agent/)
+
+### Frameworks and protocols
+
+- [OpenAI Agents SDK](https://openai.github.io/openai-agents-python/)
+- [LangGraph](https://docs.langchain.com/oss/python/langgraph/overview)
+- [AutoGen](https://microsoft.github.io/autogen/stable/)
+- [CrewAI](https://docs.crewai.com/)
+- [Google ADK](https://google.github.io/adk-docs/)
+- [PydanticAI](https://ai.pydantic.dev/)
+- [Model Context Protocol](https://modelcontextprotocol.io/)
+- [Agent2Agent Protocol](https://a2a-protocol.org/latest/)
+- [Agent Skills specification](https://github.com/agentskills/agentskills)
+
+### Production and security
+
+- [OpenTelemetry](https://opentelemetry.io/docs/)
+- [OWASP Agentic Applications Top 10](https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications/)
+- [NIST AI Risk Management Framework](https://www.nist.gov/itl/ai-risk-management-framework)
+- [SWE-bench](https://www.swebench.com/), [WebArena](https://webarena.dev/), [OSWorld](https://os-world.github.io/), [GAIA](https://huggingface.co/gaia-benchmark), and [τ-bench](https://github.com/sierra-research/tau-bench)
 
 ## Contributing
 
-Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. Prefer official documentation, primary research, active open-source projects, and descriptions that explain why each resource belongs.
+Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before
+opening a pull request. Prefer primary research, official documentation, and
+maintained open-source projects. Add material through the relevant curriculum
+topic so theory, notebook, lab, Hub entry, and checkpoint stay aligned.
 
 ## License
 
