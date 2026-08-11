@@ -96,6 +96,10 @@ implements layered input, context, tool, argument, action, output, and audit con
 teaches non-human identity, OAuth/OIDC delegation, short-lived scoped capabilities,
 least privilege, tool/peer authorization, audit trails, and policy enforcement.
 
+[Enterprise Agent 12 — Agent Security](enterprise-agent/12-agent-security/README.md)
+covers injection/hijacking, poisoned context/memory/tools/MCP, credential/identity abuse,
+cross-agent and supply-chain threats, exfiltration, excessive agency, and containment.
+
 ## Advanced memory module
 
 [06 — Agent Memory](advanced/06-agent-memory/README.md) treats memory as a
