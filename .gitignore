@@ -1,5 +1,12 @@
 __pycache__/
-*.py[cod]
-.ipynb_checkpoints/
 .venv/
+.pytest_cache/
+.ipynb_checkpoints/
+out/
+dist/
+.next/
 .env
+.env.*
+.DS_Store
+*.pyc
+node_modules/
