@@ -2,81 +2,78 @@
 
 **Level:** Advanced · **Time:** 60 min · **Prerequisites:** None
 
-**Enterprise Agent · 11** · **Notebook:** [`agent_identity_authorization.ipynb`](agent_identity_authorization.ipynb) · **Implementation:** [`lab.py`](lab.py)
+**Enterprise Agent · 11** · **Notebook:** [`agent_identity_authorization.ipynb`](agent_identity_authorization.ipynb)
 
-Transactions require more than a user session and a persuasive prompt. A production agent needs a distinct non-human identity, a narrow delegated authority, an authenticated resource-side decision, and an attributable audit trail. User identity answers who requested work; agent identity answers which workload acted; delegated authority answers precisely what it may do, for whom, to which resource, for how long, and under which approval.
+Transactions require more than a user session and a persuasive prompt. A production agent needs a distinct non-human identity, a narrow delegated authority, an authenticated resource-side decision, and an attributable audit trail. 
 
-## Scenario and outcomes
+User identity answers *who requested work*; agent identity answers *which workload acted*; delegated authority answers *precisely what it may do, for whom, to which resource, for how long, and under which approval.*
 
-Northstar's incident adviser can read Acme checkout status for ten minutes while preparing a proposal. It cannot use a user’s broad token, read Globex data, restart services, or retain a standing admin secret. Learners issue a short-lived capability, validate it at the tool boundary, handle approval-gated transactions, and record the chain of delegation.
+Because Identity and Authorization are foundational to Agent Security, we have broken this curriculum into three core modules:
 
-![Delegated agent identity and authorization](../../../assets/agent-identity-authorization.svg)
+1. **[The Core Identity Model](#the-core-identity-model)** (This Page)
+2. **[Deep Dive: OAuth 2.0 Token Exchange & Delegation](OAUTH_AND_DELEGATION.md)** (Solving the Confused Deputy)
+3. **[Deep Dive: Workload Identity & Agent-to-Agent Auth](WORKLOAD_IDENTITY.md)** (SPIFFE, Cloud IAM, and MCP)
 
-```mermaid
-sequenceDiagram
- participant U as User identity
- participant A as Application / issuer
- participant G as Agent non-human identity
- participant P as Policy decision point
- participant T as Tool or peer agent
- U->>A: Authenticate and request bounded work
- A->>G: Issue short-lived delegated capability
- G->>P: Present identity, scope, tenant, purpose, expiry
- P->>T: Allow / deny / require approval
- T-->>P: Resource result
- P-->>A: Auditable decision and trace
-```
+---
 
-## 1. Identity model and delegated authority
+## The Core Identity Model
 
-| Concept | Meaning | Design rule |
+If an agent has the ability to read a user's billing status, how do we guarantee it cannot be tricked into restarting the billing server? We must enforce strict least privilege at the tool boundary.
+
+![Agent Token Exchange](../../../assets/agent_token_exchange.svg)
+
+### Essential Concepts
+
+| Concept | Meaning | Design Rule |
 | --- | --- | --- |
-| User identity | Human/principal that initiated or owns work | Preserve subject/tenant/consent without handing over a broad user token |
-| Agent/non-human identity | Workload/service identity for the agent runtime | Unique, rotatable, discoverable, and independently auditable |
-| Delegation | Authority derived from an authorized principal | Bind subject, actor, tenant, resource, action, purpose, expiry, and approval |
-| OAuth/OIDC | Common federation/authentication patterns | Validate issuer, audience, signature, expiry, nonce/state as applicable; use provider-specific current guidance |
-| Capability | Unforgeable, narrow permission to one operation/resource | Prefer short-lived, audience/resource-bound, least-privilege grants |
-| Tool/peer authentication | Resource validates calling workload and delegation | Authenticate both caller and target; do not trust an LLM-declared role |
+| **User Identity** | Human/principal that initiated or owns work | Preserve subject/tenant without handing over a broad user token to the agent. |
+| **Agent Identity** | Workload/service identity for the agent runtime | Unique, rotatable, discoverable (e.g., SPIFFE SVID or Cloud IAM Role). |
+| **Delegation** | Authority derived from an authorized principal | Bind subject, actor, tenant, resource, action, and expiry into a single cryptographically verifiable token. |
+| **OAuth Token Exchange** | RFC 8693 federation pattern | Trade a broad user token for a strictly scoped Agent JWT before invoking the orchestration layer. |
+| **Tool Authentication** | Resource validates calling workload and delegation | Tools must validate the JWT signature and scopes natively; do not trust an LLM-declared role. |
 
-## 2. Least privilege and policy enforcement
+### Least Privilege and Policy Enforcement
 
-Use workload identities or managed identity for agents; exchange them for short-lived credentials at the resource boundary. Scope credentials by tenant, action, resource, environment, purpose, and time. Avoid shared API keys, user-token forwarding, static admin credentials, and “agent can call any tool” designs. For agent-to-agent calls, authenticate the calling agent, authorize the requested handoff/capability, propagate only the minimum delegation context, and audit both sides.
+Use workload identities or managed identities for agents; exchange them for short-lived credentials at the resource boundary. Scope credentials by tenant, action, resource, purpose, and time. 
 
-Policy enforcement belongs at a policy decision point and the target resource. It evaluates identity, tenant, action, resource, risk, data class, approval, time, budget, and context. High-impact operations require explicit approval and idempotency; a model cannot create or broaden its own capability.
+**Anti-Patterns to Avoid:**
+- Shared API keys.
+- Forwarding raw User Tokens to the agent.
+- Static admin credentials hardcoded in the agent's environment.
+- “Agent can call any tool” network designs. 
 
-## 3. Step-by-step lab, checklist, and references
+Policy enforcement belongs at a **Policy Decision Point (PDP)** and the target resource, *not* inside the agent's system prompt. High-impact operations require explicit Human-in-the-Loop (HITL) approval; a model cannot create or broaden its own capability.
 
-1. Run `python lab.py`; the Acme agent receives only `read-status` for checkout before expiry.
-2. Request another tenant or action and observe deterministic scope denial.
-3. Change the action to `restart`; it requires approval even if the capability otherwise matches.
-4. Advance time to expire the capability and verify resumption cannot use it.
-
-- Inventory non-human identities, credential issuer/audience, tool/peer scopes, ownership, rotation, revocation, and audit retention.
-- Enforce short-lived credentials, resource-side authorization, tenant isolation, purpose binding, approval, idempotency, rate/budget limits, and kill/revoke paths.
-- Test token replay, confused deputy, audience/issuer mismatch, cross-tenant access, scope escalation, stale approval, secret leakage, peer impersonation, and revocation propagation.
-
-References: [OAuth 2.0 Security Best Current Practice](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-security-topics), [OpenID Connect Core](https://openid.net/specs/openid-connect-core-1_0.html), [SPIFFE workload identity](https://spiffe.io/docs/latest/spiffe-about/overview/), [MCP enterprise-managed authorization](https://modelcontextprotocol.io/extensions/auth/enterprise-managed-authorization), and [NIST AI RMF](https://www.nist.gov/itl/ai-risk-management-framework).
-
+---
 
 ## Watch For
 
-- **Assumption failure:** The model hallucinates an unsupported parameter.
-- **State leak:** Context is incorrectly preserved across runs.
-- **Timeout:** The tool takes too long and the agent loops.
-- **Auth bypass:** The agent attempts an action it shouldn't.
+- **Assumption Failure:** The model hallucinates an unsupported role or permission that the tool boundary immediately rejects.
+- **State Leak:** An agent retains an admin capability token in memory and uses it for a subsequent, unprivileged user's request.
+- **The Confused Deputy:** An agent with broad privileges is tricked by Prompt Injection into executing a privileged action on behalf of an unprivileged user.
 
+---
 
 ## Checkpoint
 
-**1. What is the primary purpose of this module?**
-- A) To understand the core concept.
-- B) To write complex boilerplate.
-- C) To ignore system errors.
-- D) To bypass security.
+**1. What is the primary purpose of Agent Workload Identity?**
+- A) To log the user's name in the database.
+- B) To provide a cryptographically verifiable identity to the running agent software, distinct from the human user.
+- C) To make API requests faster.
+- D) To prevent the LLM from hallucinating.
 
-**2. How do we mitigate the primary failure mode?**
-- A) Retries.
-- B) Human approval.
-- C) Logging.
-- D) Idempotency keys.
+<details>
+<summary>Answer</summary>
+<b>B</b>. Workload Identity (like SPIFFE or IAM) proves *which* agent is making the request, allowing tools to enforce Agent-specific RBAC policies.
+</details>
 
+**2. Why should you NOT pass a raw User OAuth token directly to an Agent?**
+- A) It slows down inference.
+- B) The agent will consume too many tokens.
+- C) If the agent is hijacked via Prompt Injection (Goal Hijacking), the attacker gains full access to every system the user has access to.
+- D) The LLM cannot read JSON Web Tokens.
+
+<details>
+<summary>Answer</summary>
+<b>C</b>. Handing a broad user token to an agent creates a Confused Deputy. You must use Token Exchange to give the agent a token scoped strictly to the task at hand.
+</details>
