@@ -8,11 +8,12 @@ Agent governance is the operating system for accountable autonomy. It governs a 
 
 An agent remains useful only while its purpose, owner, scope, evidence, and recovery paths are explicitly defined and easily revocable.
 
-Because Governance bridges the gap between engineering, legal, and security, we have broken this curriculum down into three core modules:
+Because Governance bridges the gap between engineering, legal, and security, we have broken this curriculum down into three core modules and a deployment checklist:
 
 1. **[The Governance Lifecycle](#the-governance-lifecycle)** (This Page)
 2. **[Deep Dive: AI Risk Management & Autonomy](AI_RISK_MANAGEMENT.md)** (NIST, EU AI Act, Autonomy Tiers)
-3. **[Deep Dive: AI BOM & Agent Registration](AI_BOM_AND_REGISTRATION.md)** (System Cards, Deployment Gates, Kill Switches)
+3. **[Deep Dive: AI BOM & Registration](AI_BOM_AND_REGISTRATION.md)** (System Cards, Deployment Gates, Kill Switches)
+4. **[Actionable Template: Agent Governance Checklist](AGENT_GOVERNANCE_CHECKLIST.md)** (Pre-deployment questionnaire)
 
 ---
 
