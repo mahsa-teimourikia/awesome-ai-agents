@@ -19,7 +19,7 @@ notebook-check:
 
 test-mock-notebooks:
 	@echo "Testing all notebooks using MockOpenAI (OPENAI_API_KEY unset)..."
-	unset OPENAI_API_KEY && find curriculum -name "*.ipynb" -exec .venv/bin/jupyter nbconvert --to notebook --execute --inplace {} +
+	unset OPENAI_API_KEY && find curriculum -name "*.ipynb" -exec python3 -m jupyter nbconvert --to notebook --execute --inplace {} +
 	@echo "All notebooks executed successfully on mock data!"
 
 clean:
