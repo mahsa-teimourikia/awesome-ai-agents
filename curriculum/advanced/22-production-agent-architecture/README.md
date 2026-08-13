@@ -2,99 +2,66 @@
 
 **Level:** Advanced · **Time:** 60 min · **Prerequisites:** None
 
-**Enterprise Agent · 08** · **Notebook:** [`production_agent_architecture.ipynb`](production_agent_architecture.ipynb) · **Implementation:** [`lab.py`](lab.py)
+**Enterprise Agent · 08** · **Notebook:** [`production_agent_architecture.ipynb`](production_agent_architecture.ipynb)
 
-Production agents are systems, not a model call with tools. The runtime performs bounded reasoning and tool selection, while the surrounding platform owns identity, policy, sessions, persistence, queues, recovery, observability, evaluation, and operational resilience. This module assembles those components into one architecture and explains which state may be transient and which must survive failure.
+Building a prototype agent in a Jupyter Notebook is easy. Deploying that agent to production—where it must survive pod crashes, handle thousands of concurrent requests, and enforce strict execution policies—requires a complex, stateful architecture.
 
-## Scenario and outcomes
+In a production system, the agent's logic is cleanly separated from the agent's state, queue, and identity boundaries.
 
-Northstar accepts an EU checkout investigation through an authenticated gateway. An orchestrator assigns a session and durable run. A worker gathers permitted evidence, checkpoints while waiting for an external deployment event, resumes after recovery, and creates a proposal. Policy/identity remain server-side; the system does not execute remediation.
+Because this transition from prototype to production is where most agentic systems fail, we have broken this curriculum down into three core modules:
 
-You will distinguish stateless from stateful components, design session/persistence/queue boundaries, and implement durable asynchronous recovery, caching, retries, rate limits, autoscaling, and disaster recovery controls.
+1. **[Core Component Boundaries](#core-component-boundaries)** (This Page)
+2. **[Deep Dive: State & Persistence](STATE_AND_PERSISTENCE.md)** (Durable Execution & Checkpointers)
+3. **[Deep Dive: Scale & Resilience](SCALE_AND_RESILIENCE.md)** (Idempotency, Auto-scaling, DLQs)
 
-![Production agent architecture](../../../assets/production-agent-architecture.svg)
+---
 
-```mermaid
-flowchart TB
- U[User / application] --> G[Agent gateway]
- G --> O[Orchestrator and session router]
- O --> R[Bounded agent runtime]
- R --> S[(State / checkpoints)]
- R --> T[Tools via MCP]
- R --> K[Knowledge via RAG]
- O --> Q[Queue / scheduler / workers]
- P[Policy + identity + approval] --- G
- P --- R
- X[Traces + observability + evaluation] --- O
- X --- R
-```
+## Core Component Boundaries
 
-## 1. Component boundaries
+A robust agentic system relies on distributed components, separating synchronous user requests from long-running, asynchronous LLM reasoning loops.
 
-| Component | Usually stateless or stateful? | Owns | Production controls |
-| --- | --- | --- | --- |
-| Gateway | Stateless | authentication, request validation, rate limits, request IDs | WAF, quotas, tenant routing, backpressure |
-| Orchestrator | Stateful coordination | session/run selection, routing, lifecycle | idempotent commands, deadlines, policy decision record |
-| Agent runtime/worker | Replaceable, checkpointed | one bounded reasoning/tool step | token/action/time budgets, leases, cancellation |
-| Session/state store | Durable stateful | conversation/run state and checkpoints | schema versioning, encryption, TTL, tenant isolation |
-| Queue/scheduler | Durable stateful | async work, delayed wake-ups, retry delivery | dedupe, visibility timeout, DLQ, concurrency limits |
-| Memory/knowledge | Durable stateful | scoped memories and governed retrieval | provenance, freshness, authorization, retention |
-| Tool/MCP gateway | Stateless policy enforcement + audited state | tool mediation | capability scope, rate/concurrency, idempotency, secrets isolation |
-| Observability/evaluation | Durable analytical state | trace, SLO, quality/release evidence | sampling/privacy, alerting, regression gates |
+![Production Agent Architecture](../../../assets/production_agent_architecture.svg)
 
-## 2. Sessions, checkpoints, and asynchronous execution
+### The Stateless vs Stateful Divide
 
-A session is a user/task continuity boundary; it is not permission to retain everything forever. A durable run is a versioned state machine: run ID, tenant/owner, policy/catalog versions, input hash, state schema, allowed tools, deadlines/budgets, idempotency keys, pending approval/event correlation, cancellation, and audit trace. Checkpoint after meaningful transitions. A worker may fail; a new worker resumes the persisted state, revalidates policy/freshness, and never repeats a side effect without idempotency/reconciliation.
+| Component | Architecture | Responsibility |
+| --- | --- | --- |
+| **API Gateway** | Stateless | Handles auth, rate limiting, and drops jobs into the Message Queue. Returns `202 Accepted`. |
+| **Message Queue** | Stateful | Holds pending agent jobs. Routes toxic/failing jobs to a Dead Letter Queue (DLQ). |
+| **Agent Worker** | Stateless Compute | Pulls a job from the queue, loads state from DB, runs a reasoning step, saves state, and dies/pauses. |
+| **Checkpointer DB** | Stateful Storage | The source of truth for the agent's memory, conversation history, and pending Human-in-the-Loop approvals. |
+| **Tool Gateway** | Stateless | Validates tool authorization policies (OPA) and enforces Idempotency Keys to prevent duplicate actions. |
 
-Use queues for minutes-to-days work, schedules for bounded periodic runs, and authenticated events for external wake-ups. Do not poll a model while waiting. Implement dead-letter queues and human/operator resolution for poisoned or repeatedly failing jobs.
-
-## 3. Performance and resilience
-
-**Caching:** cache only scoped, versioned, fresh data; include tenant, authorization, source/version, policy/prompt/catalog keys. Cache retrieval evidence separately from personalized answer text when necessary.
-
-**Retries/rate limits:** classify transient failures, apply bounded exponential backoff/jitter, count retries against job budgets, use idempotency for writes, and propagate backpressure. Rate-limit at gateway, tenant, tool, model, queue, and concurrency levels.
-
-**Autoscaling:** scale stateless gateways/workers horizontally from queue depth, service time, and SLO signals—not just CPU. Protect dependencies with concurrency caps/circuit breakers. Do not autoscale unbounded agent fan-out.
-
-**Disaster recovery:** define RPO/RTO, backup/restore and encryption-key plans, multi-region/failover strategy, state schema migration, queue replay rules, degraded read-only modes, tested runbooks, and regular recovery exercises. A DR plan must include cancellation/revocation and idempotent replay safety.
-
-## 4. Step-by-step lab and exercises
-
-1. Run `python lab.py`: authenticated gateway → queue → checkpointed wait → worker recovery → proposal-ready completion.
-2. Make the gateway reject an unauthenticated or rate-limited request; ensure no job is queued.
-3. Simulate worker loss after `waiting-evidence`; show that recovery uses the checkpoint rather than restarting the whole run.
-4. Add a duplicate event and an idempotency key. Then add a dead-letter route after bounded retry.
-5. Draw SLOs for gateway acceptance, queue delay, worker step, tool, model, total run, and recovery. Define alerts and a release gate.
-
-## Production checklist and references
-
-- Separate data plane (requests/work) from control plane (policy, catalog, evaluation, deployment, audit); do not trust the model as either plane.
-- Enforce identity/tenant scope at every boundary, especially caches, stores, queues, and tools.
-- Bound tokens, actions, retries, queue age, concurrency, spend, runtime, and child fan-out; expose cancellation and escalation.
-- Test dependency outage, duplicate/late event, worker crash, partial write, schema migration, cache leak/staleness, queue replay, region failover, and restore.
-
-References: [OpenAI agent guide](https://openai.com/business/guides-and-resources/a-practical-guide-to-building-ai-agents/), [LangGraph durable execution](https://docs.langchain.com/oss/python/langgraph/durable-execution), [Temporal workflows](https://docs.temporal.io/workflows), [MCP authorization](https://modelcontextprotocol.io/extensions/auth/enterprise-managed-authorization), and [NIST AI RMF](https://www.nist.gov/itl/ai-risk-management-framework).
-
+---
 
 ## Watch For
 
-- **Assumption failure:** The model hallucinates an unsupported parameter.
-- **State leak:** Context is incorrectly preserved across runs.
-- **Timeout:** The tool takes too long and the agent loops.
-- **Auth bypass:** The agent attempts an action it shouldn't.
+- **The `time.sleep()` Anti-Pattern:** Never pause an agent script to wait for an external event or human approval. The server connection will timeout. You must checkpoint the state to a database and exit the process (Durable Execution).
+- **Duplicate Tool Executions:** If a network blip occurs, the LLM will often assume a tool failed and try to execute it again. If the tool charges a credit card, you will double-charge the user unless you enforce strict Idempotency Keys.
+- **CPU-Based Autoscaling:** Do not scale your agent worker pods based on CPU utilization. Agents are I/O bound (waiting for the LLM API to respond). Scale your workers based on **Queue Depth** instead.
 
+---
 
 ## Checkpoint
 
-**1. What is the primary purpose of this module?**
-- A) To understand the core concept.
-- B) To write complex boilerplate.
-- C) To ignore system errors.
-- D) To bypass security.
+**1. Why must you use Idempotency Keys at the tool boundary?**
+- A) To make the LLM respond faster.
+- B) To ensure that if the LLM accidentally tries to execute a state-mutating tool (like a refund) twice due to a network retry, the tool only executes once.
+- C) To encrypt the payload before sending it to the LLM.
+- D) To bypass the API Gateway rate limits.
 
-**2. How do we mitigate the primary failure mode?**
-- A) Retries.
-- B) Human approval.
-- C) Logging.
-- D) Idempotency keys.
+<details>
+<summary>Answer</summary>
+<b>B</b>. LLMs are non-deterministic and network calls fail. Idempotency guarantees that a single tool call UUID will only ever cause one side-effect, returning the cached success on subsequent attempts.
+</details>
 
+**2. How should an agent worker handle waiting for a Human-in-the-Loop (HITL) approval?**
+- A) Enter a `while True` loop and continuously poll the database every 5 seconds.
+- B) Run `time.sleep(3600)` and wait for the human to click a button.
+- C) Save its entire state (graph, context, history) to a Checkpointer Database, and exit. When the human approves, a webhook spawns a new worker that loads the checkpoint and resumes.
+- D) Send an email to the user and terminate the agent forever.
+
+<details>
+<summary>Answer</summary>
+<b>C</b>. This is known as Durable Execution. It decouples the long-running state of the agent from the ephemeral compute nodes, saving money and preventing timeouts.
+</details>
