@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build:pages": "vite build --config vite.pages.config.ts && node scripts/copy-quiz-to-pages.mjs",
-    "test:pages": "npm run build:pages && node tests/pages-smoke.mjs",
+    "build:pages": "vite build && node scripts/copy-quiz-to-pages.mjs",
+    "test:pages": "npm run build:pages && node ../tests/pages-smoke.mjs",
     "check:pages-links": "node scripts/validate-learning-links.mjs"
   },
   "dependencies": {
