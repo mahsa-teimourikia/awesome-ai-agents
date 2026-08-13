@@ -2,7 +2,9 @@
 name = "awsome-ai-agents"
 version = "0.1.0"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "e2b-code-interpreter>=2.9.0",
+]
 
 [project.optional-dependencies]
 learner = [
@@ -21,7 +23,8 @@ learner = [
     "mcp",
     "chromadb",
     "opentelemetry-api",
-    "opentelemetry-sdk"
+    "opentelemetry-sdk",
+    "temporalio"
 ]
 contributor = [
     "awsome-ai-agents[learner]",

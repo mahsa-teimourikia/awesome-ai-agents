@@ -2,127 +2,105 @@
 
 **Level:** Advanced · **Time:** 60 min · **Prerequisites:** None
 
-**Enterprise Agent · 15** · **Notebook:** [`agent_orchestration.ipynb`](agent_orchestration.ipynb) · **Implementation:** [`lab.py`](lab.py)
+**Enterprise Agent · 15** · **Notebook:** [`agent_orchestration.ipynb`](agent_orchestration.ipynb)
 
-Agent intelligence chooses or synthesizes within a bounded step. Workflow orchestration decides what runs next, which dependencies are ready, how state persists, when to wait, how to recover, and who approves an action. Production systems need both; neither is a substitute for the other.
+An agent's intelligence dictates *how* it synthesizes information or chooses a tool within a bounded step. However, **workflow orchestration** dictates *what* runs next, which dependencies are ready, how state persists, when to sleep, how to recover from crashes, and who approves an action. 
 
-![Agent orchestration graph](../../../assets/agent-orchestration.svg)
+Production systems need both; neither is a substitute for the other. Never let a model message become a queue event, a production action, or a state transition by itself without a deterministic orchestration layer validating it.
 
-## Core concepts
+---
 
-| Concept | Purpose | Example |
-| --- | --- | --- |
-| Orchestrator/router | Selects workflow/agent/team from task contract | Known status → workflow; ambiguous evidence → agent |
-| State machine/graph | Explicit states, branches, terminal/retry paths | triage → evidence → approval → complete |
-| DAG | Executes dependency-ready work | metrics/logs/deployment reads join before analysis |
-| Event/queue/schedule | Wakes durable work without polling models | deployment webhook, delayed retry, daily reconciliation |
-| Checkpoint/durable execution | Resume after crash or approval | persist pending proposal and action fingerprint |
-| Parallel execution | Reduce wall time for independent reads | logs and tickets with concurrency limit |
-| Human approval node | Pauses exact consequential proposal | approve/modify/reject with expiry/idempotency |
-| Recovery | Handles timeout, duplicate, partial failure | retry safe read; reconcile write; escalate terminal failure |
+## Core Orchestration Concepts
 
-## A decision boundary, not a framework choice
+To move agents from prototype to production, you must understand three core architectural components of orchestration:
 
-An **agent** is a bounded reasoning component: given approved context and tools, it may classify, plan, select a read, or synthesize a proposal. An **orchestrator** is the deterministic control plane around that reasoning: it validates an event, picks an eligible route, records state, waits, retries, rate-limits, joins work, invokes approval, and records an auditable stop reason. Never let a model message become a graph transition, queue message, credential, or production action by itself.
+### 1. Directed Acyclic Graphs (DAGs)
+A DAG executes dependency-ready work in a strict, predictable pipeline. 
+- **Use Case:** Executing tasks that can run in parallel and must eventually join. For example, simultaneously fetching metrics, logs, and deployment history before passing them to an agent for analysis.
+- **Limitation:** DAGs cannot loop. They do not naturally handle autonomous retries or dynamic routing driven by an LLM.
 
-Use a workflow when the path, dependencies, and failure handling are known. Put a bounded agent inside one graph node when evidence selection or synthesis is genuinely variable. Use a team only when specialization improves a measured outcome enough to pay the coordination cost. A queue, scheduler, or workflow engine is not intelligence; it is the reliability substrate that makes a long-running system recoverable.
+![DAG Orchestration](../../../assets/orch_dag.svg)
 
-```mermaid
-flowchart LR
-  E["Trusted event / request"] --> R["Deterministic route + policy"]
-  R -->|"known task"| W["Workflow node"]
-  R -->|"ambiguous evidence"| A["Bounded agent node"]
-  W --> S["Persisted state + trace"]
-  A --> S
-  S --> G{""Risk / approval required?""}
-  G -->|"yes"| H["Human approval checkpoint"]
-  G -->|"no"| O["Authorized result or action"]
-  H -->|"trusted approve + revalidation"| O
-```
+### 2. State Machines (Graphs)
+State machines express explicit lifecycle transitions (e.g., `Initialize → Execute → Review → Complete`). The current state is preserved, and conditional logic dictates the next state.
+- **Use Case:** Building cyclic agent loops where an LLM yields a tool call, the tool executes, and the system routes back to the LLM until a condition is met.
+- **Limitation:** A state machine defines transitions, but without a durability layer, it will lose all memory if the server process crashes mid-execution.
 
-## Design the durable contract first
+![State Machine Orchestration](../../../assets/orch_state_machine.svg)
 
-Before selecting LangGraph, Temporal, a data orchestrator, or an agent framework, write the run contract. At minimum record a stable `run_id`, tenant/owner, allowed route, state version, deadline, budget, cancellation flag, idempotency keys, evidence references, approval/action fingerprint, retry count, and terminal reason. Persist references or redacted summaries rather than silently duplicating sensitive prompt/context data.
+### 3. Durable Execution (Persistence & Checkpointing)
+Durable execution guarantees that if a workflow is interrupted (due to a timeout, power loss, or waiting for a human), it can resume exactly where it left off without re-running expensive steps.
+- **Use Case:** "Human-in-the-Loop" approvals, polling asynchronous APIs, or multi-day workflows. The system checkpoints state to a database and puts the workflow to sleep (consuming zero CPU).
+- **Limitation:** Requires strict deterministic code (no random number generators or hidden side effects inside the workflow logic) so the execution history can be accurately replayed.
 
-For the Northstar incident, `metrics`, `logs`, and `deployments` are independent **read** tasks. They may run in parallel with a bounded concurrency limit. The graph joins only when all required evidence is present; it then lets an agent produce a *proposal*. An exact fingerprint such as `proposal:rollback:checkout:deploy-842` is checkpointed. A later approval must match that fingerprint, tenant, policy version, expiration, and user identity before any action service is called.
+![Durable Execution](../../../assets/orch_durable.svg)
 
-## Build it step by step
+---
 
-### 1. Route with application rules
+## Technology Selection Matrix
 
-Routes should depend on explicit task class, risk, user/tenant scope, and service health—not an agent's unsupported confidence. A deterministic lookup can go straight to a workflow. An ambiguous incident can enter a bounded investigation node. A high-impact request should create a proposal only. Record the selected route so evaluation can reveal misrouting.
+Modern agent orchestration relies on choosing the right framework for the right problem. Do not build a distributed durable execution engine from scratch.
 
-### 2. Model state machines and DAGs separately
-
-A state machine expresses legal lifecycle transitions such as `route → evidence → approval → complete`, plus `cancelled` and `escalated` terminals. A DAG expresses dependency-ready work inside one state: metrics, logs, and deployment history can start together and join before analysis. Keep both explicit: a DAG alone does not define approval expiry or recovery; a state machine alone does not expose parallel dependencies.
-
-### 3. Use events, queues, and schedules deliberately
-
-Events wake work when something changes: a deployment webhook, approval decision, or ticket update. Queues absorb bursts and provide backpressure; consumers must deduplicate messages with idempotency keys. Schedules create a new bounded run or wake an existing run for reconciliation—never an unbounded background model loop. Timers should transition a stale approval to `expired` and escalate it instead of assuming silence means consent.
-
-### 4. Checkpoint and resume safely
-
-Checkpoint before every wait, external side effect, or expensive branch. On resume, reload durable state and revalidate scope, policy version, deadline, budget, cancellation, event provenance, idempotency, and the exact proposal fingerprint. A checkpoint is not authorization carried forward forever. In Temporal terminology, durable workflow code can replay; in graph frameworks, nodes may replay. Therefore record non-deterministic outputs and make external calls idempotent.
-
-### 5. Recover by failure class
-
-Retry only operations that are safe to repeat, normally bounded read requests with exponential backoff and jitter. Do not retry a mutation because a response was lost; reconcile using its idempotency key or query the action system. Treat schema failure, permission denial, stale approval, budget exhaustion, and unknown external effect as terminal escalation paths. Emit the reason and preserve evidence so a human can continue without rediscovering the incident.
-
-### 6. Make approvals graph nodes
-
-An approval packet needs a summary, evidence IDs, proposed action and fingerprint, risk, requester/owner, policy decision, expiry, and modify/reject/cancel options. A human approval is an event from an authenticated source; it is not a string in the chat history. Re-run deterministic authorization at the action boundary even after approval.
-
-## Technology selection
-
-| Technology | Best fit | Strength | Boundary to keep application-owned |
+| Technology | Architectural Focus | Best Fit | Boundary to Keep Application-Owned |
 | --- | --- | --- | --- |
-| [LangGraph](https://docs.langchain.com/oss/python/langgraph/overview) | Agentic state graphs | Conditional edges, interrupts, persistence, graph visibility | identity, policy, action authorization, idempotency |
-| [Temporal](https://docs.temporal.io/workflows) | Durable minutes-to-days workflows | Retries, timers, signals, replay, queues, worker recovery | agent prompts, tenant policy, business authorization |
-| [Prefect](https://docs.prefect.io/) / [Dagster](https://docs.dagster.io/) / [Airflow](https://airflow.apache.org/) | Data-heavy scheduled DAGs | Dependency graphs, schedules, observability | interactive approval and agent policy semantics |
-| [OpenAI Agents SDK](https://openai.github.io/openai-agents-python/) | Managed bounded agent loops | Tools, handoffs, sessions, tracing | durable business workflow and consequential action control |
-| [CrewAI Flows](https://docs.crewai.com/en/concepts/flows) / [AutoGen](https://microsoft.github.io/autogen/) | Agent-centric flows or collaboration | Flow/team primitives and routing | approval, queue semantics, identity and audit enforcement |
+| **[LangGraph](https://docs.langchain.com/oss/python/langgraph/overview)** | Agentic State Graphs | Stateful agent loops, conditional edges, memory persistence, interrupts | Identity, action authorization, idempotency |
+| **[Temporal](https://docs.temporal.io/workflows)** | Durable Execution Engine | Mission-critical reliability, multi-day workflows, robust retries, cron jobs | Agent prompts, LLM reasoning logic |
+| **[LlamaIndex Workflows](https://docs.llamaindex.ai/en/stable/module_guides/workflow/)** | Event-Driven RAG Pipelines | Complex data ingestion, advanced RAG routing | Interactive UI approvals, external state |
+| **[Airflow / Dagster](https://airflow.apache.org/)** | Scheduled Data DAGs | Batch processing, analytics ETL, strict dependencies | Autonomous agent policies and reasoning |
 
-## Production checklist and exercises
+*Note: In enterprise architectures, these are frequently combined. For instance, **LangGraph** is used to define the agent's internal loop (the "brain"), while **Temporal** wraps the LangGraph execution to provide enterprise-grade durability and retry semantics (the "nervous system").*
 
-- Can every transition be explained from a trace and durable state record?
-- Does every external write have an idempotency key and reconciliation path?
-- Are concurrency, deadlines, token/action budgets, retries, and cancellation bounded?
-- Can a restart, duplicate queue message, stale event, or expired approval create an unauthorized action? It must not.
-- Does every scheduled/long-running run have an owner, lease/heartbeat, recovery plan, and terminal retention rule?
+---
 
-Run `python lab.py`, then execute the notebook. Extend the lab with: (1) a deadline timer that expires approval; (2) an exponential-backoff read retry; (3) a queue duplicate test; and (4) a second route that uses a workflow instead of an agent. Defend which transitions remain deterministic and why.
+## Applied Use Case: Northstar Incident Triage
 
-## Step-by-step incident use case
+Before selecting a framework, design the durable contract. For the Northstar EU Checkout Incident, we use a hybrid approach:
 
-1. Route tenant-scoped incident request using deterministic risk/known-path rules.
-2. Create a durable state record with deadline, budget, owner, evidence gaps, and cancellation.
-3. Run independent read-only evidence tasks in parallel; join only after required artifacts arrive.
-4. Use a bounded agent node to synthesize evidence and select a proposal—not to control the graph or action service.
-5. Persist a checkpoint and enter an approval node for high-risk mitigation.
-6. Resume only on a trusted approval event; revalidate identity, policy, freshness, action fingerprint, and idempotency.
-7. Emit trace/state/queue/latency/cost metrics, recover safe reads, and escalate unrecoverable failures.
+1. **Route (Deterministic):** A webhook triggers the orchestrator. The orchestrator checks if the incident is `Severity 1`.
+2. **DAG (Parallel Execution):** The orchestrator spawns three independent tasks (Metrics, Logs, Deployments). They run in parallel with a concurrency limit. 
+3. **State Machine (Agent Synthesis):** The DAG joins. The Orchestrator passes the evidence to the bounded Agent Node. The agent cycles in a state machine until it produces a proposed rollback action.
+4. **Durable Execution (Approval Checkpoint):** The orchestrator checkpoints an exact fingerprint (e.g., `proposal:rollback:checkout:deploy-842`). The workflow goes to sleep.
+5. **Resume (Revalidation):** A human clicks "Approve". The workflow wakes up, revalidates the exact fingerprint, ensures the policy hasn't expired, and executes the action.
 
-## Technologies and state of the art
+---
 
-[LangGraph](https://docs.langchain.com/oss/python/langgraph/overview) is strong for explicit state graphs, interrupts, persistence, and durable agent workflows. [Temporal](https://docs.temporal.io/workflows) is a durable-workflow engine for retries, timers, signals, queues, and long-running execution. [Prefect](https://docs.prefect.io/), [Dagster](https://docs.dagster.io/), and [Airflow](https://airflow.apache.org/) are data/workflow orchestration options. [OpenAI Agents SDK](https://openai.github.io/openai-agents-python/) offers managed agent loops/tracing; [CrewAI Flows](https://docs.crewai.com/en/concepts/flows) and [AutoGen](https://microsoft.github.io/autogen/) offer agent-focused orchestration patterns. Choose by state/durability, event/queue needs, visibility, deployment, identity, and operational constraints.
+## Production Checklist & Best Practices
 
-Run `python lab.py`; the notebook covers route, graph/DAG, parallel join, checkpoint, approval, event resume, recovery, scheduling, and long-running budgets. References: [LangGraph durable execution](https://docs.langchain.com/oss/python/langgraph/durable-execution), [Temporal](https://docs.temporal.io/workflows), [OpenAI practical guide](https://openai.com/business/guides-and-resources/a-practical-guide-to-building-ai-agents/).
+- **Idempotency:** Does every external write have an idempotency key? If a Temporal workflow crashes and retries, you must not accidentally charge a customer twice.
+- **Timeouts & Dead-Letters:** Does every wait state have a timeout? (e.g., If a human doesn't approve in 24 hours, route to a dead-letter queue or auto-reject).
+- **Rate Limiting:** Are your parallel reads bounded? An unconstrained DAG can easily trigger rate limits on your external APIs or LLM provider.
+- **Traceability:** Can every state transition be explained from a trace? Never let an agent silently overwrite the state history.
 
+---
 
 ## Watch For
 
-- **Assumption failure:** The model hallucinates an unsupported parameter.
-- **State leak:** Context is incorrectly preserved across runs.
-- **Timeout:** The tool takes too long and the agent loops.
-- **Auth bypass:** The agent attempts an action it shouldn't.
+- **State Leakage:** Re-using global variables instead of passing explicit State objects between graph nodes.
+- **Non-Deterministic Workflows:** Putting `datetime.now()` or `uuid.uuid4()` directly inside a durable workflow function (it will break the replay history when recovering from a crash).
+- **Over-Agentification:** Using an LLM to decide which dependency to run next when a strict programmatic DAG would be 100x faster and 100% reliable.
 
+---
 
 ## Checkpoint
 
-**1. Which responsibilities belong to deterministic agent orchestration rather than a model's free-form reasoning?**
-- A) Persisting state, checkpoints, and terminal reasons
-- B) Routing, queue/event handling, scheduling, and bounded retries
-- C) Approving its own high-impact action from a chat message
-- D) Idempotency, cancellation, recovery, and revalidation on resume
-- E) Joining dependency-ready parallel work before a proposal node
+**1. Which framework is best suited for guaranteeing that a multi-day agent workflow can pause for human approval, survive a server crash, and resume perfectly?**
+- A) Standard Python `while` loop
+- B) Directed Acyclic Graph (DAG) without persistence
+- C) Temporal (Durable Execution)
+- D) LangGraph without a checkpointer
 
+<details>
+<summary>Answer</summary>
+<b>C</b>. Temporal is specifically designed to persist execution state and handle multi-day durable execution and crash recovery natively.
+</details>
+
+**2. Why is a standard DAG (Directed Acyclic Graph) often insufficient on its own for complex Agent orchestration?**
+- A) It cannot run tasks in parallel.
+- B) It cannot support cycles/loops (like an agent self-correcting its output).
+- C) It is too difficult to implement.
+- D) It requires a local LLM to execute.
+
+<details>
+<summary>Answer</summary>
+<b>B</b>. DAGs are strictly acyclic, meaning they cannot support the loops/cycles necessary for an agent to review and correct its own work before proceeding.
+</details>
