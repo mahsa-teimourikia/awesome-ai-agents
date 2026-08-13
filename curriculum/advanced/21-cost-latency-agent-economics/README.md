@@ -43,12 +43,12 @@ If `gpt-4o-mini` fails 60% of the time, and you fall back to `gpt-4o`, you are p
 Optimizing agent economics is an active area of research. Modern production architectures rely on specialized tooling rather than writing custom routing logic from scratch:
 
 ### Semantic Caching Frameworks
-- **GPTCache / RedisVL:** Libraries that intercept LLM calls, embed the prompt, and perform cosine similarity checks against a vector database (like Redis, Pinecone, or pgvector) to return cached responses instantly.
-- **Cloudflare AI Gateway:** Provides built-in edge caching, rate limiting, and cost analytics for LLM requests before they even hit your application servers.
+- **[GPTCache](https://github.com/zilliztech/GPTCache) / [RedisVL](https://github.com/RedisVentures/redisvl):** Libraries that intercept LLM calls, embed the prompt, and perform cosine similarity checks against a vector database (like Redis, Pinecone, or pgvector) to return cached responses instantly.
+- **[Cloudflare AI Gateway](https://developers.cloudflare.com/ai-gateway/):** Provides built-in edge caching, rate limiting, and cost analytics for LLM requests before they even hit your application servers.
 
 ### Intelligent Routing & Cascades
-- **RouteLLM:** An open-source framework by LMSYS that dynamically routes queries to the most cost-effective model based on a predicted difficulty score. It can reduce costs by up to 85% while maintaining GPT-4 level quality.
-- **Semantic Router:** A fast, deterministic decision layer that uses embeddings to classify user intent *before* any LLM is called, allowing you to route standard queries to hardcoded responses or cheap models.
+- **[RouteLLM](https://github.com/lm-sys/RouteLLM):** An open-source framework by LMSYS that dynamically routes queries to the most cost-effective model based on a predicted difficulty score. It can reduce costs by up to 85% while maintaining GPT-4 level quality.
+- **[Semantic Router](https://github.com/aurelio-labs/semantic-router):** A fast, deterministic decision layer that uses embeddings to classify user intent *before* any LLM is called, allowing you to route standard queries to hardcoded responses or cheap models.
 - **Provider-Specific Cascades:** APIs like Google's Gemini offer built-in cascading capabilities, automatically falling back to larger models if a smaller model expresses uncertainty.
 
 ---
