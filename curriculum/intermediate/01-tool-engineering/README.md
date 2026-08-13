@@ -1,6 +1,8 @@
 # 01 — Tool engineering
 
 **Level:** Intermediate · **Prerequisites:** [the agent loop](../../beginner/02-agent-loop/README.md), [workflow or agent](../../beginner/03-workflow-or-agent/README.md), and [agent development frameworks](../../beginner/04-agent-development-frameworks/README.md)
+
+**Scenario:** Northstar, a SaaS support team, is integrating this concept into their agentic workflow.
 **Notebook:** [tool_engineering.ipynb](tool_engineering.ipynb) · **Run:** [lab.py](lab.py)
 
 ## The conceptual shift
@@ -261,3 +263,43 @@ This is the practical rule: **the shortest reliable trajectory to a safe outcome
 - [MCP tools specification](https://modelcontextprotocol.io/specification/2025-11-25/server/tools)
 - [OWASP Top 10 for LLM Applications](https://genai.owasp.org/)
 - [ReAct paper](https://arxiv.org/abs/2210.03629)
+
+
+## Watch For
+
+- **Assumption failure:** The model hallucinates an unsupported parameter.
+- **State leak:** Context is incorrectly preserved across runs.
+- **Timeout:** The tool takes too long and the agent loops.
+- **Auth bypass:** The agent attempts an action it shouldn't.
+
+
+## Checkpoint
+
+**1. Which are good practices for a routing workflow?**
+- A) Evaluate routing accuracy separately
+- B) Include an unknown or human-escalation route
+- C) Give every route identical tools and policies regardless of need
+- D) Use specialist paths when categories need different controls
+- E) Log the selected route for diagnosis
+
+**2. When is an evaluator-optimizer loop a strong fit?**
+- A) Success criteria are explicit
+- B) Feedback can guide a concrete revision
+- C) Iteration is bounded
+- D) There is no way to assess whether the output improved
+- E) Deterministic graders can supplement model judgment
+
+**3. Which statements correctly compare an agent-as-tool with a handoff?**
+- A) An agent-as-tool lets the orchestrator retain ownership
+- B) A handoff transfers control to a specialist
+- C) Both patterns remove the need for scoped permissions
+- D) The choice should reflect who owns the next interaction
+- E) Both introduce a context and evaluation boundary
+
+**4. Which controls improve parallel worker orchestration?**
+- A) Non-overlapping worker contracts
+- B) A clear aggregation rule
+- C) Provenance on worker outputs
+- D) Unlimited delegation breadth and depth
+- E) Per-worker budgets
+

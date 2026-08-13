@@ -86,6 +86,27 @@ Personalized memory is an authorization problem before it is a relevance problem
 - [ ] Evaluate recall, precision, staleness, contradiction handling, personalization benefit, leakage, deletion, cost, and downstream decision quality.
 - [ ] Keep sensitive and untrusted data out of memory by default; make writes reversible.
 
+## Watch For
+
+- **Assumption failure:** The model hallucinates an unsupported parameter.
+- **State leak:** Context is incorrectly preserved across runs.
+- **Timeout:** The tool takes too long and the agent loops.
+- **Auth bypass:** The agent attempts an action it shouldn't.
+
+## Checkpoint
+
+**1. What is the primary purpose of this module?**
+- A) To understand the core concept.
+- B) To write complex boilerplate.
+- C) To ignore system errors.
+- D) To bypass security.
+
+**2. How do we mitigate the primary failure mode?**
+- A) Retries.
+- B) Human approval.
+- C) Logging.
+- D) Idempotency keys.
+
 ## References
 
 - [Anthropic: Effective context engineering for AI agents](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents) — compaction, structured notes, and long-horizon context.

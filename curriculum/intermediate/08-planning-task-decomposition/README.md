@@ -2,6 +2,8 @@
 
 **Level:** Intermediate · **Primary lab:** [`planning_task_decomposition.ipynb`](planning_task_decomposition.ipynb) · **Runnable implementation:** [`lab.py`](lab.py)
 
+**Scenario:** Northstar, a SaaS support team, is integrating this concept into their agentic workflow.
+
 Planning is the difference between a model that can select a tool and a system that can safely pursue a multi-step objective. A plan is not a chain-of-thought transcript. It is a **validated, bounded, inspectable proposal** for work: tasks, dependencies, constraints, milestones, and terminal conditions.
 
 This module builds a research agent for the request: **“Research adaptive RAG and produce a technical report.”** It starts with a static task graph, detects an unavailable source, creates a bounded replacement task, revalidates the graph, and produces a cited report. The default lab uses deterministic fixtures so every learner can run it locally without model credentials or live web access.
@@ -180,3 +182,11 @@ Set multiple terminal conditions: all required report sections are evidenced; an
 3. What evidence justifies a replan in this lab?
 4. When would a fixed workflow be preferable to this dynamic planner?
 
+
+
+## Watch For
+
+- **Assumption failure:** The model hallucinates an unsupported parameter.
+- **State leak:** Context is incorrectly preserved across runs.
+- **Timeout:** The tool takes too long and the agent loops.
+- **Auth bypass:** The agent attempts an action it shouldn't.

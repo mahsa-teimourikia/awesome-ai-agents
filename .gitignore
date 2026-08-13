@@ -1,5 +1,41 @@
 __pycache__/
-*.py[cod]
-.ipynb_checkpoints/
 .venv/
+.pytest_cache/
+.ipynb_checkpoints/
+out/
+dist/
+.next/
 .env
+.env.*
+.DS_Store
+*.pyc
+node_modules/
+
+# Python Build/Packaging
+build/
+*.egg-info/
+*.egg
+eggs/
+.eggs/
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Testing and Coverage
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+
+# Temporary automation scripts and artifacts
+scripts/fix_*.py
+scripts/rewrite_*.py
+scripts/patch_*.py
+scripts/inline_*.py
+scripts/update_*.py
+scripts/dump.mjs
+questions_dump.json

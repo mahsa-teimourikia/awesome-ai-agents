@@ -1,5 +1,7 @@
 # MCP — Model Context Protocol
 
+**Level:** Advanced · **Time:** 60 min · **Prerequisites:** None
+
 **Advanced · 13** · **Notebook:** [`mcp_model_context_protocol.ipynb`](mcp_model_context_protocol.ipynb) · **Implementation:** [`lab.py`](lab.py)
 
 The Model Context Protocol (MCP) standardizes how an AI application can discover and use external **tools**, **resources**, and **prompts** through client/server capability contracts. It exists to avoid bespoke integrations for every model host, data source, and application service. MCP is not an agent framework, a policy engine, an identity system, or an authorization decision. It is one critical layer in an emerging interoperability ecosystem alongside A2A, AG-UI, A2UI, UCP, and AP2.
@@ -89,3 +91,29 @@ Run `python lab.py`, then the notebook. The simulator shows authorization-aware 
 - [MCP authorization](https://modelcontextprotocol.io/specification/2025-03-26/basic/authorization) and [enterprise-managed authorization](https://modelcontextprotocol.io/extensions/auth/enterprise-managed-authorization)
 - [A2A specification](https://a2a-protocol.org/latest/) and [agent interoperability survey](https://arxiv.org/abs/2505.02279)
 - [OWASP Agentic Applications Top 10](https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications/)
+
+
+## Checkpoint
+
+**1. Which statements correctly describe MCP's boundary?**
+- A) It standardizes client/server capability contracts for tools, resources, and prompts
+- B) It automatically grants an agent authority to use every discovered tool
+- C) An enterprise can filter the offered capability list by current authorization scopes
+- D) Tool results should be treated as observations or data, not as policy authority
+- E) MCP replaces application-owned tenant policy and action approval
+
+**2. What should protect a consequential MCP tool call such as a rollback?**
+- A) Strict argument and result validation
+- B) A short-lived scope for the exact operation and tenant
+- C) An exact action fingerprint and approval when policy requires it
+- D) Blind retry after an unknown timeout
+- E) Idempotency, reconciliation, and an auditable trace
+
+
+
+## Watch For
+
+- **Assumption failure:** The model hallucinates an unsupported parameter.
+- **State leak:** Context is incorrectly preserved across runs.
+- **Timeout:** The tool takes too long and the agent loops.
+- **Auth bypass:** The agent attempts an action it shouldn't.

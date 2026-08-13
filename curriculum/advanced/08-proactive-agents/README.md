@@ -1,5 +1,7 @@
 # Proactive Agents
 
+**Level:** Advanced · **Time:** 60 min · **Prerequisites:** None
+
 **Advanced · 08** · **Notebook:** [`proactive_agents.ipynb`](proactive_agents.ipynb) · **Implementation:** [`lab.py`](lab.py)
 
 Proactive agents move beyond request/response by maintaining an approved goal, observing events or schedules, and offering timely assistance. They should behave like bounded digital workers—not unsolicited autonomous actors. Their most important behavior is often to *wait*, suppress a duplicate, respect quiet hours, or escalate with evidence.
@@ -40,3 +42,27 @@ Run `python lab.py`. The worker emits one evidence-backed notification for a low
 - [Proactive Conversational AI survey](https://doi.org/10.1145/3715097) · [ProEvent benchmark](https://arxiv.org/abs/2607.17701) · [Long-term task-oriented agent](https://arxiv.org/abs/2601.09382)
 - [LangGraph ambient agents](https://www.langchain.com/blog/introducing-ambient-agents) · [background subagents](https://www.langchain.com/blog/running-subagents-in-the-background) · [persistent memory](https://docs.langchain.com/oss/python/deepagents/memory)
 - [OpenAI practical agent guide](https://openai.com/business/guides-and-resources/a-practical-guide-to-building-ai-agents/)
+
+
+## Watch For
+
+- **Assumption failure:** The model hallucinates an unsupported parameter.
+- **State leak:** Context is incorrectly preserved across runs.
+- **Timeout:** The tool takes too long and the agent loops.
+- **Auth bypass:** The agent attempts an action it shouldn't.
+
+
+## Checkpoint
+
+**1. What is the primary purpose of this module?**
+- A) To understand the core concept.
+- B) To write complex boilerplate.
+- C) To ignore system errors.
+- D) To bypass security.
+
+**2. How do we mitigate the primary failure mode?**
+- A) Retries.
+- B) Human approval.
+- C) Logging.
+- D) Idempotency keys.
+

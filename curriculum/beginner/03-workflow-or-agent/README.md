@@ -1,6 +1,8 @@
 # 03 — Agent or Workflow?
 
-**Scenario:** European customers report checkout failures. Is a status report,
+**Level:** Beginner · **Time:** 60 min · **Prerequisites:** None
+
+**Scenario:** Northstar - European customers report checkout failures. Is a status report,
 runbook workflow, bounded investigator, or specialist team warranted?
 **Notebook:** [`03_workflow_or_agent.ipynb`](03_workflow_or_agent.ipynb)
 **Run:** [`lab.py`](lab.py)
@@ -127,6 +129,43 @@ often safer for a consequential action even if an agent prepared the evidence.
    tool calls, and coordination overhead.
 7. Create a release gate: correct outcome, no forbidden action, supported
    recommendation, bounded trajectory, and acceptable cost.
+
+## Watch For
+
+- **Assumption failure:** The model hallucinates an unsupported parameter.
+- **State leak:** Context is incorrectly preserved across runs.
+- **Timeout:** The tool takes too long and the agent loops.
+- **Auth bypass:** The agent attempts an action it shouldn't.
+
+## Checkpoint
+
+**1. Which statements correctly distinguish workflows from agents?**
+- A) A workflow follows code-defined paths
+- B) An agent dynamically directs its process and tool use
+- C) A workflow can still contain model decisions
+- D) Every multi-step model application is automatically an agent
+- E) A fixed workflow may be preferable for predictable tasks
+
+**2. Which practices make a long-running agent loop more reliable?**
+- A) Checkpoint meaningful state
+- B) Represent failures as typed states
+- C) Retry every write after any timeout
+- D) Cap turns, time, tokens, tool calls, and spend
+- E) Record a clear termination reason
+
+**3. What makes a human-approval checkpoint effective?**
+- A) It occurs before the consequential side effect
+- B) It shows the exact action, target, evidence, and expected effect
+- C) It supports approve, edit, reject, or redirect outcomes
+- D) It asks only a context-free 'Approve?' question
+- E) The workflow checkpoints state while waiting
+
+**4. When can a multi-agent design be justified?**
+- A) Independent subtasks benefit from parallel execution
+- B) Specialists need distinct context, tools, or policies
+- C) Evaluation shows a meaningful gain over a simpler baseline
+- D) The architecture looks more impressive in a demo
+- E) An orchestrator can define clear delegation contracts
 
 ## References
 

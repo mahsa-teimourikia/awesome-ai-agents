@@ -35,8 +35,6 @@ Start with the least autonomous design that reliably solves the task:
 | Single agent | Tool feedback determines an open-ended path |
 | Multi-agent system | Distinct context, tools, parallelism, or independent review measurably help |
 
-For a deeper explanation, read [What is an AI agent?](docs/what-is-an-ai-agent.md).
-
 ## Explore the curriculum
 
 Every topic has a co-located `README.md`, self-contained notebook, and
@@ -85,33 +83,25 @@ surface; scripts hold reusable deterministic implementation.
 | 12 | [Agent Benchmarks](curriculum/advanced/12-agent-benchmarks/README.md) | SWE-bench, WebArena, BrowserGym, GAIA, τ-bench, OSWorld, and enterprise benchmarks |
 | 13 | [MCP: Model Context Protocol](curriculum/advanced/13-mcp-model-context-protocol/README.md) | Tools, resources, prompts, gateways, security, and interoperability |
 | 14 | [Agent Skills](curriculum/advanced/14-agent-skills/README.md) | Procedural knowledge, dynamic loading, composition, MCP, and subagents |
+| 15 | [Designing Reliable Agentic Systems](curriculum/advanced/15-designing-reliable-agentic-systems/README.md) | Core engineering trade-offs and reliable system design |
+| 16 | [Human + Multi-Agent Organizations](curriculum/advanced/16-human-multi-agent-organizations/README.md) | Delegation, management, supervision, and mixed teams |
+| 17 | [Agentic Enterprise Architecture](curriculum/advanced/17-agentic-enterprise-architecture/README.md) | Registries, gateways, discovery, governance, and FinOps |
+| 18 | [Agentic Software Engineering](curriculum/advanced/18-agentic-software-engineering/README.md) | Repository understanding, coding agents, tests, review, and CI/CD |
+| 19 | [Embodied Agents and Robotics](curriculum/advanced/19-embodied-agents-robotics/README.md) | VLA, simulation, feedback, and physical-world safety |
+| 20 | [Multimodal Agents](curriculum/advanced/20-multimodal-agents/README.md) | Vision, audio, documents, UI, sensors, memory, and tools |
+| 21 | [Cost, Latency, and Agent Economics](curriculum/advanced/21-cost-latency-agent-economics/README.md) | Budgets, caching, routing, and cost per safe success |
+| 22 | [Production Agent Architecture](curriculum/advanced/22-production-agent-architecture/README.md) | Gateways, sessions, queues, scaling, and disaster recovery |
+| 23 | [Agent Governance and Responsible AI](curriculum/advanced/23-agent-governance-responsible-ai/README.md) | Inventory, ownership, risk, lifecycle, and incident response |
+| 24 | [Guardrails and Policy Enforcement](curriculum/advanced/24-guardrails-policy-enforcement/README.md) | Layered validation, limits, sandboxing, and kill switches |
+| 25 | [Agent Identity and Authorization](curriculum/advanced/25-agent-identity-authorization/README.md) | Delegated authority, non-human identity, scopes, and audit |
+| 26 | [Agent Security](curriculum/advanced/26-agent-security/README.md) | Injection, poisoning, exfiltration, supply chain, and excessive agency |
+| 27 | [Agent Observability](curriculum/advanced/27-agent-observability/README.md) | Traces, trajectories, costs, replay, debugging, and dashboards |
+| 28 | [Human-Agent Collaboration](curriculum/advanced/28-human-agent-collaboration/README.md) | HITL/HOTL, intervention, escalation, trust, and autonomy boundaries |
+| 29 | [Agent Orchestration](curriculum/advanced/29-agent-orchestration/README.md) | Graphs, queues, checkpoints, approvals, recovery, and durable execution |
+| 30 | [Agent Communication and Coordination](curriculum/advanced/30-agent-communication-coordination/README.md) | Messaging, blackboards, delegation, consensus, conflict, and team design |
+| 31 | [The Agent Protocol Stack](curriculum/advanced/31-agent-protocol-stack/README.md) | MCP, A2A, AG-UI, A2UI, UCP, AP2, and interoperable boundaries |
 
-### Enterprise Agent — operate an ecosystem of agents
-
-The Enterprise track builds on the earlier levels. Start with reliability and
-move through architecture, identity, governance, communication, and protocols.
-
-| Step | Topic | Learn and run |
-| --- | --- | --- |
-| 01 | [Designing Reliable Agentic Systems](curriculum/enterprise-agent/01-designing-reliable-agentic-systems/README.md) | Core engineering trade-offs and reliable system design |
-| 02 | [Human + Multi-Agent Organizations](curriculum/enterprise-agent/02-human-multi-agent-organizations/README.md) | Delegation, management, supervision, and mixed teams |
-| 03 | [Agentic Enterprise Architecture](curriculum/enterprise-agent/03-agentic-enterprise-architecture/README.md) | Registries, gateways, discovery, governance, and FinOps |
-| 04 | [Agentic Software Engineering](curriculum/enterprise-agent/04-agentic-software-engineering/README.md) | Repository understanding, coding agents, tests, review, and CI/CD |
-| 05 | [Embodied Agents and Robotics](curriculum/enterprise-agent/05-embodied-agents-robotics/README.md) | VLA, simulation, feedback, and physical-world safety |
-| 06 | [Multimodal Agents](curriculum/enterprise-agent/06-multimodal-agents/README.md) | Vision, audio, documents, UI, sensors, memory, and tools |
-| 07 | [Cost, Latency, and Agent Economics](curriculum/enterprise-agent/07-cost-latency-agent-economics/README.md) | Budgets, caching, routing, and cost per safe success |
-| 08 | [Production Agent Architecture](curriculum/enterprise-agent/08-production-agent-architecture/README.md) | Gateways, sessions, queues, scaling, and disaster recovery |
-| 09 | [Agent Governance and Responsible AI](curriculum/enterprise-agent/09-agent-governance-responsible-ai/README.md) | Inventory, ownership, risk, lifecycle, and incident response |
-| 10 | [Guardrails and Policy Enforcement](curriculum/enterprise-agent/10-guardrails-policy-enforcement/README.md) | Layered validation, limits, sandboxing, and kill switches |
-| 11 | [Agent Identity and Authorization](curriculum/enterprise-agent/11-agent-identity-authorization/README.md) | Delegated authority, non-human identity, scopes, and audit |
-| 12 | [Agent Security](curriculum/enterprise-agent/12-agent-security/README.md) | Injection, poisoning, exfiltration, supply chain, and excessive agency |
-| 13 | [Agent Observability](curriculum/enterprise-agent/13-agent-observability/README.md) | Traces, trajectories, costs, replay, debugging, and dashboards |
-| 14 | [Human-Agent Collaboration](curriculum/enterprise-agent/14-human-agent-collaboration/README.md) | HITL/HOTL, intervention, escalation, trust, and autonomy boundaries |
-| 15 | [Agent Orchestration](curriculum/enterprise-agent/15-agent-orchestration/README.md) | Graphs, queues, checkpoints, approvals, recovery, and durable execution |
-| 16 | [Agent Communication and Coordination](curriculum/enterprise-agent/16-agent-communication-coordination/README.md) | Messaging, blackboards, delegation, consensus, conflict, and team design |
-| 17 | [The Agent Protocol Stack](curriculum/enterprise-agent/17-agent-protocol-stack/README.md) | MCP, A2A, AG-UI, A2UI, UCP, AP2, and interoperable boundaries |
-
-For a directory-level view, use the [full curriculum map](curriculum/README.md).
+For a directory-level view, use the [full curriculum map](COURSE_MAP.md).
 
 ## How to use a lesson locally
 
@@ -136,16 +126,6 @@ jupyter notebook curriculum/beginner/02-agent-loop/
 Default labs are designed to run without credentials or external side effects.
 Provider-specific extensions are explicitly marked and should use your own
 environment variables and scoped credentials.
-
-## Practical reference guides
-
-Use these alongside the curriculum when designing a system:
-
-- [Architecture patterns](docs/architecture-patterns.md) — routing, parallelization, workers, evaluators, and approvals.
-- [Multi-agent systems](docs/multi-agent-systems.md) — roles, topology, delegation, shared state, and when not to add agents.
-- [Evaluation and security](docs/evaluation-and-security.md) — trajectory evaluation, threat modeling, and release gates.
-- [AgentOps scenario guide](docs/agentops-lab.md) — the recurring SaaS incident scenario used throughout the labs.
-- [Provider guide](docs/provider-guide.md) — optional OpenAI Agents SDK and LangGraph setup.
 
 ## Curated resources
 

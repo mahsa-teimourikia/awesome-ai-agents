@@ -1,6 +1,8 @@
 # 01 — AI Agents: Foundations
 
-**Scenario:** A SaaS support team wants to reduce time-to-resolution for
+**Level:** Beginner · **Time:** 60 min · **Prerequisites:** None
+
+**Scenario:** Northstar, a SaaS support team wants to reduce time-to-resolution for
 checkout questions without giving an untrusted system permission to change
 production data.
 **Notebook:** [`01_agent_foundations.ipynb`](01_agent_foundations.ipynb)
@@ -158,6 +160,50 @@ Work through the notebook, then apply this checklist to a proposed AI feature:
   authorization or tool policy.
 - **AutoGen and CrewAI:** team-oriented abstractions; adopt after a single-agent
   baseline proves coordination is needed.
+
+## Watch For
+
+- **Assumption failure:** The model hallucinates an unsupported parameter.
+- **State leak:** Context is incorrectly preserved across runs.
+- **Timeout:** The tool takes too long and the agent loops.
+- **Auth bypass:** The agent attempts an action it shouldn't.
+
+## Checkpoint
+
+**1. Which are core components of a practical AI agent?**
+- A) A model that chooses the next action
+- B) Instructions that define goals and boundaries
+- C) Tools that expose controlled operations
+- D) A fashionable chat interface
+- E) State and a bounded control loop
+
+**2. Which are appropriate terminal conditions for an agent run?**
+- A) A deterministic validator accepts the result
+- B) The turn or spend budget is exhausted
+- C) A policy requires human escalation
+- D) The agent has called at least one tool
+- E) No useful safe action remains
+
+**3. What does a ReAct-style loop do?**
+- A) Interleaves reasoning with actions and observations
+- B) Uses observations to update subsequent decisions
+- C) Requires model-weight updates after every tool call
+- D) Lets tools gather information from an environment
+- E) Guarantees that every trajectory is correct
+
+**4. Which properties improve an agent-facing tool contract?**
+- A) A narrow, unambiguous purpose
+- B) Typed input and output schemas
+- C) Useful errors and explicit risk metadata
+- D) A single tool that performs every available operation
+- E) Idempotency or preview support for risky writes
+
+**5. Which controls are appropriate for long-term agent memory?**
+- A) Store provenance for memory writes
+- B) Scope memory by user and tenant
+- C) Allow inspection and deletion
+- D) Treat every model-generated memory as verified truth
+- E) Apply validation and retention rules
 
 ## References
 

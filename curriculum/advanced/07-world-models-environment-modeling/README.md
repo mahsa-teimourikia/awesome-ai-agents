@@ -1,5 +1,7 @@
 # World Models and Environment Modeling
 
+**Level:** Advanced · **Time:** 60 min · **Prerequisites:** None
+
 **Advanced · 07** · **Notebook:** [`world_models_environment_modeling.ipynb`](world_models_environment_modeling.ipynb) · **Implementation:** [`lab.py`](lab.py)
 
 World models are internal predictive representations: given observed state and a candidate action, they estimate how an environment may evolve. They support model-based planning, simulation, and counterfactual questions such as “what would likely happen if we roll back versus route traffic?” A digital twin is typically a task-specific model connected to an operational asset and telemetry; a learned world model may infer dynamics from data. Both are fallible and must be calibrated against reality.
@@ -31,6 +33,27 @@ Northstar’s EU checkout has low conversion and rising errors. Compare `rollbac
 ## Practical lab
 
 Run `python lab.py`. It compares candidate mitigations using expected conversion, error rate, and confidence; the output is a **proposal**, not authorization. Experiments: lower rollback confidence; add a cost/risk term; simulate telemetry drift; test a model that predicts high conversion but violates a policy constraint; and compare a single-step choice with receding-horizon replanning.
+
+## Watch For
+
+- **Assumption failure:** The model hallucinates an unsupported parameter.
+- **State leak:** Context is incorrectly preserved across runs.
+- **Timeout:** The tool takes too long and the agent loops.
+- **Auth bypass:** The agent attempts an action it shouldn't.
+
+## Checkpoint
+
+**1. What is the primary purpose of this module?**
+- A) To understand the core concept.
+- B) To write complex boilerplate.
+- C) To ignore system errors.
+- D) To bypass security.
+
+**2. How do we mitigate the primary failure mode?**
+- A) Retries.
+- B) Human approval.
+- C) Logging.
+- D) Idempotency keys.
 
 ## References
 

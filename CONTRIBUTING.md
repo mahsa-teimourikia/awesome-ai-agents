@@ -2,45 +2,15 @@
 
 Thank you for improving Awesome AI Agents & Agentic Workflows.
 
-## What belongs here
+## How to add a lesson
 
-A good addition is:
+Follow this exact order when contributing a new module:
+1. Create the **module README** in the appropriate track (e.g., `curriculum/advanced/32-<topic>/README.md`).
+2. Write the **companion notebook** (e.g., `32_<topic>.ipynb`) with a deliberate failure mode.
+3. Add the **hub registry** entry to `app/page.tsx` with no placeholder data.
+4. Add the **quiz** questions to `quiz/questions.js` and `quiz/learning.js`.
 
-- directly relevant to AI agents or agentic workflows;
-- an official educational resource, primary research paper, benchmark, protocol, or actively maintained open-source project;
-- available without requiring a sales conversation;
-- described in one sentence that explains its practical value; and
-- placed in the most specific existing section.
-
-Prefer original sources over summaries. A resource does not need to be vendor-neutral, but its description should be factual and should not read like marketing.
-
-## Before opening a pull request
-
-1. Check that the resource is not already listed.
-2. Open every changed link.
-3. Confirm that an open-source project has a clear license.
-4. Keep entries alphabetized when a section is already alphabetical.
-5. Explain why the addition belongs in the collection.
-6. Use descriptive link text rather than a bare URL.
-7. Run the quiz tests if you change quiz questions or grading:
-
-   ```bash
-   cd quiz
-   npm test
-   ```
-
-## Quiz questions
-
-Each question must:
-
-- test a concept explained in this repository;
-- have two or more correct answers;
-- avoid tricks and ambiguous wording;
-- include a concise explanation;
-- cite the relevant local guide section; and
-- pass exact-match grading tests.
-
-Do not add questions whose answer depends on a rapidly changing product limit or leaderboard rank.
+> **Note:** Do not create a `docs/` folder or place markdown outside of the `curriculum/` directory.
 
 ## Pull request scope
 

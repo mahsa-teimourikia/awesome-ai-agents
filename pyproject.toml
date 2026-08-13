@@ -1,0 +1,35 @@
+[project]
+name = "awsome-ai-agents"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+learner = [
+    "jupyter",
+    "ipykernel",
+    "pydantic",
+    "openai",
+    "anthropic",
+    "langchain",
+    "langgraph",
+    "langchain-openai",
+    "pyautogen",
+    "crewai",
+    "agentops",
+    "pandas",
+    "mcp",
+    "chromadb",
+    "opentelemetry-api",
+    "opentelemetry-sdk"
+]
+contributor = [
+    "awsome-ai-agents[learner]",
+    "pytest",
+    "nbclient",
+    "nbformat",
+]
+
+[tool.setuptools]
+py-modules = []
+packages = ["awsome_agents"]

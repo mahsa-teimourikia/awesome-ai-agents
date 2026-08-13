@@ -1,5 +1,9 @@
 # 04 — Guardrails and untrusted content
 
+**Level:** Intermediate · **Time:** 60 min · **Prerequisites:** None
+
+**Scenario:** Northstar, a SaaS support team, is integrating this concept into their agentic workflow.
+
 **Primary lesson:** [`guardrails_untrusted_content.ipynb`](guardrails_untrusted_content.ipynb) · **Runnable code:** [`lab.py`](lab.py)
 
 ## Scenario: the poisoned checkout runbook
@@ -133,6 +137,27 @@ tenant boundary; the second is blocked because unknown tools default to deny.
    current tenant’s approved domains.
 4. Turn `adversarial_suite()` into a release gate with an attack success rate,
    false-positive rate, and zero-tolerance harmful-action metric.
+
+## Watch For
+
+- **Assumption failure:** The model hallucinates an unsupported parameter.
+- **State leak:** Context is incorrectly preserved across runs.
+- **Timeout:** The tool takes too long and the agent loops.
+- **Auth bypass:** The agent attempts an action it shouldn't.
+
+## Checkpoint
+
+**1. What is the primary purpose of this module?**
+- A) To understand the core concept.
+- B) To write complex boilerplate.
+- C) To ignore system errors.
+- D) To bypass security.
+
+**2. How do we mitigate the primary failure mode?**
+- A) Retries.
+- B) Human approval.
+- C) Logging.
+- D) Idempotency keys.
 
 ## References
 

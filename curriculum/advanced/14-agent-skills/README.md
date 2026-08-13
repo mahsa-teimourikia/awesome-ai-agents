@@ -1,5 +1,7 @@
 # Agent Skills
 
+**Level:** Advanced · **Time:** 60 min · **Prerequisites:** None
+
 **Advanced · 14** · **Notebook:** [`agent_skills.ipynb`](agent_skills.ipynb) · **Implementation:** [`lab.py`](lab.py)
 
 Skills are reusable packages of **procedural knowledge**: a focused description of when a capability applies, instructions for how to perform it, and optional scripts, references, templates, or assets. They are an architectural abstraction above raw tools. A tool performs one operation; a skill explains a repeatable goal-oriented workflow, constraints, expected artifacts, and how to use tools safely. Skills make agent behavior more reusable, reviewable, versionable, and progressively loadable.
@@ -87,3 +89,29 @@ Run `python lab.py`, then the notebook. The simulator discovers a metadata-only 
 - [NVIDIA skills catalog and governance discussion](https://github.com/NVIDIA/skills)
 - [Agent Skills research survey](https://arxiv.org/abs/2602.12430)
 - [MCP specification](https://modelcontextprotocol.io/specification/) and [A2A protocol](https://a2a-protocol.org/latest/)
+
+
+## Checkpoint
+
+**1. Which statements distinguish an agent skill from a tool?**
+- A) A tool normally performs one typed operation
+- B) A skill can package a workflow, instructions, references, scripts, and assets
+- C) Activating a skill automatically broadens all tool permissions
+- D) Skills can use progressive disclosure so deeper material loads only when relevant
+- E) A skill is a form of application authorization
+
+**2. Which controls make a skill library safe to operate?**
+- A) Record owner, provenance, version, compatibility, risk, tests, and revocation
+- B) Filter discovery and activation by tenant, policy, and permitted tools
+- C) Union every participating skill's tool privileges when composing skills
+- D) Treat scripts, references, and assets as supply-chain inputs subject to review and scanning
+- E) Trace the selected skill version and evaluate discovery/activation behavior
+
+
+
+## Watch For
+
+- **Assumption failure:** The model hallucinates an unsupported parameter.
+- **State leak:** Context is incorrectly preserved across runs.
+- **Timeout:** The tool takes too long and the agent loops.
+- **Auth bypass:** The agent attempts an action it shouldn't.

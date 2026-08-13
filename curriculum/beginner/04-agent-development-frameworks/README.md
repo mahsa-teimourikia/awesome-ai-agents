@@ -1,6 +1,8 @@
 # 04 — Agent development frameworks
 
 **Level:** Beginner · **Prerequisites:** [the agent loop](../02-agent-loop/README.md) and [workflow or agent?](../03-workflow-or-agent/README.md)
+
+**Scenario:** Northstar, a SaaS support team, is integrating this concept into their agentic workflow.
 **Run:** [`lab.py`](lab.py)
 **Primary scenario:** an operations assistant for the fictional Northstar Commerce SaaS platform
 
@@ -109,6 +111,27 @@ This is a practical comparison, not a benchmark. Version, model provider, deploy
 - Record traces with redaction and retention controls; evaluate trajectories as well as final answers.
 - Make side-effecting operations idempotent and require an approval token bound to the exact proposed action.
 - Start with the least autonomous architecture that reliably solves the task.
+
+## Watch For
+
+- **Assumption failure:** The model hallucinates an unsupported parameter.
+- **State leak:** Context is incorrectly preserved across runs.
+- **Timeout:** The tool takes too long and the agent loops.
+- **Auth bypass:** The agent attempts an action it shouldn't.
+
+## Checkpoint
+
+**1. What is the primary purpose of this module?**
+- A) To understand the core concept.
+- B) To write complex boilerplate.
+- C) To ignore system errors.
+- D) To bypass security.
+
+**2. How do we mitigate the primary failure mode?**
+- A) Retries.
+- B) Human approval.
+- C) Logging.
+- D) Idempotency keys.
 
 ## References
 

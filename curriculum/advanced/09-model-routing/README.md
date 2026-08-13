@@ -1,5 +1,7 @@
 # Model Routing
 
+**Level:** Advanced · **Time:** 60 min · **Prerequisites:** None
+
 **Advanced · 09** · **Notebook:** [`model_routing.ipynb`](model_routing.ipynb) · **Implementation:** [`lab.py`](lab.py)
 
 Model routing selects the least expensive *eligible* model path for a request while preserving a measured quality, safety, and latency floor. It is a runtime product policy: it must account for what the task needs, what models can actually do, current availability, contractual data boundaries, and evidence from evaluation. It is not a claim that one model is universally “best,” and it never grants a model permission to act.
@@ -104,6 +106,27 @@ Evaluate **outcome** (task success, groundedness, schema/test pass), **routing**
 2. Create an acceptance check for a grounded support answer that requires two source IDs. Compare cascade cost-per-success to always using the reasoning route.
 3. Simulate a multimodal outage during a screen-based task. Define which portions can be deferred, which can be sent to a person, and why a text-only guess is unsafe.
 4. Design a routing evaluation set where average quality hides a failure for a protected language or high-value tenant. Specify the release gate.
+
+## Watch For
+
+- **Assumption failure:** The model hallucinates an unsupported parameter.
+- **State leak:** Context is incorrectly preserved across runs.
+- **Timeout:** The tool takes too long and the agent loops.
+- **Auth bypass:** The agent attempts an action it shouldn't.
+
+## Checkpoint
+
+**1. What is the primary purpose of this module?**
+- A) To understand the core concept.
+- B) To write complex boilerplate.
+- C) To ignore system errors.
+- D) To bypass security.
+
+**2. How do we mitigate the primary failure mode?**
+- A) Retries.
+- B) Human approval.
+- C) Logging.
+- D) Idempotency keys.
 
 ## References
 

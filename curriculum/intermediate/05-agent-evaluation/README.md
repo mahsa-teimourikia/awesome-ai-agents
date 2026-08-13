@@ -1,5 +1,9 @@
 # 05 — Agent evaluation: outcomes, trajectories, and release gates
 
+**Level:** Intermediate · **Time:** 60 min · **Prerequisites:** None
+
+**Scenario:** Northstar, a SaaS support team, is integrating this concept into their agentic workflow.
+
 **Primary lesson:** [`agent_evaluation.ipynb`](agent_evaluation.ipynb) · **Runnable evaluator:** [`lab.py`](lab.py)
 
 ## Scenario
@@ -132,6 +136,27 @@ Extend the Northstar suite with: a tool timeout requiring bounded retry; an ambi
 3. Slice results by incident severity and tenant; explain why aggregate pass
    rate can hide a critical failure.
 4. Add a canary gate that blocks rollout on any new forbidden action.
+
+## Watch For
+
+- **Assumption failure:** The model hallucinates an unsupported parameter.
+- **State leak:** Context is incorrectly preserved across runs.
+- **Timeout:** The tool takes too long and the agent loops.
+- **Auth bypass:** The agent attempts an action it shouldn't.
+
+## Checkpoint
+
+**1. What is the primary purpose of this module?**
+- A) To understand the core concept.
+- B) To write complex boilerplate.
+- C) To ignore system errors.
+- D) To bypass security.
+
+**2. How do we mitigate the primary failure mode?**
+- A) Retries.
+- B) Human approval.
+- C) Logging.
+- D) Idempotency keys.
 
 ## References
 

@@ -2,6 +2,8 @@
 
 **Level:** Intermediate · **Primary notebook:** [`context_engineering.ipynb`](context_engineering.ipynb) · **Runnable implementation:** [`lab.py`](lab.py)
 
+**Scenario:** Northstar, a SaaS support team, is integrating this concept into their agentic workflow.
+
 An agent is only as capable as the information available at the instant it chooses its next action. Context engineering is the system discipline of selecting, structuring, refreshing, compressing, and isolating that information. It is broader than prompt writing: system instructions, conversation, task state, tool results, retrieved documents, user-scoped memory, and metadata all compete for a finite attention budget.
 
 This module uses a Northstar Commerce incident assistant. It must investigate EU checkout payment failures for **Acme** without leaking another tenant’s data, treating a poisoned runbook as untrusted, or drowning the model in old chat history. The default lab is deterministic and needs no provider credentials.
@@ -131,6 +133,27 @@ The lab quarantines an Acme document containing an instruction injection and dro
 3. Add a document that is highly relevant but from an unauthorized project; write an assertion that it is excluded.
 4. Design a summary schema for a 100-turn incident investigation; which fields cannot be compressed away?
 5. Compare “full transcript,” “recent messages,” “structured summary + just-in-time evidence,” and “external memory only” on accuracy, latency, cost, and failure modes.
+
+## Watch For
+
+- **Assumption failure:** The model hallucinates an unsupported parameter.
+- **State leak:** Context is incorrectly preserved across runs.
+- **Timeout:** The tool takes too long and the agent loops.
+- **Auth bypass:** The agent attempts an action it shouldn't.
+
+## Checkpoint
+
+**1. What is the primary purpose of this module?**
+- A) To understand the core concept.
+- B) To write complex boilerplate.
+- C) To ignore system errors.
+- D) To bypass security.
+
+**2. How do we mitigate the primary failure mode?**
+- A) Retries.
+- B) Human approval.
+- C) Logging.
+- D) Idempotency keys.
 
 ## References
 

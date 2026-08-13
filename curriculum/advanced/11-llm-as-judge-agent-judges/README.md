@@ -1,5 +1,7 @@
 # LLM-as-Judge and Agent Judges
 
+**Level:** Advanced · **Time:** 60 min · **Prerequisites:** None
+
 **Advanced · 11** · **Notebook:** [`llm_as_judge_agent_judges.ipynb`](llm_as_judge_agent_judges.ipynb) · **Implementation:** [`lab.py`](lab.py)
 
 An LLM judge is an evaluator that applies a task-specific rubric to an answer, comparison, or agent trajectory. It can make evaluation scalable, but it is not objective ground truth: it can favor style, be biased by position/order, miss subtle policy failures, share blind spots with the system under test, and drift as models/prompts change. Use judges with deterministic checks, representative human labels, calibration, and release gates.
@@ -32,3 +34,27 @@ Prominent technologies include [OpenAI Evals](https://github.com/openai/evals), 
 6. Use ensemble/adjudication only where value justifies cost; sample disagreement for human review and update rubric/evaluation data.
 
 Run `python lab.py`; then use the notebook to score a supported trace and a forbidden-action trace. References: [LLM-as-a-Judge survey](https://arxiv.org/abs/2306.05685), [G-Eval](https://arxiv.org/abs/2303.16634), [JudgeLM](https://arxiv.org/abs/2310.17631), [Agent evaluation guidance](https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents).
+
+
+## Watch For
+
+- **Assumption failure:** The model hallucinates an unsupported parameter.
+- **State leak:** Context is incorrectly preserved across runs.
+- **Timeout:** The tool takes too long and the agent loops.
+- **Auth bypass:** The agent attempts an action it shouldn't.
+
+
+## Checkpoint
+
+**1. What is the primary purpose of this module?**
+- A) To understand the core concept.
+- B) To write complex boilerplate.
+- C) To ignore system errors.
+- D) To bypass security.
+
+**2. How do we mitigate the primary failure mode?**
+- A) Retries.
+- B) Human approval.
+- C) Logging.
+- D) Idempotency keys.
+

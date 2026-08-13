@@ -1,5 +1,7 @@
 # 01 — Single agent versus multi-agent systems
 
+**Level:** Advanced · **Time:** 60 min · **Prerequisites:** None
+
 **Notebook:** [`single_vs_multi_agent.ipynb`](single_vs_multi_agent.ipynb) · **Lab:** [`lab.py`](lab.py)
 
 ## Scenario
@@ -165,6 +167,27 @@ write the architecture decision you would ship.
 - Human approval at external action boundaries; critics cannot authorize tools.
 - Test misrouting, stale/shared-state poisoning, contradictory specialists,
   collusion/echo, worker failure, slow worker, and unbounded delegation.
+
+## Watch For
+
+- **Assumption failure:** The model hallucinates an unsupported parameter.
+- **State leak:** Context is incorrectly preserved across runs.
+- **Timeout:** The tool takes too long and the agent loops.
+- **Auth bypass:** The agent attempts an action it shouldn't.
+
+## Checkpoint
+
+**1. What is the primary purpose of this module?**
+- A) To understand the core concept.
+- B) To write complex boilerplate.
+- C) To ignore system errors.
+- D) To bypass security.
+
+**2. How do we mitigate the primary failure mode?**
+- A) Retries.
+- B) Human approval.
+- C) Logging.
+- D) Idempotency keys.
 
 ## References
 
