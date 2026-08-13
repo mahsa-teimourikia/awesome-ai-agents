@@ -34,6 +34,30 @@ A robust agentic system relies on distributed components, separating synchronous
 
 ---
 
+## State of the Art: Deployment Tools & Environments
+
+When deploying an agent architecture, you do not need to build checkpointers and message queues from scratch. 
+
+### Orchestration Frameworks
+- **LangGraph:** Provides native Checkpointer abstractions (using Postgres/SQLite) to save graph state between nodes.
+- **Temporal:** A durable execution platform that handles retries, DLQs, and sleep states natively. Ideal for polyglot microservice environments.
+- **AWS Step Functions:** A serverless orchestrator that can manage state machines natively in AWS, triggering Lambda functions for agent reasoning.
+
+### Cloud Deployments
+Major cloud providers offer managed services that perfectly map to the Production Agent Architecture:
+- **AWS:** Amazon API Gateway (Stateless) -> SQS (Message Queue) -> ECS Fargate / Lambda (Worker Compute) -> DynamoDB (Checkpointer) -> Bedrock (LLM).
+- **Google Cloud:** Cloud Run (Worker Compute) triggered by Pub/Sub (Message Queue) with Cloud SQL (Postgres Checkpointer) and Vertex AI (LLM).
+- **Azure:** Azure Functions (Worker) triggered by Service Bus (Message Queue) with CosmosDB (Checkpointer) and Azure OpenAI.
+
+### On-Premise & Sovereign Cloud Deployments
+For highly regulated industries (defense, finance), agents must be deployed on-premise.
+- **Compute:** Kubernetes (K3s/RKE2) running agent workers.
+- **State & Queue:** RabbitMQ or Apache Kafka for async messaging. PostgreSQL (often deployed via operators like CrunchyData) for Checkpointing.
+- **LLM:** Local open-source models (Llama 3, Mixtral) served via **vLLM** or **Ollama** entirely within the air-gapped network.
+- **Auto-scaling:** **KEDA** (Kubernetes Event-driven Autoscaling) monitors the RabbitMQ/Kafka queue depth and scales the agent pods up or down automatically.
+
+---
+
 ## Watch For
 
 - **The `time.sleep()` Anti-Pattern:** Never pause an agent script to wait for an external event or human approval. The server connection will timeout. You must checkpoint the state to a database and exit the process (Durable Execution).
