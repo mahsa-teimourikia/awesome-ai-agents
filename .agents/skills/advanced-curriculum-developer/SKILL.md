@@ -14,6 +14,7 @@ Never settle for a high-level conceptual summary. You must go deep into the tech
 * **Technology/Tools Review:** Compare the state-of-the-art platforms (e.g., AgentOps vs LangSmith vs Datadog) to ground the curriculum in real-world choices.
 * **Data Examples:** If teaching a concept (like an OTel Span or a Handoff Packet), always include a raw JSON payload example.
 * **State of the Art: Technology & Tools:** Include a `## State of the Art: Technology & Tools` section in the Master `README.md`. You MUST review the current state of the art and reference the specific technology and tools (e.g., LangGraph, RouteLLM, MuJoCo, E2B) with markdown links.
+* **EXTREME DETAIL & COMPREHENSIVENESS:** Do not write thin, superficial modules. Deep dives must contain multiple edge cases, real-world examples, and robust architectural discussions. Notebooks must contain *at least* 3-4 distinct simulation patterns, not just one simple function. Over-deliver on detail.
 
 ## 2. Visual Fidelity (Mermaid SVGs)
 Do not rely on the user to compile diagrams, and do not rely on markdown native rendering which can be buggy.
