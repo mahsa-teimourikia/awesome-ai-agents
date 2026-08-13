@@ -37,6 +37,22 @@ Before any media hits the Reasoning Agent, a deterministic normalization layer m
 
 ---
 
+## State of the Art: Technology & Tools
+
+The landscape for multimodal agents and computer use is evolving rapidly. 
+
+### Computer Use & UI Agents
+- **[Anthropic Computer Use API](https://docs.anthropic.com/en/docs/build-with-claude/computer-use):** Claude 3.5 Sonnet's native beta API for looking at a screen, moving a cursor, clicking, and typing. It requires the developer to build the execution sandbox.
+- **[E2B (Ephemeral Environments)](https://e2b.dev/):** Provides secure, disposable cloud sandboxes specifically designed for AI agents to execute code or perform computer use without compromising a host machine.
+- **[OpenAI Operator (Upcoming)](https://openai.com/index/computer-using-agent/):** OpenAI's upcoming agentic architecture intended to natively browse and act on UI elements across applications.
+- **[Browser Use](https://github.com/browser-use/browser-use):** An open-source framework that maps DOM elements to LLM-readable formats, allowing agents to reliably interact with websites.
+
+### Vision, Video & Document Parsing
+- **[Gemini 1.5 Pro (Native Multimodal)](https://ai.google.dev/gemini-api/docs/multimodal_concepts):** Google's model architecture natively ingests raw `.mp4` video files and massive PDFs into its 2-million token context window, eliminating the need to write complex FFMPEG frame extraction scripts.
+- **[Llama Parse](https://github.com/run-llama/llama_parse):** A state-of-the-art parser specifically designed by LlamaIndex to extract complex tables and charts from PDFs into LLM-readable markdown.
+
+---
+
 ## Watch For
 
 - **The Stale Click:** If your agent decides to click a button at `(X: 100, Y: 200)`, but the screen has scrolled since the screenshot was taken, the agent might click "Delete Database" instead of "Submit". Always verify the screen state before executing a click.
