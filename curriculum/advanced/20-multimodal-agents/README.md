@@ -11,6 +11,7 @@ We have broken this curriculum down into three core modules:
 1. **[Multimodal Inputs & Normalization](#multimodal-inputs--normalization)** (This Page)
 2. **[Deep Dive: Computer Use & UI Interaction](COMPUTER_USE_AND_UI.md)** (DOM vs Pixels, Screen Sandboxing, Stale States)
 3. **[Deep Dive: Vision, Video, and Structured Extraction](VISION_AND_VIDEO.md)** (Forcing Pydantic JSON from images, Token Economics)
+4. **[Deep Dive: Multimodal Use-Cases](USE_CASES_AND_APPLICATIONS.md)** (Visual QA, IoT Telemetry, Native Video Analysis)
 
 ---
 
