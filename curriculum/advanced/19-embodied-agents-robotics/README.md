@@ -30,6 +30,21 @@ Embodied agents do not operate like chat bots. They operate in a continuous loop
 
 ---
 
+## State of the Art: Technology & Tools
+
+The software and hardware stack for embodied AI is stabilizing around a few core frameworks and simulators.
+
+### Vision-Language-Action (VLA) Models
+- **[RT-2 (Robotics Transformer 2)](https://deepmind.google/discover/blog/rt-2-new-model-translates-vision-and-language-into-action/):** Google DeepMind's flagship VLA model that co-finetunes vision-language models on robotic trajectory data, allowing the model to inherently understand physical affordances.
+- **[OpenVLA](https://openvla.github.io/):** A state-of-the-art open-source 7B parameter VLA model that can be fine-tuned for specific robotic embodiments using LoRA.
+- **[Gemini Robotics](https://deepmind.google/models/gemini-robotics/):** Google's initiative to integrate Gemini directly into robotic control loops for advanced spatial reasoning.
+
+### Simulation and Digital Twins
+- **[MuJoCo (Multi-Joint dynamics with Contact)](https://mujoco.org/):** A highly accurate physics engine maintained by Google DeepMind. It is the gold standard for simulating complex physical contacts and grasping before deploying to real hardware.
+- **[NVIDIA Isaac Sim](https://developer.nvidia.com/isaac-sim):** A photorealistic robotics simulation platform built on NVIDIA Omniverse, heavily used for generating synthetic training data and testing Domain Randomization.
+
+---
+
 ## Watch For
 
 - **Direct Motor Control:** Never let an LLM output raw motor voltages. They must output semantic coordinates, allowing a deterministic low-level controller to safely plan the motion path.
