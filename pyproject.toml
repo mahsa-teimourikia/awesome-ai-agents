@@ -13,6 +13,7 @@ learner = [
     "anthropic",
     "langchain",
     "langgraph",
+    "langchain-openai",
     "pyautogen",
     "crewai",
     "agentops",
