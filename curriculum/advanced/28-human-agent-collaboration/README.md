@@ -1,5 +1,7 @@
 # Human-Agent Collaboration
 
+**Level:** Advanced · **Time:** 60 min · **Prerequisites:** None
+
 **Enterprise Agent · 14** · **Notebook:** [`human_agent_collaboration.ipynb`](human_agent_collaboration.ipynb) · **Implementation:** [`lab.py`](lab.py)
 
 Human-agent collaboration is an authority and interaction design problem, not a button labelled “human in the loop.” People need timely, comprehensible evidence; agents need explicit autonomy boundaries, intervention paths, and feedback contracts. Oversight must be meaningful: an overwhelmed reviewer rubber-stamping opaque proposals is not a safety control.
@@ -28,3 +30,27 @@ Northstar’s assistant formats a low-risk status autonomously; monitors an ambi
 Run `python lab.py`. Production controls: named human authority, tenant/identity verification, exact-action fingerprint, expiry/idempotency, notification/accessibility design, workload/cognitive-load monitoring, cancellation/revocation, audit, feedback capture, and evaluation of correct escalation/intervention—not just task success.
 
 References: [NIST AI RMF](https://www.nist.gov/itl/ai-risk-management-framework), [OpenAI practical agent guide](https://openai.com/business/guides-and-resources/a-practical-guide-to-building-ai-agents/), [human-AI interaction guidelines](https://arxiv.org/abs/1902.04623), [Anthropic effective agents](https://www.anthropic.com/engineering/building-effective-agents).
+
+
+## Watch For
+
+- **Assumption failure:** The model hallucinates an unsupported parameter.
+- **State leak:** Context is incorrectly preserved across runs.
+- **Timeout:** The tool takes too long and the agent loops.
+- **Auth bypass:** The agent attempts an action it shouldn't.
+
+
+## Checkpoint
+
+**1. What is the primary purpose of this module?**
+- A) To understand the core concept.
+- B) To write complex boilerplate.
+- C) To ignore system errors.
+- D) To bypass security.
+
+**2. How do we mitigate the primary failure mode?**
+- A) Retries.
+- B) Human approval.
+- C) Logging.
+- D) Idempotency keys.
+

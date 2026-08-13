@@ -1,5 +1,7 @@
 # Hybrid Production Architecture
 
+**Level:** Advanced · **Time:** 60 min · **Prerequisites:** None
+
 **Advanced · 04** · **Notebook:** [`04_hybrid_production_architecture.ipynb`](04_hybrid_production_architecture.ipynb) · **Implementation:** [`lab.py`](lab.py)
 
 A credible production agent system is hybrid: deterministic code owns known paths, routing, policy, identity, budgets, approval, state, and audit; a bounded single agent handles ambiguity; a specialist team is reserved for cases where measured specialization/review improves the outcome. “Everything is an agent” is usually less controllable, more expensive, and harder to evaluate.
@@ -51,6 +53,27 @@ The notebook routes the three cases above. The high-risk case sends read-only ar
 Evaluate routing accuracy, outcome/evidence support, unsafe action blocks, approval correctness, tool/trajectory quality, cost per successful safe task, p95 latency, fallback/recovery, and tenant/risk slices. Test missing/conflicting evidence, tool failure, model outage, budget exhaustion, prompt injection, duplicate approval, queue replay, and rollback.
 
 Run `python lab.py`; inspect the route, policy checks, and approval state. Exercises: add a policy for medium-risk customer messaging; create an unavailable-tool fallback; compare a team with a single agent; model a release gate; and design an incident rollback/kill-switch path.
+
+## Watch For
+
+- **Assumption failure:** The model hallucinates an unsupported parameter.
+- **State leak:** Context is incorrectly preserved across runs.
+- **Timeout:** The tool takes too long and the agent loops.
+- **Auth bypass:** The agent attempts an action it shouldn't.
+
+## Checkpoint
+
+**1. What is the primary purpose of this module?**
+- A) To understand the core concept.
+- B) To write complex boilerplate.
+- C) To ignore system errors.
+- D) To bypass security.
+
+**2. How do we mitigate the primary failure mode?**
+- A) Retries.
+- B) Human approval.
+- C) Logging.
+- D) Idempotency keys.
 
 ## References
 

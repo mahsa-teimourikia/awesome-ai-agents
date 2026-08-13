@@ -1,5 +1,7 @@
 # Designing Reliable Agentic Systems
 
+**Level:** Advanced · **Time:** 60 min · **Prerequisites:** None
+
 **Enterprise Agent · 01**  
 **Notebook:** [`designing_reliable_agentic_systems.ipynb`](designing_reliable_agentic_systems.ipynb) · **Implementation:** [`lab.py`](lab.py)
 
@@ -104,6 +106,27 @@ Evaluate outcome quality, evidence support, forbidden actions, tool arguments, r
 3. Add a candidate design whose quality is 0.91 but whose latency is 30 seconds. Define an SLO and decide whether to ship it.
 4. Design a memory-write policy for a postmortem fact. Include scope, provenance, confidence, retention, deletion, and contradiction behavior.
 5. Write three release-gate tests: cross-tenant retrieval attempt, an unapproved rollback, and an agent that exceeds its tool budget.
+
+## Watch For
+
+- **Assumption failure:** The model hallucinates an unsupported parameter.
+- **State leak:** Context is incorrectly preserved across runs.
+- **Timeout:** The tool takes too long and the agent loops.
+- **Auth bypass:** The agent attempts an action it shouldn't.
+
+## Checkpoint
+
+**1. What is the primary purpose of this module?**
+- A) To understand the core concept.
+- B) To write complex boilerplate.
+- C) To ignore system errors.
+- D) To bypass security.
+
+**2. How do we mitigate the primary failure mode?**
+- A) Retries.
+- B) Human approval.
+- C) Logging.
+- D) Idempotency keys.
 
 ## References
 

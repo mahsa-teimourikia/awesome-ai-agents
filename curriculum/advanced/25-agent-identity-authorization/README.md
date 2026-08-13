@@ -1,5 +1,7 @@
 # Agent Identity and Authorization
 
+**Level:** Advanced · **Time:** 60 min · **Prerequisites:** None
+
 **Enterprise Agent · 11** · **Notebook:** [`agent_identity_authorization.ipynb`](agent_identity_authorization.ipynb) · **Implementation:** [`lab.py`](lab.py)
 
 Transactions require more than a user session and a persuasive prompt. A production agent needs a distinct non-human identity, a narrow delegated authority, an authenticated resource-side decision, and an attributable audit trail. User identity answers who requested work; agent identity answers which workload acted; delegated authority answers precisely what it may do, for whom, to which resource, for how long, and under which approval.
@@ -54,3 +56,27 @@ Policy enforcement belongs at a policy decision point and the target resource. I
 - Test token replay, confused deputy, audience/issuer mismatch, cross-tenant access, scope escalation, stale approval, secret leakage, peer impersonation, and revocation propagation.
 
 References: [OAuth 2.0 Security Best Current Practice](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-security-topics), [OpenID Connect Core](https://openid.net/specs/openid-connect-core-1_0.html), [SPIFFE workload identity](https://spiffe.io/docs/latest/spiffe-about/overview/), [MCP enterprise-managed authorization](https://modelcontextprotocol.io/extensions/auth/enterprise-managed-authorization), and [NIST AI RMF](https://www.nist.gov/itl/ai-risk-management-framework).
+
+
+## Watch For
+
+- **Assumption failure:** The model hallucinates an unsupported parameter.
+- **State leak:** Context is incorrectly preserved across runs.
+- **Timeout:** The tool takes too long and the agent loops.
+- **Auth bypass:** The agent attempts an action it shouldn't.
+
+
+## Checkpoint
+
+**1. What is the primary purpose of this module?**
+- A) To understand the core concept.
+- B) To write complex boilerplate.
+- C) To ignore system errors.
+- D) To bypass security.
+
+**2. How do we mitigate the primary failure mode?**
+- A) Retries.
+- B) Human approval.
+- C) Logging.
+- D) Idempotency keys.
+

@@ -1,5 +1,7 @@
 # Agent Orchestration
 
+**Level:** Advanced · **Time:** 60 min · **Prerequisites:** None
+
 **Enterprise Agent · 15** · **Notebook:** [`agent_orchestration.ipynb`](agent_orchestration.ipynb) · **Implementation:** [`lab.py`](lab.py)
 
 Agent intelligence chooses or synthesizes within a bounded step. Workflow orchestration decides what runs next, which dependencies are ready, how state persists, when to wait, how to recover, and who approves an action. Production systems need both; neither is a substitute for the other.
@@ -105,3 +107,22 @@ Run `python lab.py`, then execute the notebook. Extend the lab with: (1) a deadl
 [LangGraph](https://docs.langchain.com/oss/python/langgraph/overview) is strong for explicit state graphs, interrupts, persistence, and durable agent workflows. [Temporal](https://docs.temporal.io/workflows) is a durable-workflow engine for retries, timers, signals, queues, and long-running execution. [Prefect](https://docs.prefect.io/), [Dagster](https://docs.dagster.io/), and [Airflow](https://airflow.apache.org/) are data/workflow orchestration options. [OpenAI Agents SDK](https://openai.github.io/openai-agents-python/) offers managed agent loops/tracing; [CrewAI Flows](https://docs.crewai.com/en/concepts/flows) and [AutoGen](https://microsoft.github.io/autogen/) offer agent-focused orchestration patterns. Choose by state/durability, event/queue needs, visibility, deployment, identity, and operational constraints.
 
 Run `python lab.py`; the notebook covers route, graph/DAG, parallel join, checkpoint, approval, event resume, recovery, scheduling, and long-running budgets. References: [LangGraph durable execution](https://docs.langchain.com/oss/python/langgraph/durable-execution), [Temporal](https://docs.temporal.io/workflows), [OpenAI practical guide](https://openai.com/business/guides-and-resources/a-practical-guide-to-building-ai-agents/).
+
+
+## Watch For
+
+- **Assumption failure:** The model hallucinates an unsupported parameter.
+- **State leak:** Context is incorrectly preserved across runs.
+- **Timeout:** The tool takes too long and the agent loops.
+- **Auth bypass:** The agent attempts an action it shouldn't.
+
+
+## Checkpoint
+
+**1. Which responsibilities belong to deterministic agent orchestration rather than a model's free-form reasoning?**
+- A) Persisting state, checkpoints, and terminal reasons
+- B) Routing, queue/event handling, scheduling, and bounded retries
+- C) Approving its own high-impact action from a chat message
+- D) Idempotency, cancellation, recovery, and revalidation on resume
+- E) Joining dependency-ready parallel work before a proposal node
+

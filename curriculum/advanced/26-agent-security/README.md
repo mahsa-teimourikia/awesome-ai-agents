@@ -1,5 +1,7 @@
 # Agent Security
 
+**Level:** Advanced · **Time:** 60 min · **Prerequisites:** None
+
 **Enterprise Agent · 12** · **Notebook:** [`agent_security.ipynb`](agent_security.ipynb) · **Implementation:** [`lab.py`](lab.py)
 
 Agents cross trust boundaries: they ingest emails, websites, documents, repositories, memory, tool descriptions, MCP servers, credentials, and messages from other agents. Security therefore treats every external artifact as data, constrains authority at resource boundaries, and preserves evidence for response. Detection helps, but containment must remain effective when a malicious instruction is not detected.
@@ -40,3 +42,43 @@ Run `python lab.py`. Test poisoned text, untrusted powerful-tool use, cross-tena
 - Red-team inputs, context, memory, tools/MCP, identity/delegation, peer handoffs, supply chain, and long-running resume paths.
 
 References: [NIST Agent Security Landscape Analysis (May 2026)](https://csrc.nist.gov/pubs/ai/100/4/ipd), [NIST indirect prompt injection research](https://www.nist.gov/publications/indirect-prompt-injection-attacks-ai-agents), [OWASP Top 10 for Agentic Applications](https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications/), [OWASP prompt injection](https://genai.owasp.org/llmrisk/llm01-prompt-injection/), and [MCP security best practices](https://modelcontextprotocol.io/specification/2025-11-25/basic/security_best_practices).
+
+
+## Watch For
+
+- **Assumption failure:** The model hallucinates an unsupported parameter.
+- **State leak:** Context is incorrectly preserved across runs.
+- **Timeout:** The tool takes too long and the agent loops.
+- **Auth bypass:** The agent attempts an action it shouldn't.
+
+
+## Checkpoint
+
+**1. Which controls belong between a model-proposed action and tool execution?**
+- A) Schema validation
+- B) Authorization for the exact resource and operation
+- C) Approval when the action crosses a risk boundary
+- D) Blindly trusting the model's stated intent
+- E) Budget and policy checks
+
+**2. Which layers should a useful agent evaluation cover?**
+- A) Real task outcome
+- B) Action and tool-use trajectory
+- C) Latency, cost, and failure operations
+- D) Only the fluency of the final response
+- E) Policy compliance and side effects
+
+**3. Which inputs should an agent treat as untrusted?**
+- A) Retrieved documents and web pages
+- B) Tool results
+- C) Messages from another agent
+- D) User-supplied content
+- E) A tool result solely because it is formatted as JSON
+
+**4. Which practices reduce risk for agent-initiated write operations?**
+- A) Use idempotency keys
+- B) Preview and validate the proposed change
+- C) Persist a receipt and verify resulting state
+- D) Automatically retry when the previous outcome is unknown
+- E) Attach the initiating identity and run ID
+

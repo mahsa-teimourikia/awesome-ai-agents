@@ -1,5 +1,7 @@
 # Agent Observability
 
+**Level:** Advanced · **Time:** 60 min · **Prerequisites:** None
+
 **Enterprise Agent · 13** · **Notebook:** [`agent_observability.ipynb`](agent_observability.ipynb) · **Implementation:** [`lab.py`](lab.py)
 
 Agent observability answers **why did the system do that?** A final response is insufficient: production teams need correlated request, route, model/context, tool, state, policy, approval, error, and outcome evidence. Observability must be privacy-aware and safe; it should not become a new route for leaking prompts, secrets, customer data, or credentials.
@@ -35,3 +37,27 @@ Northstar investigates a 35% EU checkout drop. The trace shows deterministic rou
 6. Build dashboards: success/evidence/policy rate; trace/tool latency; token/cost per successful safe task; fallback/retry/error class; approval delay; and route/model drift. Alert on SLO/policy/quality regressions.
 
 Run `python lab.py`, then use the notebook to inspect a complete trace and derive a dashboard/replay plan. References: [OpenTelemetry](https://opentelemetry.io/docs/), [OpenAI Agents tracing](https://openai.github.io/openai-agents-python/tracing/), [LangSmith observability](https://docs.smith.langchain.com/observability), [OpenAI evaluation best practices](https://developers.openai.com/api/docs/guides/evaluation-best-practices).
+
+
+## Watch For
+
+- **Assumption failure:** The model hallucinates an unsupported parameter.
+- **State leak:** Context is incorrectly preserved across runs.
+- **Timeout:** The tool takes too long and the agent loops.
+- **Auth bypass:** The agent attempts an action it shouldn't.
+
+
+## Checkpoint
+
+**1. What is the primary purpose of this module?**
+- A) To understand the core concept.
+- B) To write complex boilerplate.
+- C) To ignore system errors.
+- D) To bypass security.
+
+**2. How do we mitigate the primary failure mode?**
+- A) Retries.
+- B) Human approval.
+- C) Logging.
+- D) Idempotency keys.
+

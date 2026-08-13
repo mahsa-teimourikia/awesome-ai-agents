@@ -1,5 +1,7 @@
 # Agent Governance and Responsible AI
 
+**Level:** Advanced · **Time:** 60 min · **Prerequisites:** None
+
 **Enterprise Agent · 09** · **Notebook:** [`agent_governance_responsible_ai.ipynb`](agent_governance_responsible_ai.ipynb) · **Implementation:** [`lab.py`](lab.py)
 
 Agent governance is the operating system for accountable autonomy. It governs a deployed socio-technical system—models, instructions, tools, memory, data, people, workflows, vendors, and operational controls—not a compliance label attached to one model. The agent remains useful only while its purpose, owner, scope, evidence, access, and recovery path are current and revocable.
@@ -49,6 +51,27 @@ Change management treats model/catalog/prompt/tool/MCP/memory/policy/data/evalua
 - Keep policy/identity/approval server-side; prompts alone cannot supply governance.
 - Monitor outcome, trajectory, access denials, policy blocks, overrides, latency/cost, drift, and fairness/safety slices.
 - Test revocation, audit retrieval, incident containment, rollback, and retirement/deletion.
+
+## Watch For
+
+- **Assumption failure:** The model hallucinates an unsupported parameter.
+- **State leak:** Context is incorrectly preserved across runs.
+- **Timeout:** The tool takes too long and the agent loops.
+- **Auth bypass:** The agent attempts an action it shouldn't.
+
+## Checkpoint
+
+**1. What is the primary purpose of this module?**
+- A) To understand the core concept.
+- B) To write complex boilerplate.
+- C) To ignore system errors.
+- D) To bypass security.
+
+**2. How do we mitigate the primary failure mode?**
+- A) Retries.
+- B) Human approval.
+- C) Logging.
+- D) Idempotency keys.
 
 ## References
 

@@ -1,5 +1,7 @@
 # Cost, Latency, and Agent Economics
 
+**Level:** Advanced · **Time:** 60 min · **Prerequisites:** None
+
 **Enterprise Agent · 07** · **Notebook:** [`agent_economics.ipynb`](agent_economics.ipynb) · **Implementation:** [`lab.py`](lab.py)
 
 An agent request is an economic trajectory, not one model call. A single user request can create planning calls, retrieval/tool calls, retries, evaluator calls, background work, and a more expensive model promotion. Production engineering therefore governs a portfolio of quality, time, capacity, and spend constraints—not merely token price.
@@ -70,6 +72,27 @@ Dynamic selection must be versioned and auditable. Record catalog/policy version
 - Re-evaluate after a model, prompt, tool, cache, pricing, or policy change; preserve a last-known-good route policy.
 
 **Exercises:** (1) add a retry policy that cannot retry a write without an idempotency key; (2) calculate whether speculative search is worth it from probability, cost, and saved latency; (3) design a quality-floor gate that promotes once but never exceeds the deadline; (4) create a FinOps dashboard metric that detects a cheap route with poor task success.
+
+## Watch For
+
+- **Assumption failure:** The model hallucinates an unsupported parameter.
+- **State leak:** Context is incorrectly preserved across runs.
+- **Timeout:** The tool takes too long and the agent loops.
+- **Auth bypass:** The agent attempts an action it shouldn't.
+
+## Checkpoint
+
+**1. What is the primary purpose of this module?**
+- A) To understand the core concept.
+- B) To write complex boilerplate.
+- C) To ignore system errors.
+- D) To bypass security.
+
+**2. How do we mitigate the primary failure mode?**
+- A) Retries.
+- B) Human approval.
+- C) Logging.
+- D) Idempotency keys.
 
 ## References
 

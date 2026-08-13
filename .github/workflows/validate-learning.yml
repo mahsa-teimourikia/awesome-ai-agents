@@ -40,3 +40,5 @@ jobs:
         env:
           PYTHONPATH: .
         run: python scripts/execute-notebooks.py --timeout 90
+      - name: Test MockOpenAI offline fallback
+        run: make test-mock-notebooks

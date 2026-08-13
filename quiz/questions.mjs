@@ -60,7 +60,7 @@ export const questions = [
       "An agent combines a model, instructions, tools, state, and a control loop. A chat interface can be useful, but it is not what makes the system an agent.",
     source: {
       label: "What is an AI agent? — A practical definition",
-      url: "docs/what-is-an-ai-agent.md#a-practical-definition",
+      url: "curriculum/beginner/01-ai-agent-foundations/README.md#a-practical-definition",
     },
   },
   {
@@ -79,7 +79,7 @@ export const questions = [
       "The distinction concerns control. Workflows define paths in code; agents give the model more discretion. Hybrid agentic workflows can contain bounded model decisions.",
     source: {
       label: "Agentic workflows — Workflow versus agent",
-      url: "docs/agentic-workflows.md#workflow-versus-agent",
+      url: "curriculum/beginner/03-workflow-or-agent/README.md#workflow-versus-agent",
     },
   },
   {
@@ -98,7 +98,7 @@ export const questions = [
       "Completion, budgets, policy escalation, and lack of a useful safe next action are legitimate terminal states. Calling a tool alone says nothing about task completion.",
     source: {
       label: "What is an AI agent? — Stop conditions",
-      url: "docs/what-is-an-ai-agent.md#stop-conditions",
+      url: "curriculum/beginner/01-ai-agent-foundations/README.md#stop-conditions",
     },
   },
   {
@@ -117,7 +117,7 @@ export const questions = [
       "ReAct interleaves reasoning, action, and observation so external feedback can update the plan. It neither requires weight updates nor guarantees correctness.",
     source: {
       label: "What is an AI agent? — The agent loop",
-      url: "docs/what-is-an-ai-agent.md#the-agent-loop",
+      url: "curriculum/beginner/01-ai-agent-foundations/README.md#the-agent-loop",
     },
   },
   {
@@ -136,7 +136,7 @@ export const questions = [
       "The model proposes an action; application code validates its shape, authorization, policy, budget, and any approval requirement before execution.",
     source: {
       label: "Evaluation and security — Permission model",
-      url: "docs/evaluation-and-security.md#permission-model",
+      url: "curriculum/intermediate/05-agent-evaluation/README.md#permission-model",
     },
   },
   {
@@ -155,7 +155,7 @@ export const questions = [
       "Checkpointing, typed failures, hard budgets, and explicit termination improve recovery and auditability. Retrying a write after an uncertain result can duplicate a side effect.",
     source: {
       label: "Agentic workflows — Reliability patterns",
-      url: "docs/agentic-workflows.md#reliability-patterns",
+      url: "curriculum/beginner/03-workflow-or-agent/README.md#reliability-patterns",
     },
   },
   {
@@ -174,7 +174,7 @@ export const questions = [
       "The assistant should ground its recommendation in service health, incident records, and runbook guidance. A customer report is a signal to investigate, not proof of an active incident.",
     source: {
       label: "AgentOps Lab",
-      url: "docs/agentops-lab.md#notebook-01-learning-objectives",
+      url: "curriculum/advanced/05-incident-response/README.md#notebook-01-learning-objectives",
     },
   },
   {
@@ -193,7 +193,7 @@ export const questions = [
       "Budgets do not make a model correct, but they keep the application in control when the model repeats itself, seeks impossible certainty, or consumes too much time or spend.",
     source: {
       label: "AgentOps Lab",
-      url: "docs/agentops-lab.md#notebook-01-learning-objectives",
+      url: "curriculum/advanced/05-incident-response/README.md#notebook-01-learning-objectives",
     },
   },
   {
@@ -212,7 +212,7 @@ export const questions = [
       "Good agent tools are narrow, typed, clear about failures and risk, and safe to preview or repeat. Overly broad tools make selection, permissioning, and evaluation harder.",
     source: {
       label: "What is an AI agent? — Tools",
-      url: "docs/what-is-an-ai-agent.md#tools",
+      url: "curriculum/beginner/01-ai-agent-foundations/README.md#tools",
     },
   },
   {
@@ -231,7 +231,7 @@ export const questions = [
       "The SDK can package the loop mechanics, tool schemas, dispatch, traces, and sessions. Product-specific authorization, approval, and side-effect boundaries still belong in application design.",
     source: {
       label: "AgentOps Lab - Notebook 03",
-      url: "docs/agentops-lab.md#notebook-03-learning-objectives",
+      url: "curriculum/advanced/05-incident-response/README.md#notebook-03-learning-objectives",
     },
   },
   {
@@ -250,7 +250,7 @@ export const questions = [
       "Frameworks package the loop; they do not erase it. Traces and sessions improve inspectability and continuity, but tool exposure and safety boundaries remain design responsibilities.",
     source: {
       label: "AgentOps Lab - Notebook 03",
-      url: "docs/agentops-lab.md#notebook-03-learning-objectives",
+      url: "curriculum/advanced/05-incident-response/README.md#notebook-03-learning-objectives",
     },
   },
   {
@@ -269,7 +269,7 @@ export const questions = [
       "Long-term memory influences future runs, so writes need provenance, isolation, validation, retention, review, and deletion. Model-generated content is not automatically trustworthy.",
     source: {
       label: "What is an AI agent? — State and memory",
-      url: "docs/what-is-an-ai-agent.md#state-and-memory",
+      url: "curriculum/beginner/01-ai-agent-foundations/README.md#state-and-memory",
     },
   },
   {
@@ -288,7 +288,7 @@ export const questions = [
       "Thread-scoped state tracks the current run: request, service, evidence, confidence, attempts, suspected cause, and recommendation. Unverified permanent facts belong behind memory validation, not directly in working state.",
     source: {
       label: "AgentOps Lab - Notebook 05",
-      url: "docs/agentops-lab.md#notebook-05-learning-objectives",
+      url: "curriculum/advanced/05-incident-response/README.md#notebook-05-learning-objectives",
     },
   },
   {
@@ -307,7 +307,7 @@ export const questions = [
       "Unverified long-term memory can steer future incident diagnosis away from current evidence. It needs provenance, validation, scope, auditability, and a way to deactivate or delete it.",
     source: {
       label: "AgentOps Lab - Notebook 05",
-      url: "docs/agentops-lab.md#notebook-05-learning-objectives",
+      url: "curriculum/advanced/05-incident-response/README.md#notebook-05-learning-objectives",
     },
   },
   {
@@ -326,7 +326,7 @@ export const questions = [
       "A broad command tool collapses many risk levels into one string interface. Narrow tools make schema validation, permissions, approvals, tracing, and retries much clearer.",
     source: {
       label: "AgentOps Lab - Notebook 04",
-      url: "docs/agentops-lab.md#notebook-04-learning-objectives",
+      url: "curriculum/advanced/05-incident-response/README.md#notebook-04-learning-objectives",
     },
   },
   {
@@ -345,7 +345,7 @@ export const questions = [
       "Transient timeout and rate-limit errors may be retried within a budget. Permission failures should escalate, while invalid or malformed requests should stop rather than loop.",
     source: {
       label: "AgentOps Lab - Notebook 04",
-      url: "docs/agentops-lab.md#notebook-04-learning-objectives",
+      url: "curriculum/advanced/05-incident-response/README.md#notebook-04-learning-objectives",
     },
   },
   {
@@ -364,7 +364,7 @@ export const questions = [
       "Read-only evidence tools should not require the same approval burden as consequential actions. Rollbacks, restarts, and customer notifications should pause for approval.",
     source: {
       label: "AgentOps Lab - Notebook 06",
-      url: "docs/agentops-lab.md#notebook-06-learning-objectives",
+      url: "curriculum/advanced/05-incident-response/README.md#notebook-06-learning-objectives",
     },
   },
   {
@@ -383,7 +383,7 @@ export const questions = [
       "Effective HITL checkpoints preserve the action, evidence, reviewer identity, decision, reason, and final action. Context-free approval creates review fatigue and weak auditability.",
     source: {
       label: "AgentOps Lab - Notebook 06",
-      url: "docs/agentops-lab.md#notebook-06-learning-objectives",
+      url: "curriculum/advanced/05-incident-response/README.md#notebook-06-learning-objectives",
     },
   },
   {
@@ -402,7 +402,7 @@ export const questions = [
       "Retrieved documents are data, not authority. They may contain prompt-injection attempts and cannot override system instructions or authorize operational tools.",
     source: {
       label: "AgentOps Lab - Notebook 07",
-      url: "docs/agentops-lab.md#notebook-07-learning-objectives",
+      url: "curriculum/advanced/05-incident-response/README.md#notebook-07-learning-objectives",
     },
   },
   {
@@ -421,7 +421,7 @@ export const questions = [
       "A restart guardrail should require approval, trusted authorization source, an allowed target, and audit context. Retrieved text is not a valid source of authorization.",
     source: {
       label: "AgentOps Lab - Notebook 07",
-      url: "docs/agentops-lab.md#notebook-07-learning-objectives",
+      url: "curriculum/advanced/05-incident-response/README.md#notebook-07-learning-objectives",
     },
   },
   {
@@ -459,7 +459,7 @@ export const questions = [
       "Routing is useful when categories need distinct prompts, tools, models, or policies. Unknown cases, routing evaluation, and traceability reduce silent misroutes.",
     source: {
       label: "Architecture patterns — Routing",
-      url: "docs/architecture-patterns.md#3-routing",
+      url: "curriculum/intermediate/06-trajectory-optimization/README.md#3-routing",
     },
   },
   {
@@ -478,7 +478,7 @@ export const questions = [
       "Evaluator-optimizer works when quality can be judged and feedback can improve the artifact. Bound iterations and prefer executable or deterministic checks where available.",
     source: {
       label: "Architecture patterns — Evaluator-optimizer",
-      url: "docs/architecture-patterns.md#6-evaluator-optimizer",
+      url: "curriculum/intermediate/06-trajectory-optimization/README.md#6-evaluator-optimizer",
     },
   },
   {
@@ -497,7 +497,7 @@ export const questions = [
       "Task A has a fixed path: retrieve checkout status and format it. Operations work can absolutely use agents, but this task does not need dynamic tool selection.",
     source: {
       label: "AgentOps Lab - Notebook 02",
-      url: "docs/agentops-lab.md#notebook-02-learning-objectives",
+      url: "curriculum/advanced/05-incident-response/README.md#notebook-02-learning-objectives",
     },
   },
   {
@@ -516,7 +516,7 @@ export const questions = [
       "Task C justifies bounded agency because each observation affects the next evidence source. That does not remove application-owned tool allowlists, budgets, or grounding rules.",
     source: {
       label: "AgentOps Lab - Notebook 02",
-      url: "docs/agentops-lab.md#notebook-02-learning-objectives",
+      url: "curriculum/advanced/05-incident-response/README.md#notebook-02-learning-objectives",
     },
   },
   {
@@ -535,7 +535,7 @@ export const questions = [
       "Informed approval happens before consequence, presents decision context and alternatives, and pauses on durable state. A vague confirmation encourages approval fatigue.",
     source: {
       label: "Agentic workflows — Human-in-the-loop",
-      url: "docs/agentic-workflows.md#human-in-the-loop-is-a-workflow-boundary",
+      url: "curriculum/beginner/03-workflow-or-agent/README.md#human-in-the-loop-is-a-workflow-boundary",
     },
   },
   {
@@ -554,7 +554,7 @@ export const questions = [
       "The hybrid design starts with deterministic classification, then selects the least autonomous reliable path. Agents are components inside policy and approval workflows, not replacements for them.",
     source: {
       label: "AgentOps Lab - Notebook 13",
-      url: "docs/agentops-lab.md#notebook-13-learning-objectives",
+      url: "curriculum/advanced/05-incident-response/README.md#notebook-13-learning-objectives",
     },
   },
   {
@@ -573,7 +573,7 @@ export const questions = [
       "Production control boundaries should be implemented in deterministic application code. Retrieved documents can provide evidence, but they cannot authorize side effects such as rollback.",
     source: {
       label: "AgentOps Lab - Notebook 13",
-      url: "docs/agentops-lab.md#notebook-13-learning-objectives",
+      url: "curriculum/advanced/05-incident-response/README.md#notebook-13-learning-objectives",
     },
   },
   {
@@ -592,7 +592,7 @@ export const questions = [
       "Agents-as-tools return a specialist result to the orchestrator; handoffs transfer ownership. Both still need permissions, context design, tracing, and evaluation.",
     source: {
       label: "Architecture patterns — Orchestrator-worker",
-      url: "docs/architecture-patterns.md#5-orchestrator-worker",
+      url: "curriculum/intermediate/06-trajectory-optimization/README.md#5-orchestrator-worker",
     },
   },
   {
@@ -611,7 +611,7 @@ export const questions = [
       "Multi-agent systems can help through parallelism and specialization, but coordination has real cost. Use them when contracts are clear and measured gains exceed that cost.",
     source: {
       label: "Agentic workflows — When to introduce multiple agents",
-      url: "docs/agentic-workflows.md#when-to-introduce-multiple-agents",
+      url: "curriculum/beginner/03-workflow-or-agent/README.md#when-to-introduce-multiple-agents",
     },
   },
   {
@@ -630,7 +630,7 @@ export const questions = [
       "Clear contracts, provenance, aggregation, and budgets reduce duplicated work, merge errors, and runaway fan-out. Delegation depth and breadth should be bounded.",
     source: {
       label: "Architecture patterns — Parallelization and orchestrator-worker",
-      url: "docs/architecture-patterns.md#4-parallelization",
+      url: "curriculum/intermediate/06-trajectory-optimization/README.md#4-parallelization",
     },
   },
   {
@@ -649,7 +649,7 @@ export const questions = [
       "A specialist team is justified by separable expertise, measurable improvement, explicit ownership, and bounded coordination. A simple fixed workflow or prettier architecture is not enough.",
     source: {
       label: "AgentOps Lab - Notebook 10",
-      url: "docs/agentops-lab.md#notebook-10-learning-objectives",
+      url: "curriculum/advanced/05-incident-response/README.md#notebook-10-learning-objectives",
     },
   },
   {
@@ -668,7 +668,7 @@ export const questions = [
       "The comparison should cover outcome quality, operational cost, coordination overhead, and risk-review value. More agent names are not evidence of a better architecture.",
     source: {
       label: "AgentOps Lab - Notebook 10",
-      url: "docs/agentops-lab.md#notebook-10-learning-objectives",
+      url: "curriculum/advanced/05-incident-response/README.md#notebook-10-learning-objectives",
     },
   },
   {
@@ -687,7 +687,7 @@ export const questions = [
       "Selector-style teams make speaker selection and shared context explicit, but they still need termination, ownership, evaluation, and loop controls. The framework does not guarantee correctness.",
     source: {
       label: "AgentOps Lab - Notebook 11",
-      url: "docs/agentops-lab.md#notebook-11-learning-objectives",
+      url: "curriculum/advanced/05-incident-response/README.md#notebook-11-learning-objectives",
     },
   },
   {
@@ -706,7 +706,7 @@ export const questions = [
       "Team loops need global message budgets, per-agent turn budgets, ownership rules, and explicit termination. Unlimited peer-to-peer delegation is exactly the failure mode to prevent.",
     source: {
       label: "AgentOps Lab - Notebook 11",
-      url: "docs/agentops-lab.md#notebook-11-learning-objectives",
+      url: "curriculum/advanced/05-incident-response/README.md#notebook-11-learning-objectives",
     },
   },
   {
@@ -725,7 +725,7 @@ export const questions = [
       "CrewAI's teaching value is the readable role/task/crew structure. It can clarify ownership and provenance, but policy, approval, and side-effect controls still belong around the crew.",
     source: {
       label: "AgentOps Lab - Notebook 12",
-      url: "docs/agentops-lab.md#notebook-12-learning-objectives",
+      url: "curriculum/advanced/05-incident-response/README.md#notebook-12-learning-objectives",
     },
   },
   {
@@ -744,7 +744,7 @@ export const questions = [
       "The same scenario highlights different framework strengths. None of them remove trajectory evaluation, policy enforcement, or the need to choose the simplest reliable architecture.",
     source: {
       label: "AgentOps Lab - Notebook 12",
-      url: "docs/agentops-lab.md#notebook-12-learning-objectives",
+      url: "curriculum/advanced/05-incident-response/README.md#notebook-12-learning-objectives",
     },
   },
   {
@@ -763,7 +763,7 @@ export const questions = [
       "The capstone requires experimental justification. Multi-agent is only justified when it improves the result enough to beat the simpler baseline after cost, latency, trajectory, and risk are considered.",
     source: {
       label: "AgentOps Lab - Notebook 14",
-      url: "docs/agentops-lab.md#notebook-14-capstone-objectives",
+      url: "curriculum/advanced/05-incident-response/README.md#notebook-14-capstone-objectives",
     },
   },
   {
@@ -782,7 +782,7 @@ export const questions = [
       "Agent evaluation needs outcome, trajectory, operations, and safety evidence. Fluent final text can conceal a failed or unauthorized task.",
     source: {
       label: "Evaluation and security — Grade three layers",
-      url: "docs/evaluation-and-security.md#grade-three-layers",
+      url: "curriculum/intermediate/05-agent-evaluation/README.md#grade-three-layers",
     },
   },
   {
@@ -801,7 +801,7 @@ export const questions = [
       "The capstone can prepare rollback, feature-flag disablement, and customer notification for review, but execution requires human approval. Metrics and logs are read-only investigation tools.",
     source: {
       label: "AgentOps Lab - Notebook 14",
-      url: "docs/agentops-lab.md#notebook-14-capstone-objectives",
+      url: "curriculum/advanced/05-incident-response/README.md#notebook-14-capstone-objectives",
     },
   },
   {
@@ -820,7 +820,7 @@ export const questions = [
       "The capstone keeps retrieved content outside the trusted control boundary and prevents stale-memory bias. It stores evaluated reports, blocks unapproved execution, and enforces budgets.",
     source: {
       label: "AgentOps Lab - Notebook 14",
-      url: "docs/agentops-lab.md#notebook-14-capstone-objectives",
+      url: "curriculum/advanced/05-incident-response/README.md#notebook-14-capstone-objectives",
     },
   },
   {
@@ -839,7 +839,7 @@ export const questions = [
       "The capstone grades evidence coverage, forbidden actions, recommendation support, and operational budgets. The number of agents is not a success criterion.",
     source: {
       label: "AgentOps Lab - Notebook 14",
-      url: "docs/agentops-lab.md#notebook-14-capstone-objectives",
+      url: "curriculum/advanced/05-incident-response/README.md#notebook-14-capstone-objectives",
     },
   },
   {
@@ -858,7 +858,7 @@ export const questions = [
       "Agent evaluation should inspect outcome, trajectory, and operations. Fluency alone misses forbidden tools, unsupported diagnoses, cost regressions, and poor recovery.",
     source: {
       label: "AgentOps Lab - Notebook 08",
-      url: "docs/agentops-lab.md#notebook-08-learning-objectives",
+      url: "curriculum/advanced/05-incident-response/README.md#notebook-08-learning-objectives",
     },
   },
   {
@@ -877,7 +877,7 @@ export const questions = [
       "Cost per successful task rewards reliable outcomes rather than isolated cheap calls. A cheap failed trajectory is still expensive from a product perspective.",
     source: {
       label: "AgentOps Lab - Notebook 08",
-      url: "docs/agentops-lab.md#notebook-08-learning-objectives",
+      url: "curriculum/advanced/05-incident-response/README.md#notebook-08-learning-objectives",
     },
   },
   {
@@ -896,7 +896,7 @@ export const questions = [
       "The goal is not token minimization at any cost. The goal is a shorter, cheaper, faster trajectory that still succeeds and remains evidence-supported.",
     source: {
       label: "AgentOps Lab - Notebook 09",
-      url: "docs/agentops-lab.md#notebook-09-learning-objectives",
+      url: "curriculum/advanced/05-incident-response/README.md#notebook-09-learning-objectives",
     },
   },
   {
@@ -915,7 +915,7 @@ export const questions = [
       "The notebook's simple efficiency score combines success with latency, cost, and trajectory length so learners compare reliable paths instead of isolated token counts.",
     source: {
       label: "AgentOps Lab - Notebook 09",
-      url: "docs/agentops-lab.md#notebook-09-learning-objectives",
+      url: "curriculum/advanced/05-incident-response/README.md#notebook-09-learning-objectives",
     },
   },
   {
@@ -934,7 +934,7 @@ export const questions = [
       "Origin and authorization determine trust, not presentation. User content, retrieval, tool output, and peer messages can all carry malicious or incorrect instructions—even in valid JSON.",
     source: {
       label: "Evaluation and security — Threat model",
-      url: "docs/evaluation-and-security.md#threat-model",
+      url: "curriculum/intermediate/05-agent-evaluation/README.md#threat-model",
     },
   },
   {
@@ -953,7 +953,7 @@ export const questions = [
       "Safe writes use previews, idempotency, attribution, receipts, and state verification. An uncertain timeout may mean a write succeeded, so blind retries can duplicate it.",
     source: {
       label: "Evaluation and security — Side-effect safety",
-      url: "docs/evaluation-and-security.md#side-effect-safety",
+      url: "curriculum/intermediate/05-agent-evaluation/README.md#side-effect-safety",
     },
   },
   {
@@ -1075,5 +1075,558 @@ export const questions = [
     correct: [0, 1, 2, 4],
     explanation: "The protocols address complementary boundaries. None turns metadata, UI events, discovered capability, commerce intent, or payment intent into self-executing authority.",
     source: { label: "The Agent Protocol Stack", url: "curriculum/enterprise-agent/17-agent-protocol-stack/README.md#layer-by-layer-guide" },
+  },
+,
+  {
+    id: "chkpt-02_autogen_selector_teams",
+    category: "02 Autogen Selector Teams",
+    prompt: "Endless Debates",
+    options: [
+      "It provides the tools to the agents.",
+      "It holds the conversation history and selects the next speaker based on the rules.",
+      "It connects to the database.",
+      "It generates the final report.",
+      "Because the LLM is not smart enough to auto-select.",
+      "To enforce a strict compliance order (investigate -> review -> approve) without unpredictable LLM routing.",
+      "It saves memory.",
+      "It prevents hallucinated tools."
+    ],
+    correct: [5],
+    explanation: "Refer to the notebook for the detailed explanation.",
+    source: { label: "Notebook Checkpoint", url: "curriculum/advanced/02-autogen-selector-teams/02_autogen_selector_teams.ipynb" },
+  },
+  {
+    id: "chkpt-agent_observability",
+    category: "27 Agent Observability",
+    prompt: "Why is tracing parallel agent execution vastly superior to using `print()` statements?",
+    options: [
+      "Print statements are illegal in Python 3.",
+      "When running async/threaded agents, print statements interleave randomly on the console, making it impossible to read. OTEL traces inherently group parallel execution spans correctly under a parent span (waterfall graph).",
+      "Print statements cost money.",
+      "Traces generate training data for the LLM."
+    ],
+    correct: [1],
+    explanation: "Refer to the notebook for the detailed explanation.",
+    source: { label: "Notebook Checkpoint", url: "curriculum/advanced/27-agent-observability/agent_observability.ipynb" },
+  },
+  {
+    id: "chkpt-model_routing",
+    category: "09 Model Routing",
+    prompt: "What is the primary benefit of Model Routing?",
+    options: [
+      "It combines multiple models to generate one sentence.",
+      "It prevents the system from overpaying for simple tasks by using cheap models as gatekeepers.",
+      "It bypasses API rate limits entirely.",
+      "It trains a new model from scratch on every request."
+    ],
+    correct: [1],
+    explanation: "Refer to the notebook for the detailed explanation.",
+    source: { label: "Notebook Checkpoint", url: "curriculum/advanced/09-model-routing/model_routing.ipynb" },
+  },
+  {
+    id: "chkpt-agent_economics",
+    category: "21 Cost Latency Agent Economics",
+    prompt: "Why is a Token Budget critical for Agentic systems?",
+    options: [
+      "It makes the agent smarter.",
+      "Agents can autonomously invoke tools and loop indefinitely. A budget acts as a financial circuit breaker to prevent infinite loops from draining your API funds.",
+      "It allows the agent to run locally without internet.",
+      "It bypasses rate limits."
+    ],
+    correct: [1],
+    explanation: "Refer to the notebook for the detailed explanation.",
+    source: { label: "Notebook Checkpoint", url: "curriculum/advanced/21-cost-latency-agent-economics/agent_economics.ipynb" },
+  },
+  {
+    id: "chkpt-agent_security",
+    category: "26 Agent Security",
+    prompt: "How does Delimiter Framing protect against Prompt Injection?",
+    options: [
+      "It deletes the user's message.",
+      "By boxing untrusted input in XML/HTML tags and instructing the LLM to treat the contents strictly as data, reducing the chance the LLM interprets it as a command.",
+      "It uses a firewall.",
+      "It encrypts the prompt."
+    ],
+    correct: [1],
+    explanation: "Refer to the notebook for the detailed explanation.",
+    source: { label: "Notebook Checkpoint", url: "curriculum/advanced/26-agent-security/agent_security.ipynb" },
+  },
+  {
+    id: "chkpt-human_agent_collaboration",
+    category: "28 Human Agent Collaboration",
+    prompt: "What is the primary purpose of Human-in-the-Loop (HITL)?",
+    options: [
+      "To make the agent slower.",
+      "To provide a safety boundary where an agent can automate the investigative work but explicitly pause to require human authorization before executing high-risk, irreversible actions.",
+      "To teach the LLM to code.",
+      "To bypass the token budget."
+    ],
+    correct: [1],
+    explanation: "Refer to the notebook for the detailed explanation.",
+    source: { label: "Notebook Checkpoint", url: "curriculum/advanced/28-human-agent-collaboration/human_agent_collaboration.ipynb" },
+  },
+  {
+    id: "chkpt-multimodal_agents",
+    category: "20 Multimodal Agents",
+    prompt: "How do you pass an image to a Multimodal Agent API?",
+    options: [
+      "You zip the image into a file and email it.",
+      "You convert it to Base64 and pass it in the `messages` array using the `image_url` content type.",
+      "You convert the image to text using OCR first.",
+      "You cannot pass images to LLMs yet."
+    ],
+    correct: [1],
+    explanation: "Refer to the notebook for the detailed explanation.",
+    source: { label: "Notebook Checkpoint", url: "curriculum/advanced/20-multimodal-agents/multimodal_agents.ipynb" },
+  },
+  {
+    id: "chkpt-agent_identity_authorization",
+    category: "25 Agent Identity Authorization",
+    prompt: "Why is passing the `executing_user` to the tool critical for security?",
+    options: [
+      "To make the prompt longer.",
+      "Because the LLM cannot be trusted to enforce authorization. The underlying code must enforce RBAC based on the identity of the human driving the session.",
+      "So the LLM can email the user.",
+      "To bypass OAuth."
+    ],
+    correct: [1],
+    explanation: "Refer to the notebook for the detailed explanation.",
+    source: { label: "Notebook Checkpoint", url: "curriculum/advanced/25-agent-identity-authorization/agent_identity_authorization.ipynb" },
+  },
+  {
+    id: "chkpt-proactive_agents",
+    category: "08 Proactive Agents",
+    prompt: "What differentiates a Proactive Agent from a standard ReAct Agent?",
+    options: [
+      "It uses a more powerful LLM.",
+      "It is triggered by schedules or environment events (like metrics thresholds) rather than waiting for a direct user prompt.",
+      "It can speak multiple languages.",
+      "It does not use tools."
+    ],
+    correct: [1],
+    explanation: "Refer to the notebook for the detailed explanation.",
+    source: { label: "Notebook Checkpoint", url: "curriculum/advanced/08-proactive-agents/proactive_agents.ipynb" },
+  },
+  {
+    id: "chkpt-agent_memory",
+    category: "06 Agent Memory",
+    prompt: "What is the difference between Short-Term and Long-Term memory in an LLM Agent?",
+    options: [
+      "Short-term is fast, Long-term is slow.",
+      "Short-term is the current prompt's `messages` array (bounded by token limits). Long-term relies on external storage (like a Vector DB) to retrieve relevant context across separate sessions.",
+      "Short-term uses Python, Long-term uses SQL.",
+      "Only human agents have Long-Term memory."
+    ],
+    correct: [1],
+    explanation: "Refer to the notebook for the detailed explanation.",
+    source: { label: "Notebook Checkpoint", url: "curriculum/advanced/06-agent-memory/agent_memory.ipynb" },
+  },
+  {
+    id: "chkpt-llm_as_judge_agent_judges",
+    category: "11 Llm As Judge Agent Judges",
+    prompt: "Why use an LLM-as-a-Judge instead of traditional unit tests for an Agent?",
+    options: [
+      "Traditional unit tests cannot easily evaluate subjective qualities like tone, politeness, or complex reasoning accuracy in unstructured text.",
+      "It is cheaper than traditional unit tests.",
+      "It guarantees 100% mathematical accuracy.",
+      "It compiles the python code automatically."
+    ],
+    correct: [0],
+    explanation: "Refer to the notebook for the detailed explanation.",
+    source: { label: "Notebook Checkpoint", url: "curriculum/advanced/11-llm-as-judge-agent-judges/llm_as_judge_agent_judges.ipynb" },
+  },
+  {
+    id: "chkpt-agent_protocol_stack",
+    category: "31 Agent Protocol Stack",
+    prompt: "What is the benefit of a layered Agent Protocol Stack over a monolithic prompt?",
+    options: [
+      "It is easier to write in one file.",
+      "Separation of concerns. You can swap out the Memory DB, upgrade the Guardrail regex, or change the Routing model independently without breaking the entire agent.",
+      "It is required by Python syntax.",
+      "It reduces the number of files in the project."
+    ],
+    correct: [1],
+    explanation: "Refer to the notebook for the detailed explanation.",
+    source: { label: "Notebook Checkpoint", url: "curriculum/advanced/31-agent-protocol-stack/agent_protocol_stack.ipynb" },
+  },
+  {
+    id: "chkpt-agent_governance_responsible_ai",
+    category: "23 Agent Governance Responsible Ai",
+    prompt: "Why do we hash the prompt in the audit log?",
+    options: [
+      "To save database space.",
+      "To ensure cryptographic proof that the exact instructions given to the agent were not altered after the fact by a malicious actor.",
+      "To make the prompt execute faster.",
+      "To hide the prompt from the user."
+    ],
+    correct: [1],
+    explanation: "Refer to the notebook for the detailed explanation.",
+    source: { label: "Notebook Checkpoint", url: "curriculum/advanced/23-agent-governance-responsible-ai/agent_governance_responsible_ai.ipynb" },
+  },
+  {
+    id: "chkpt-single_vs_multi_agent",
+    category: "01 Single Vs Multi Agent",
+    prompt: "Why is a Multi-Agent architecture preferred over a single \"God Agent\" for complex systems?",
+    options: [
+      "It reduces the total number of API calls.",
+      "It allows you to enforce specialized personas, restrict tool access (Principle of Least Privilege), and prevent prompt dilution.",
+      "It is faster to execute.",
+      "It bypasses OpenAI rate limits."
+    ],
+    correct: [1],
+    explanation: "Refer to the notebook for the detailed explanation.",
+    source: { label: "Notebook Checkpoint", url: "curriculum/advanced/01-single-vs-multi-agent/single_vs_multi_agent.ipynb" },
+  },
+  {
+    id: "chkpt-incident_response",
+    category: "05 Incident Response",
+    prompt: "Why is generating a structured Post-Mortem using Pydantic (Structured Outputs) critical for an automated incident pipeline?",
+    options: [
+      "It allows the LLM to write poetry.",
+      "The resulting JSON can be reliably inserted directly into a ticketing system (like Jira or ServiceNow) via their APIs, without human parsing.",
+      "It makes the LLM run faster.",
+      "It encrypts the post-mortem."
+    ],
+    correct: [1],
+    explanation: "Refer to the notebook for the detailed explanation.",
+    source: { label: "Notebook Checkpoint", url: "curriculum/advanced/05-incident-response/incident_response.ipynb" },
+  },
+  {
+    id: "chkpt-world_models_environment_modeling",
+    category: "07 World Models Environment Modeling",
+    prompt: "What is a 'World Model' in Agentic AI?",
+    options: [
+      "A 3D simulation of the earth.",
+      "A structured representation (like a graph or rule engine) of the environment, allowing the agent to understand dependencies and consequences *before* acting.",
+      "A global translation model.",
+      "A database of all internet websites."
+    ],
+    correct: [1],
+    explanation: "Refer to the notebook for the detailed explanation.",
+    source: { label: "Notebook Checkpoint", url: "curriculum/advanced/07-world-models-environment-modeling/world_models_environment_modeling.ipynb" },
+  },
+  {
+    id: "chkpt-long_running_asynchronous_agents",
+    category: "10 Long Running Asynchronous Agents",
+    prompt: "Why use Async Job Queues for Agents?",
+    options: [
+      "It makes the LLM hallucinate less.",
+      "LLM agents often take a long time to loop through tools and reason. Async queues prevent HTTP timeouts and allow the user to check back later.",
+      "It is required by OpenAI's Terms of Service.",
+      "It reduces the token cost."
+    ],
+    correct: [1],
+    explanation: "Refer to the notebook for the detailed explanation.",
+    source: { label: "Notebook Checkpoint", url: "curriculum/advanced/10-long-running-asynchronous-agents/long_running_asynchronous_agents.ipynb" },
+  },
+  {
+    id: "chkpt-03_crewai_teams",
+    category: "03 Crewai Teams",
+    prompt: "Over-delegation",
+    options: [
+      "CrewAI is only for Python 2.",
+      "CrewAI is conversation-driven, while AutoGen is task-driven.",
+      "CrewAI is task-driven (agents execute specific assigned tasks), while AutoGen is conversation-driven (agents chat with each other).",
+      "They are exactly the same.",
+      "All tasks run in parallel.",
+      "The output of Task 1 is automatically passed as context to Task 2.",
+      "The agents vote on which task to do first.",
+      "The crew is deleted after running."
+    ],
+    correct: [2],
+    explanation: "Refer to the notebook for the detailed explanation.",
+    source: { label: "Notebook Checkpoint", url: "curriculum/advanced/03-crewai-teams/03_crewai_teams.ipynb" },
+  },
+  {
+    id: "chkpt-guardrails_policy_enforcement",
+    category: "24 Guardrails Policy Enforcement",
+    prompt: "Why use deterministic regex/Presidio for PII scrubbing instead of just asking the LLM not to output PII?",
+    options: [
+      "Deterministic code is faster.",
+      "LLMs are probabilistic and prone to jailbreaks or hallucinations. A deterministic guardrail guarantees that known PII patterns will *never* reach the user, regardless of what the LLM decides.",
+      "Regex understands context better than LLMs.",
+      "It looks cooler."
+    ],
+    correct: [1],
+    explanation: "Refer to the notebook for the detailed explanation.",
+    source: { label: "Notebook Checkpoint", url: "curriculum/advanced/24-guardrails-policy-enforcement/guardrails_policy_enforcement.ipynb" },
+  },
+  {
+    id: "chkpt-04_hybrid_production_architecture",
+    category: "04 Hybrid Production Architecture",
+    prompt: "What is the primary benefit of a Hybrid Architecture?",
+    options: [
+      "It uses multiple LLMs at the same time.",
+      "It maximizes speed, reliability, and cost-efficiency by reserving the LLM only for tasks that traditional code cannot handle.",
+      "It allows the LLM to write its own Python code.",
+      "It prevents prompt injections entirely."
+    ],
+    correct: [1],
+    explanation: "Refer to the notebook for the detailed explanation.",
+    source: { label: "Notebook Checkpoint", url: "curriculum/advanced/04-hybrid-production-architecture/04_hybrid_production_architecture.ipynb" },
+  },
+  {
+    id: "chkpt-02_agent_loop",
+    category: "02 Agent Loop",
+    prompt: "Crashing on Tool Errors",
+    options: [
+      "Crash the program immediately so the developer knows.",
+      "Catch the exception, format it as a string, and append it as a `tool` observation so the LLM can see the error.",
+      "Silently ignore it and continue the loop.",
+      "Restart the OpenAI client.",
+      "OpenAI charges more for later steps.",
+      "The LLM gets slower over time.",
+      "The `messages` array contains the entire history of the conversation, so the LLM has to read a longer prompt on every iteration.",
+      "Tools use up tokens when they execute locally."
+    ],
+    correct: [6],
+    explanation: "Refer to the notebook for the detailed explanation.",
+    source: { label: "Notebook Checkpoint", url: "curriculum/beginner/02-agent-loop/02_agent_loop.ipynb" },
+  },
+  {
+    id: "chkpt-04_crewai_incident_response_crew",
+    category: "04 Agent Development Frameworks",
+    prompt: "Sequential vs Hierarchical",
+    options: [
+      "You have to manually write Python code to pass the variables.",
+      "CrewAI automatically passes the `expected_output` of the first task as context to the second task.",
+      "The agents communicate via a Slack integration.",
+      "They don't; they are completely isolated."
+    ],
+    correct: [1],
+    explanation: "Refer to the notebook for the detailed explanation.",
+    source: { label: "Notebook Checkpoint", url: "curriculum/beginner/04-agent-development-frameworks/04_crewai_incident_response_crew.ipynb" },
+  },
+  {
+    id: "chkpt-04_langgraph_remediation_approval",
+    category: "04 Agent Development Frameworks",
+    prompt: "Memory Savers in Production",
+    options: [
+      "It prevents the agent from ever using tools.",
+      "It deletes the tools from the agent's memory.",
+      "It pauses the graph execution right before the `tools` node runs, allowing a human or external system to inspect the state and approve continuation.",
+      "It causes an exception if tools take too long to run.",
+      "To save OpenAI API keys securely.",
+      "Because pausing a graph means the application might exit. The checkpointer persists the current state (like variables and message history) so the graph can be resumed later.",
+      "To make the graph run faster.",
+      "To prevent hallucinations."
+    ],
+    correct: [5],
+    explanation: "Refer to the notebook for the detailed explanation.",
+    source: { label: "Notebook Checkpoint", url: "curriculum/beginner/04-agent-development-frameworks/04_langgraph_remediation_approval.ipynb" },
+  },
+  {
+    id: "chkpt-04_pydanticai_compliance_caseworker",
+    category: "04 Agent Development Frameworks",
+    prompt: "Strictness vs Flexibility",
+    options: [
+      "The program crashes immediately with a KeyError.",
+      "Pydantic automatically catches the validation error, sends it back to the LLM, and asks it to correct the schema.",
+      "It converts it to `0`.",
+      "It ignores the schema completely."
+    ],
+    correct: [1],
+    explanation: "Refer to the notebook for the detailed explanation.",
+    source: { label: "Notebook Checkpoint", url: "curriculum/beginner/04-agent-development-frameworks/04_pydanticai_compliance_caseworker.ipynb" },
+  },
+  {
+    id: "chkpt-computer_using_agents",
+    category: "05 Computer Using Agents",
+    prompt: "Fragility",
+    options: [
+      "It has to wait for GUI elements to render and animations to finish before taking the next screenshot.",
+      "The LLM models are smaller.",
+      "It writes code to a database.",
+      "It uses a slower internet connection.",
+      "Fetching the current weather (which has a free REST API).",
+      "Scraping data from a legacy internal tool that has no API and requires clicking through 5 drop-down menus.",
+      "Calculating the sum of two numbers.",
+      "Translating a document from English to Spanish."
+    ],
+    correct: [5],
+    explanation: "Refer to the notebook for the detailed explanation.",
+    source: { label: "Notebook Checkpoint", url: "curriculum/beginner/05-computer-using-agents/computer_using_agents.ipynb" },
+  },
+  {
+    id: "chkpt-01_agent_foundations",
+    category: "01 Ai Agent Foundations",
+    prompt: "Skipping the Ladder",
+    options: [
+      "RAG uses Vector DBs; Agents do not.",
+      "RAG only reads data and generates text; Agents can dynamically choose and execute tools to alter their environment.",
+      "Agents are always faster than RAG.",
+      "RAG cannot use OpenAI.",
+      "Summarizing a long support ticket.",
+      "Querying a customer's order history.",
+      "Processing a $500 refund to a user's credit card.",
+      "Translating an email from French to English."
+    ],
+    correct: [1],
+    explanation: "Refer to the notebook for the detailed explanation.",
+    source: { label: "Notebook Checkpoint", url: "curriculum/beginner/01-ai-agent-foundations/01_agent_foundations.ipynb" },
+  },
+  {
+    id: "chkpt-03_workflow_or_agent",
+    category: "03 Workflow Or Agent",
+    prompt: "Agentic Hammer",
+    options: [
+      "When the task requires creative problem solving and dynamic tool usage.",
+      "When the execution path is strict, compliance is required, and steps cannot be skipped.",
+      "When you want to save money on API keys.",
+      "When the task requires web browsing.",
+      "The LLM.",
+      "The user.",
+      "The hardcoded edges (e.g. `builder.add_edge(\"auth\", \"balance\")`).",
+      "The system prompt."
+    ],
+    correct: [1],
+    explanation: "Refer to the notebook for the detailed explanation.",
+    source: { label: "Notebook Checkpoint", url: "curriculum/beginner/03-workflow-or-agent/03_workflow_or_agent.ipynb" },
+  },
+  {
+    id: "chkpt-guardrails_untrusted_content",
+    category: "04 Guardrails Untrusted Content",
+    prompt: "What is a Prompt Injection attack?",
+    options: [
+      "When a hacker steals your OpenAI API key.",
+      "When untrusted data (like an email) contains hidden instructions designed to override the agent's System Prompt.",
+      "When the LLM generates a SQL injection string.",
+      "When the context window runs out of tokens.",
+      "They encrypt the data.",
+      "They block the OpenAI API from reading the text.",
+      "They provide strict visual and semantic boundaries, allowing the System Prompt to explicitly instruct the LLM to ignore commands found within those boundaries.",
+      "They validate the input against a database."
+    ],
+    correct: [6],
+    explanation: "Refer to the notebook for the detailed explanation.",
+    source: { label: "Notebook Checkpoint", url: "curriculum/intermediate/04-guardrails-untrusted-content/guardrails_untrusted_content.ipynb" },
+  },
+  {
+    id: "chkpt-trajectory_optimization",
+    category: "06 Trajectory Optimization",
+    prompt: "What is a 'Trajectory' in the context of AI Agents?",
+    options: [
+      "The physical location of the server.",
+      "The sequence of Observations, Thoughts, and Actions (tool calls) taken by the agent to solve a problem.",
+      "The memory usage of the python script.",
+      "The learning rate of the model."
+    ],
+    correct: [1],
+    explanation: "Refer to the notebook for the detailed explanation.",
+    source: { label: "Notebook Checkpoint", url: "curriculum/intermediate/06-trajectory-optimization/trajectory_optimization.ipynb" },
+  },
+  {
+    id: "chkpt-langgraph_state_memory",
+    category: "10 Langgraph State Memory",
+    prompt: "Unbound State Growth",
+    options: [
+      "To force the user to write Python.",
+      "To track structured variables (like incident_id) alongside messages, enabling programmatic routing.",
+      "It improves LLM generation speed.",
+      "It bypasses API limits.",
+      "LangGraph will throw a compilation error.",
+      "The list will be immutable.",
+      "Returning a new list from a Node will overwrite the existing list completely, instead of appending to it.",
+      "The LLM will refuse to run."
+    ],
+    correct: [6],
+    explanation: "Refer to the notebook for the detailed explanation.",
+    source: { label: "Notebook Checkpoint", url: "curriculum/intermediate/10-langgraph-state-memory/langgraph_state_memory.ipynb" },
+  },
+  {
+    id: "chkpt-agent_evaluation",
+    category: "05 Agent Evaluation",
+    prompt: "Why is relying on \"vibes\" (manual spot checking) bad for agent development?",
+    options: [
+      "It is illegal.",
+      "Agents are non-deterministic. A system prompt change might fix one edge case but silently break 5 others. Without an automated eval harness, regression is inevitable.",
+      "It is too fast.",
+      "It uses too many API tokens."
+    ],
+    correct: [1],
+    explanation: "Refer to the notebook for the detailed explanation.",
+    source: { label: "Notebook Checkpoint", url: "curriculum/intermediate/05-agent-evaluation/agent_evaluation.ipynb" },
+  },
+  {
+    id: "chkpt-agentic_rag",
+    category: "09 Agentic Rag",
+    prompt: "What makes RAG \"Agentic\"?",
+    options: [
+      "Using a more expensive embedding model.",
+      "Giving the LLM the ability to autonomously call the search tool, evaluate the results, and refine the query if necessary before answering.",
+      "Adding more documents to the database.",
+      "Using LangChain instead of LlamaIndex."
+    ],
+    correct: [1],
+    explanation: "Refer to the notebook for the detailed explanation.",
+    source: { label: "Notebook Checkpoint", url: "curriculum/intermediate/09-agentic-rag/agentic_rag.ipynb" },
+  },
+  {
+    id: "chkpt-tool_engineering",
+    category: "01 Tool Engineering",
+    prompt: "Broad Inputs",
+    options: [
+      "It runs faster than a standard action.",
+      "It prevents the LLM from executing irreversible side-effects by requiring human authorization.",
+      "It uses less tokens.",
+      "It bypasses Pydantic validation.",
+      "It causes the LLM to crash safely.",
+      "It allows the LLM to read the exact constraint it violated and self-correct.",
+      "It saves database space.",
+      "We shouldn't; we should hide errors from the LLM for security."
+    ],
+    correct: [1],
+    explanation: "Refer to the notebook for the detailed explanation.",
+    source: { label: "Notebook Checkpoint", url: "curriculum/intermediate/01-tool-engineering/tool_engineering.ipynb" },
+  },
+  {
+    id: "chkpt-context_engineering",
+    category: "02 Context Engineering",
+    prompt: "Why is it dangerous for an Agent to read full server logs?",
+    options: [
+      "The logs might contain viruses.",
+      "LLMs cannot read log formats.",
+      "Large logs will quickly exhaust the LLM's token context window and cause crashes or massive API bills.",
+      "It's illegal.",
+      "The first user message.",
+      "The System Prompt.",
+      "The most recent tool observation.",
+      "The LLM's apologies."
+    ],
+    correct: [2],
+    explanation: "Refer to the notebook for the detailed explanation.",
+    source: { label: "Notebook Checkpoint", url: "curriculum/intermediate/02-context-engineering/context_engineering.ipynb" },
+  },
+  {
+    id: "chkpt-planning_task_decomposition",
+    category: "08 Planning Task Decomposition",
+    prompt: "Why does the Plan-and-Execute architecture perform better than standard ReAct on long, complex tasks?",
+    options: [
+      "It uses a more expensive model.",
+      "It forces the LLM to separate the \"thinking/planning\" phase from the \"doing\" phase, preventing it from getting distracted by intermediate tool outputs.",
+      "It allows the LLM to skip tools entirely.",
+      "It runs on a quantum computer."
+    ],
+    correct: [1],
+    explanation: "Refer to the notebook for the detailed explanation.",
+    source: { label: "Notebook Checkpoint", url: "curriculum/intermediate/08-planning-task-decomposition/planning_task_decomposition.ipynb" },
+  },
+  {
+    id: "chkpt-human_approval_permissions",
+    category: "03 Human Approval Permissions",
+    prompt: "Where is the correct place to enforce permissions for an Agent?",
+    options: [
+      "In the System Prompt (e.g., \"Do not delete databases\").",
+      "In the Application/API layer using standard RBAC, checking the Agent's identity before executing the tool.",
+      "By asking the user for a password before running the tool.",
+      "In the vector database.",
+      "It makes the LLM run faster.",
+      "It allows the LLM to execute dangerous tools securely.",
+      "It restricts the LLM to merely generating structured data (Proposals) which a human can safely review and execute later.",
+      "It encrypts the LLM's memory."
+    ],
+    correct: [6],
+    explanation: "Refer to the notebook for the detailed explanation.",
+    source: { label: "Notebook Checkpoint", url: "curriculum/intermediate/03-human-approval-permissions/human_approval_permissions.ipynb" },
   },
 ];

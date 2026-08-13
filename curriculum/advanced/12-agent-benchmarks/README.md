@@ -1,5 +1,7 @@
 # Agent Benchmarks
 
+**Level:** Advanced · **Time:** 60 min · **Prerequisites:** None
+
 **Advanced · 12** · **Reference guide (no lab/notebook by design)**
 
 Agent benchmarks are useful instruments for selecting research directions, comparing candidate systems, and designing evaluations. They are not production certifications. A score obtained under a fixed task distribution, tool sandbox, grading setup, model version, time limit, and prompt policy does not prove reliability under an enterprise’s identities, data, workflows, latency/SLOs, adversaries, approval rules, operational failures, or changing external systems.
@@ -43,3 +45,27 @@ Score at least five layers: outcome/grounding, trajectory/tool arguments, policy
 - [SWE-bench paper](https://arxiv.org/abs/2310.06770) · [WebArena paper](https://arxiv.org/abs/2307.13854) · [BrowserGym paper](https://arxiv.org/abs/2405.07760)
 - [GAIA paper](https://arxiv.org/abs/2311.12983) · [τ-bench paper](https://arxiv.org/abs/2406.12045) · [OSWorld paper](https://arxiv.org/abs/2404.07972) · [AgentBench paper](https://arxiv.org/abs/2308.03688)
 - [OpenAI evaluation best practices](https://developers.openai.com/api/docs/guides/evaluation-best-practices) · [Anthropic: demystifying agent evals](https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents) · [NIST AI RMF](https://www.nist.gov/itl/ai-risk-management-framework)
+
+
+## Watch For
+
+- **Assumption failure:** The model hallucinates an unsupported parameter.
+- **State leak:** Context is incorrectly preserved across runs.
+- **Timeout:** The tool takes too long and the agent loops.
+- **Auth bypass:** The agent attempts an action it shouldn't.
+
+
+## Checkpoint
+
+**1. What is the primary purpose of this module?**
+- A) To understand the core concept.
+- B) To write complex boilerplate.
+- C) To ignore system errors.
+- D) To bypass security.
+
+**2. How do we mitigate the primary failure mode?**
+- A) Retries.
+- B) Human approval.
+- C) Logging.
+- D) Idempotency keys.
+

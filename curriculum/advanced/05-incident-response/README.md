@@ -1,5 +1,7 @@
 # AgentOps Incident Command Capstone
 
+**Level:** Advanced · **Time:** 60 min · **Prerequisites:** None
+
 **Advanced · 05** · **Primary notebook:** [`05_incident_response_capstone.ipynb`](05_incident_response_capstone.ipynb) · **Run:** [`lab.py`](lab.py) · **Project guide:** [`CAPSTONE_GUIDE.md`](CAPSTONE_GUIDE.md)
 
 This is the coherent project that ties the curriculum together. You are building an evidence-led incident-command system for Northstar Commerce—not a chatbot that claims it fixed production. The shared `agentops_lab/` environment is the single source of deterministic data, tools, policies, and evaluation fixtures used throughout the course. The notebook is the first end-to-end mission; the guide turns it into a staged engineering project.
@@ -39,6 +41,27 @@ At **09:04**, Europe checkout conversion falls **31%**. Dashboards are mostly gr
 - Identity/tenant scope, trusted context, tool allow list/argument validation, secret/egress boundaries, budgets, approval/idempotency, audit, revoke/kill path.
 - Durable state/checkpoints, retry classification, model/tool fallback, rate/concurrency limits, queue recovery, trace/evaluation, staged rollout and rollback.
 - Adversarial tests: indirect injection, poisoned runbook/tool description, cross-tenant request, stale memory, missing/conflicting evidence, tool failure, duplicate approval, budget exhaustion, and partial recovery.
+
+## Watch For
+
+- **Assumption failure:** The model hallucinates an unsupported parameter.
+- **State leak:** Context is incorrectly preserved across runs.
+- **Timeout:** The tool takes too long and the agent loops.
+- **Auth bypass:** The agent attempts an action it shouldn't.
+
+## Checkpoint
+
+**1. What is the primary purpose of this module?**
+- A) To understand the core concept.
+- B) To write complex boilerplate.
+- C) To ignore system errors.
+- D) To bypass security.
+
+**2. How do we mitigate the primary failure mode?**
+- A) Retries.
+- B) Human approval.
+- C) Logging.
+- D) Idempotency keys.
 
 ## References
 

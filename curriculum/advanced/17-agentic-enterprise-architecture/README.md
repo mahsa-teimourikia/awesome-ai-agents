@@ -1,5 +1,7 @@
 # Agentic Enterprise Architecture
 
+**Level:** Advanced · **Time:** 60 min · **Prerequisites:** None
+
 **Enterprise Agent · 03** · **Notebook:** [`agentic_enterprise_architecture.ipynb`](agentic_enterprise_architecture.ipynb) · **Implementation:** [`lab.py`](lab.py)
 
 Move from “we built an agent” to “we operate a governed ecosystem of agents.” The Northstar Commerce scenario onboards a high-risk customer-impact agent and an MCP metrics service. The goal is to make them discoverable and reusable without permitting shadow agents, tool squatting, inherited authority, data leakage, unmeasured spend, or untraceable production changes.
@@ -70,6 +72,27 @@ The orchestrator routes a task to a deterministic workflow, bounded agent, state
 Run `python lab.py`. The platform rejects agents without an owner/evaluation, rejects unverified MCP tools, discovers only authorized capabilities, applies a FinOps ceiling, and turns high-risk execution into proposal-only work until approval exists.
 
 Test: a tool-squatting registration; an agent requesting a scope it does not own; a model/tool version change without new evaluation; cross-tenant knowledge retrieval; an expired delegation token; budget exhaustion; missing telemetry; and an emergency registry revoke.
+
+## Watch For
+
+- **Assumption failure:** The model hallucinates an unsupported parameter.
+- **State leak:** Context is incorrectly preserved across runs.
+- **Timeout:** The tool takes too long and the agent loops.
+- **Auth bypass:** The agent attempts an action it shouldn't.
+
+## Checkpoint
+
+**1. What is the primary purpose of this module?**
+- A) To understand the core concept.
+- B) To write complex boilerplate.
+- C) To ignore system errors.
+- D) To bypass security.
+
+**2. How do we mitigate the primary failure mode?**
+- A) Retries.
+- B) Human approval.
+- C) Logging.
+- D) Idempotency keys.
 
 ## References
 

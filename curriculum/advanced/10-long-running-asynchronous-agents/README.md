@@ -1,5 +1,7 @@
 # Long-Running and Asynchronous Agents
 
+**Level:** Advanced · **Time:** 60 min · **Prerequisites:** None
+
 **Advanced · 10** · **Notebook:** [`long_running_asynchronous_agents.ipynb`](long_running_asynchronous_agents.ipynb) · **Implementation:** [`lab.py`](lab.py)
 
 Long-running agents handle work that outlives one request: research that waits for sources, case work that needs approval, monitoring that wakes on an event, or a job that spans minutes, hours, or days. The correct design is durable orchestration: persist an explicit job contract and checkpointed state, then wake only for a trusted timer, event, or human decision. It is not a process that keeps an LLM loop alive indefinitely.
@@ -60,6 +62,27 @@ Avoid polling LLMs while waiting. Use event subscriptions or timers; bound their
 - Evaluate completed tasks *and* operational behavior: recovery correctness, duplicate avoidance, stale-action blocks, queue/p95 end-to-end latency, cost per completed safe job, and human-review delay.
 
 **Exercises:** implement a heartbeat lease; design a migration from state v1 to v2; calculate when a scheduled batch should stop under a spend cap; and compare an external event wait with an unsafe polling loop.
+
+## Watch For
+
+- **Assumption failure:** The model hallucinates an unsupported parameter.
+- **State leak:** Context is incorrectly preserved across runs.
+- **Timeout:** The tool takes too long and the agent loops.
+- **Auth bypass:** The agent attempts an action it shouldn't.
+
+## Checkpoint
+
+**1. What is the primary purpose of this module?**
+- A) To understand the core concept.
+- B) To write complex boilerplate.
+- C) To ignore system errors.
+- D) To bypass security.
+
+**2. How do we mitigate the primary failure mode?**
+- A) Retries.
+- B) Human approval.
+- C) Logging.
+- D) Idempotency keys.
 
 ## References
 

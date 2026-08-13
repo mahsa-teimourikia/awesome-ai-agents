@@ -1,5 +1,7 @@
 # Embodied Agents and Robotics
 
+**Level:** Advanced · **Time:** 60 min · **Prerequisites:** None
+
 **Enterprise Agent · 05** · **Notebook:** [`embodied_agents_robotics.ipynb`](embodied_agents_robotics.ipynb) · **Implementation:** [`lab.py`](lab.py)
 
 Embodied agents connect language and perception to physical action. Unlike purely digital tool use, errors can create safety, hardware, and human risks, so autonomy must be conservative, simulation-led, continuously verified, and easy to stop.
@@ -33,6 +35,27 @@ Physical-world feedback is mandatory: a task is not complete because the model e
 ## Practical lab
 
 Run `python lab.py`. It models sense → plan → safety gate → bounded navigation → verified grasp. Change `clear_path` or `force_newtons` to trigger the safe stop path. Exercises: add an object-class confidence threshold; add an approval for a restricted-zone entry; log each action/observation pair; and compare simulation success with a stricter hardware acceptance threshold.
+
+## Watch For
+
+- **Assumption failure:** The model hallucinates an unsupported parameter.
+- **State leak:** Context is incorrectly preserved across runs.
+- **Timeout:** The tool takes too long and the agent loops.
+- **Auth bypass:** The agent attempts an action it shouldn't.
+
+## Checkpoint
+
+**1. What is the primary purpose of this module?**
+- A) To understand the core concept.
+- B) To write complex boilerplate.
+- C) To ignore system errors.
+- D) To bypass security.
+
+**2. How do we mitigate the primary failure mode?**
+- A) Retries.
+- B) Human approval.
+- C) Logging.
+- D) Idempotency keys.
 
 ## References
 

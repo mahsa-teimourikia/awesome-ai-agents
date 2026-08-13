@@ -1,5 +1,9 @@
 # 06 — Trajectory optimization: shortest reliable path
 
+**Level:** Intermediate · **Time:** 60 min · **Prerequisites:** None
+
+**Scenario:** Northstar, a SaaS support team, is integrating this concept into their agentic workflow.
+
 **Notebook:** [`trajectory_optimization.ipynb`](trajectory_optimization.ipynb) · **Runnable lab:** [`lab.py`](lab.py)
 
 Northstar’s EU checkout investigator succeeds in both versions below. One takes
@@ -67,6 +71,27 @@ dependent calls and rate-limited systems must remain sequential.
 - Keep high-risk actions out of optimization loops; approval requirements never
   disappear because a trajectory is “efficient.”
 - Compare candidate changes to a frozen baseline and canary release gate.
+
+## Watch For
+
+- **Assumption failure:** The model hallucinates an unsupported parameter.
+- **State leak:** Context is incorrectly preserved across runs.
+- **Timeout:** The tool takes too long and the agent loops.
+- **Auth bypass:** The agent attempts an action it shouldn't.
+
+## Checkpoint
+
+**1. What is the primary purpose of this module?**
+- A) To understand the core concept.
+- B) To write complex boilerplate.
+- C) To ignore system errors.
+- D) To bypass security.
+
+**2. How do we mitigate the primary failure mode?**
+- A) Retries.
+- B) Human approval.
+- C) Logging.
+- D) Idempotency keys.
 
 ## References
 

@@ -1,5 +1,7 @@
 # Agent Communication and Coordination
 
+**Level:** Advanced · **Time:** 60 min · **Prerequisites:** None
+
 **Enterprise Agent · 16** · **Notebook:** [`agent_communication_coordination.ipynb`](agent_communication_coordination.ipynb) · **Implementation:** [`lab.py`](lab.py)
 
 Multi-agent systems do not become reliable because several models talk to each other. They become useful only when explicit roles, communication contracts, scoped shared state, task ownership, bounded convergence, and independent evaluation improve a measured outcome over a well-designed single-agent baseline.
@@ -95,3 +97,29 @@ It often helps when (a) distinct expertise needs different large contexts or too
 - Trace assignment, handoff, artifact, conflict, vote, critic, route, and termination decisions; test failure and partial-completion paths.
 
 Run `python lab.py`, then the notebook. Extend it by adding a stale artifact policy, a fourth specialist with a conflict of interest, weighted voting with abstention, and a single-agent-versus-team evaluation table. Explain why adding another agent does—or does not—improve the chosen incident.
+
+
+## Watch For
+
+- **Assumption failure:** The model hallucinates an unsupported parameter.
+- **State leak:** Context is incorrectly preserved across runs.
+- **Timeout:** The tool takes too long and the agent loops.
+- **Auth bypass:** The agent attempts an action it shouldn't.
+
+
+## Checkpoint
+
+**1. When is a multi-agent team justified over one well-designed agent?**
+- A) When distinct tools or contexts improve a named subtask
+- B) When independent work reduces critical-path latency after join overhead
+- C) Whenever a manager role makes a demo look more realistic
+- D) When independent critique measurably catches material errors
+- E) After comparison on the same task set for supported success, cost, latency, and policy risk
+
+**2. What makes a shared blackboard safer than an unrestricted multi-agent transcript?**
+- A) Typed, attributable artifacts with source or evidence identifiers
+- B) Tenant-scoped read/write controls and versioning or correction history
+- C) Treating the latest agent message as the authoritative fact
+- D) A conflict policy that requests evidence or escalates rather than forcing consensus
+- E) Budgets and termination rules for follow-up messages and debate
+

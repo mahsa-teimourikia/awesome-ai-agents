@@ -1,5 +1,7 @@
 # Multimodal Agents
 
+**Level:** Advanced · **Time:** 60 min · **Prerequisites:** None
+
 **Enterprise Agent · 06** · **Notebook:** [`multimodal_agents.ipynb`](multimodal_agents.ipynb) · **Implementation:** [`lab.py`](lab.py)
 
 Multimodal agents perceive and act over more than text. They correlate vision, audio, video, documents, UI/screens, speech, sensor streams, memory, and tools—but every modality adds context cost, privacy risk, provenance ambiguity, and a new attack surface.
@@ -43,3 +45,27 @@ Run `python lab.py`. The simulated case aligns trusted Acme image, audio, docume
 - [OpenAI Computer-Using Agent](https://openai.com/index/computer-using-agent/) · [OpenAI agent guide](https://openai.com/business/guides-and-resources/a-practical-guide-to-building-ai-agents/)
 - [Gemini report](https://arxiv.org/abs/2312.11805) · [Gemini 1.5 long context](https://arxiv.org/abs/2403.05530) · [multimodal embeddings](https://arxiv.org/abs/2605.27295)
 - [Multimodal Agent AI survey](https://doi.org/10.1007/s11390-025-4802-8) · [VideoAgent](https://arxiv.org/abs/2403.11481) · [video understanding docs](https://ai.google.dev/gemini-api/docs/video-understanding)
+
+
+## Watch For
+
+- **Assumption failure:** The model hallucinates an unsupported parameter.
+- **State leak:** Context is incorrectly preserved across runs.
+- **Timeout:** The tool takes too long and the agent loops.
+- **Auth bypass:** The agent attempts an action it shouldn't.
+
+
+## Checkpoint
+
+**1. What is the primary purpose of this module?**
+- A) To understand the core concept.
+- B) To write complex boilerplate.
+- C) To ignore system errors.
+- D) To bypass security.
+
+**2. How do we mitigate the primary failure mode?**
+- A) Retries.
+- B) Human approval.
+- C) Logging.
+- D) Idempotency keys.
+

@@ -1,5 +1,9 @@
 # 02 — The Agent Loop
 
+**Level:** Beginner · **Time:** 60 min · **Prerequisites:** None
+
+**Scenario:** Northstar, a SaaS support team, is integrating this concept into their agentic workflow.
+
 **Notebook:** [`02_agent_loop.ipynb`](02_agent_loop.ipynb)
 **Run:** [`lab.py`](lab.py)
 
@@ -274,6 +278,27 @@ counter, deadlines, kill switches, and human escalation.
 6. Write a no-progress rule for repeated tool calls.
 7. Decide whether your own use case needs ReAct, a state graph, or a fixed
    workflow, and justify the choice with a measurable success criterion.
+
+## Watch For
+
+- **Assumption failure:** The model hallucinates an unsupported parameter.
+- **State leak:** Context is incorrectly preserved across runs.
+- **Timeout:** The tool takes too long and the agent loops.
+- **Auth bypass:** The agent attempts an action it shouldn't.
+
+## Checkpoint
+
+**1. What is the primary purpose of this module?**
+- A) To understand the core concept.
+- B) To write complex boilerplate.
+- C) To ignore system errors.
+- D) To bypass security.
+
+**2. How do we mitigate the primary failure mode?**
+- A) Retries.
+- B) Human approval.
+- C) Logging.
+- D) Idempotency keys.
 
 ## References
 

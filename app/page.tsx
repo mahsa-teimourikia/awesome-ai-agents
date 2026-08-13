@@ -8,9 +8,9 @@ type Subject = { id:string; level:Level; step:string; title:string; description:
 
 const guidePaths:Record<string,string> = {
   "b1": "curriculum/beginner/01-ai-agent-foundations/README.md",
-  "b2": "curriculum/beginner/01-ai-agent-foundations/README.md",
+  "b2": "curriculum/beginner/01-ai-agent-foundations/README.md#the-agent-loop",
   "b4": "curriculum/beginner/02-agent-loop/02_agent_loop.ipynb",
-  "b3": "curriculum/beginner/01-ai-agent-foundations/README.md",
+  "b3": "curriculum/beginner/01-ai-agent-foundations/README.md#tools",
   "i1": "curriculum/beginner/03-workflow-or-agent/README.md",
   "i4": "curriculum/beginner/03-workflow-or-agent/03_workflow_or_agent.ipynb",
   "i5": "curriculum/beginner/04-agent-development-frameworks/README.md",
@@ -30,7 +30,7 @@ const guidePaths:Record<string,string> = {
   "a7": "curriculum/advanced/02-autogen-selector-teams/02_autogen_selector_teams.ipynb",
   "a8": "curriculum/advanced/03-crewai-teams/03_crewai_teams.ipynb",
   "a9": "curriculum/advanced/04-hybrid-production-architecture/04_hybrid_production_architecture.ipynb",
-  "a10": "curriculum/advanced/05-incident-response-capstone/05_incident_response_capstone.ipynb",
+  "a10": "curriculum/advanced/05-incident-response/incident_response.ipynb",
   "a11": "curriculum/advanced/06-agent-memory/README.md",
   "a12": "curriculum/advanced/07-world-models-environment-modeling/README.md",
   "a13": "curriculum/advanced/08-proactive-agents/README.md",
@@ -57,13 +57,12 @@ const guidePaths:Record<string,string> = {
   "e15": "curriculum/advanced/29-agent-orchestration/README.md",
   "e16": "curriculum/advanced/30-agent-communication-coordination/README.md",
   "e17": "curriculum/advanced/31-agent-protocol-stack/README.md",
-  "a1": "curriculum/beginner/01-ai-agent-foundations/README.md",
+  "a1": "docs/multi-agent-systems.md",
   "a2": "curriculum/intermediate/05-agent-evaluation/README.md",
   "a3": "README.md#tools-memory-and-protocols",
-  "a4": "curriculum/intermediate/05-agent-evaluation/README.md",
-  "a5": "curriculum/beginner/01-ai-agent-foundations/README.md",
+  "a4": "curriculum/intermediate/05-agent-evaluation/README.md#threat-model",
+  "a5": "docs/multi-agent-systems.md"
 };
-
 
 const subjects:Subject[] = [
   {
@@ -99,7 +98,7 @@ const subjects:Subject[] = [
     "lesson": "Trace observe → decide → act → observe and make every transition inspectable.",
     "exercise": "Trace observe → decide → act → observe and make every transition inspectable.",
     "failures": [],
-    "notebook": "curriculum/beginner/02-agent-loop/lab.py",
+    "notebook": "curriculum/beginner/02-agent-loop/02_agent_loop.ipynb",
     "refs": [
       "curriculum/beginner/01-ai-agent-foundations/README.md#the-agent-loop",
       "https://arxiv.org/abs/2210.03629"
@@ -136,7 +135,7 @@ const subjects:Subject[] = [
     "failures": [],
     "notebook": "curriculum/beginner/02-agent-loop/02_agent_loop.ipynb",
     "refs": [
-      "curriculum/advanced/05-incident-response-capstone/README.md",
+      "curriculum/advanced/05-incident-response/README.md",
       "curriculum/beginner/02-agent-loop/02_agent_loop.ipynb",
       "https://www.linkedin.com/pulse/building-ai-agents-from-loops-teams-oneplusi-y3atc/"
     ],
@@ -154,7 +153,7 @@ const subjects:Subject[] = [
     "lesson": "Create narrow tool contracts and separate working state from long-term memory.",
     "exercise": "Create narrow tool contracts and separate working state from long-term memory.",
     "failures": [],
-    "notebook": "curriculum/intermediate/01-tool-engineering/lab.py",
+    "notebook": "curriculum/intermediate/01-tool-engineering/tool_engineering.ipynb",
     "refs": [
       "curriculum/beginner/01-ai-agent-foundations/README.md#tools",
       "curriculum/beginner/01-ai-agent-foundations/README.md#state-and-memory"
@@ -190,7 +189,7 @@ const subjects:Subject[] = [
     "lesson": "Choose the least autonomous design that reliably solves the task.",
     "exercise": "Choose the least autonomous design that reliably solves the task.",
     "failures": [],
-    "notebook": "curriculum/beginner/03-workflow-or-agent/lab.py",
+    "notebook": "curriculum/beginner/03-workflow-or-agent/03_workflow_or_agent.ipynb",
     "refs": [
       "curriculum/beginner/03-workflow-or-agent/README.md#workflow-versus-agent",
       "https://www.anthropic.com/engineering/building-effective-agents"
@@ -276,7 +275,7 @@ const subjects:Subject[] = [
     "failures": [],
     "notebook": "curriculum/beginner/03-workflow-or-agent/03_workflow_or_agent.ipynb",
     "refs": [
-      "curriculum/advanced/05-incident-response-capstone/README.md#notebook-02-learning-objectives",
+      "curriculum/advanced/05-incident-response/README.md#notebook-02-learning-objectives",
       "curriculum/beginner/03-workflow-or-agent/03_workflow_or_agent.ipynb",
       "curriculum/beginner/03-workflow-or-agent/README.md#workflow-versus-agent",
       "https://www.linkedin.com/pulse/building-ai-agents-from-loops-teams-oneplusi-y3atc/"
@@ -295,14 +294,14 @@ const subjects:Subject[] = [
     "lesson": "The Northstar Commerce scenario now uses six notebooks: OpenAI Agents SDK, Pydantic AI, LangGraph, Google ADK, Microsoft Agent Framework, and CrewAI. Each teaches a scenario chosen for its framework fit while keeping identity, tools, budgets, and approval outside the model.",
     "exercise": "Run the credential-free lab, then complete the framework notebooks and compare traces, evidence gates, workflow/state needs, task contracts, and coordination costs before enabling an optional SDK.",
     "failures": [],
-    "notebook": "curriculum/beginner/04-agent-development-frameworks/04_openai_agents_sdk_incident_triage.ipynb",
+    "notebook": "curriculum/advanced/20-multimodal-agents/multimodal_agents.ipynb",
     "refs": [
       "curriculum/beginner/04-agent-development-frameworks/README.md",
-      "curriculum/beginner/04-agent-development-frameworks/04_openai_agents_sdk_incident_triage.ipynb",
+      "curriculum/advanced/20-multimodal-agents/multimodal_agents.ipynb",
       "curriculum/beginner/04-agent-development-frameworks/04_pydanticai_compliance_caseworker.ipynb",
       "curriculum/beginner/04-agent-development-frameworks/04_langgraph_remediation_approval.ipynb",
-      "curriculum/beginner/04-agent-development-frameworks/04_google_adk_customer_impact.ipynb",
-      "curriculum/beginner/04-agent-development-frameworks/04_microsoft_agent_framework_support_escalation.ipynb",
+      "curriculum/advanced/04-hybrid-production-architecture/04_hybrid_production_architecture.ipynb",
+      "curriculum/advanced/27-agent-observability/agent_observability.ipynb",
       "curriculum/beginner/04-agent-development-frameworks/04_crewai_incident_response_crew.ipynb",
       "https://learn.microsoft.com/en-gb/agent-framework/",
       "https://docs.crewai.com/"
@@ -395,7 +394,7 @@ const subjects:Subject[] = [
     "failures": [],
     "notebook": "curriculum/intermediate/01-tool-engineering/tool_engineering.ipynb",
     "refs": [
-      "curriculum/advanced/05-incident-response-capstone/README.md#notebook-04-learning-objectives",
+      "curriculum/advanced/05-incident-response/README.md#notebook-04-learning-objectives",
       "curriculum/intermediate/01-tool-engineering/tool_engineering.ipynb",
       "https://openai.github.io/openai-agents-python/tools/",
       "https://www.linkedin.com/pulse/building-ai-agents-from-loops-teams-oneplusi-y3atc/"
@@ -589,7 +588,7 @@ const subjects:Subject[] = [
     "lesson": "Apply routing, parallelization, orchestrator-worker, and evaluator-optimizer patterns.",
     "exercise": "Apply routing, parallelization, orchestrator-worker, and evaluator-optimizer patterns.",
     "failures": [],
-    "notebook": "curriculum/intermediate/06-trajectory-optimization/lab.py",
+    "notebook": "curriculum/intermediate/06-trajectory-optimization/trajectory_optimization.ipynb",
     "refs": [
       "curriculum/intermediate/06-trajectory-optimization/README.md",
       "docs/multi-agent-systems.md"
@@ -673,7 +672,7 @@ const subjects:Subject[] = [
     "lesson": "Evaluate trajectories, tool calls, outcomes, policy compliance, and cost.",
     "exercise": "Evaluate trajectories, tool calls, outcomes, policy compliance, and cost.",
     "failures": [],
-    "notebook": "curriculum/intermediate/05-agent-evaluation/lab.py",
+    "notebook": "curriculum/intermediate/05-agent-evaluation/agent_evaluation.ipynb",
     "refs": [
       "curriculum/intermediate/05-agent-evaluation/README.md#evaluation-dimensions",
       "https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents"
@@ -783,7 +782,7 @@ const subjects:Subject[] = [
     "failures": [],
     "notebook": "curriculum/advanced/02-autogen-selector-teams/02_autogen_selector_teams.ipynb",
     "refs": [
-      "curriculum/advanced/05-incident-response-capstone/README.md#notebook-11-learning-objectives",
+      "curriculum/advanced/05-incident-response/README.md#notebook-11-learning-objectives",
       "curriculum/advanced/02-autogen-selector-teams/02_autogen_selector_teams.ipynb",
       "https://microsoft.github.io/autogen/stable/user-guide/agentchat-user-guide/tutorial/agents.html",
       "https://microsoft.github.io/autogen/stable/user-guide/agentchat-user-guide/selector-group-chat.html",
@@ -805,7 +804,7 @@ const subjects:Subject[] = [
     "failures": [],
     "notebook": "curriculum/advanced/03-crewai-teams/03_crewai_teams.ipynb",
     "refs": [
-      "curriculum/advanced/05-incident-response-capstone/README.md#notebook-12-learning-objectives",
+      "curriculum/advanced/05-incident-response/README.md#notebook-12-learning-objectives",
       "curriculum/advanced/03-crewai-teams/03_crewai_teams.ipynb",
       "https://docs.crewai.com/",
       "https://docs.crewai.com/v1.15.10/en/concepts/agents",
@@ -827,7 +826,7 @@ const subjects:Subject[] = [
     "failures": [],
     "notebook": "curriculum/advanced/04-hybrid-production-architecture/04_hybrid_production_architecture.ipynb",
     "refs": [
-      "curriculum/advanced/05-incident-response-capstone/README.md#notebook-13-learning-objectives",
+      "curriculum/advanced/05-incident-response/README.md#notebook-13-learning-objectives",
       "curriculum/advanced/04-hybrid-production-architecture/04_hybrid_production_architecture.ipynb",
       "https://www.anthropic.com/engineering/building-effective-agents",
       "https://www.linkedin.com/pulse/building-ai-agents-from-loops-teams-oneplusi-y3atc/"
@@ -846,11 +845,11 @@ const subjects:Subject[] = [
     "lesson": "The capstone incident begins at 09:04 with a 31% Europe checkout conversion drop, mostly-green dashboards, an 08:42 deployment, six support complaints, runbooks, and customer SLA data. Learners must recommend mitigation and prepare production actions without executing them.",
     "exercise": "Run the capstone harness, inspect the selected architecture, verify forbidden production actions were not executed, and modify the candidate metrics to test when a specialist team becomes justified.",
     "failures": [],
-    "notebook": "curriculum/advanced/05-incident-response-capstone/05_incident_response_capstone.ipynb",
+    "notebook": "curriculum/advanced/05-incident-response/incident_response.ipynb",
     "refs": [
-      "curriculum/advanced/05-incident-response-capstone/README.md#notebook-14-capstone-objectives",
-      "curriculum/advanced/05-incident-response-capstone/05_incident_response_capstone.ipynb",
-      "curriculum/advanced/05-incident-response-capstone/agentops_lab/evaluations/capstone_tasks.json",
+      "curriculum/advanced/05-incident-response/README.md#notebook-14-capstone-objectives",
+      "curriculum/advanced/05-incident-response/incident_response.ipynb",
+      "curriculum/advanced/05-incident-response/incident_response.ipynb",
       "https://www.anthropic.com/engineering/building-effective-agents"
     ],
     "code": "",
@@ -1580,7 +1579,7 @@ const subjects:Subject[] = [
     "lesson": "Design manager, handoff, peer, parallel, and graph topologies with explicit ownership.",
     "exercise": "Design manager, handoff, peer, parallel, and graph topologies with explicit ownership.",
     "failures": [],
-    "notebook": "curriculum/advanced/01-single-vs-multi-agent/lab.py",
+    "notebook": "curriculum/advanced/01-single-vs-multi-agent/single_vs_multi_agent.ipynb",
     "refs": [
       "docs/multi-agent-systems.md",
       "assets/multi-agent-patterns.mmd"
@@ -1599,7 +1598,7 @@ const subjects:Subject[] = [
     "lesson": "Add durable state, approvals, observability, replay, and rollback to long-running runs.",
     "exercise": "Add durable state, approvals, observability, replay, and rollback to long-running runs.",
     "failures": [],
-    "notebook": "curriculum/advanced/04-hybrid-production-architecture/durable_recovery.py",
+    "notebook": "curriculum/advanced/04-hybrid-production-architecture/04_hybrid_production_architecture.ipynb",
     "refs": [
       "curriculum/intermediate/05-agent-evaluation/README.md#release-gates",
       "https://langchain-ai.github.io/langgraph/concepts/durable_execution/"
@@ -1684,7 +1683,7 @@ const subjects:Subject[] = [
     "lesson": "Combine MCP, A2A, human boundaries, and autonomy measurement without losing control.",
     "exercise": "Combine MCP, A2A, human boundaries, and autonomy measurement without losing control.",
     "failures": [],
-    "notebook": "curriculum/advanced/04-hybrid-production-architecture/protocol_boundaries.py",
+    "notebook": "curriculum/advanced/04-hybrid-production-architecture/04_hybrid_production_architecture.ipynb",
     "refs": [
       "https://modelcontextprotocol.io/",
       "https://a2a-protocol.org/"
@@ -1720,7 +1719,7 @@ const subjects:Subject[] = [
     "lesson": "Threat-model prompt injection, tool abuse, memory poisoning, and budget exhaustion.",
     "exercise": "Threat-model prompt injection, tool abuse, memory poisoning, and budget exhaustion.",
     "failures": [],
-    "notebook": "curriculum/advanced/04-hybrid-production-architecture/safety_readiness.py",
+    "notebook": "curriculum/advanced/04-hybrid-production-architecture/04_hybrid_production_architecture.ipynb",
     "refs": [
       "curriculum/intermediate/05-agent-evaluation/README.md",
       "https://genai.owasp.org/"
@@ -1757,10 +1756,10 @@ const subjects:Subject[] = [
     "lesson": "Coordinate search, critique, synthesis, citations, evaluation, and escalation.",
     "exercise": "Coordinate search, critique, synthesis, citations, evaluation, and escalation.",
     "failures": [],
-    "notebook": "curriculum/advanced/05-incident-response-capstone/research_team_extension.py",
+    "notebook": "curriculum/advanced/05-incident-response/incident_response.ipynb",
     "refs": [
       "docs/multi-agent-systems.md",
-      "curriculum/advanced/05-incident-response-capstone/research_team_extension.ipynb"
+      "curriculum/advanced/02-autogen-selector-teams/02_autogen_selector_teams.ipynb"
     ],
     "code": "",
     "quiz": []
@@ -1785,7 +1784,7 @@ export default function Home(){
  
  return <main>
   <nav className="nav"><div className="brand"><span className="brand-mark">✦</span><span>AI AGENTS / <em>FIELD GUIDE</em></span></div><div className="nav-links"><a href="#curriculum">Curriculum</a><a href="/awsome-ai-agents/quiz/">Full quiz</a><a href="#how">How it works</a><a className="repo" href="https://github.com/mahsa-teimourikia/awsome-ai-agents" target="_blank">Open repo ↗</a></div></nav>
-  <section className="hero"><div className="hero-copy"><div className="eyebrow">THE OPEN-SOURCE PATH · FROM THEORY TO OPERATIONS</div><h1>Build agents<br/><span>that know why.</span></h1><p className="hero-lede">A notebook-first learning hub built from the <em>awsome-ai-agents</em> repository: follow one scenario, learn the theory, run the Python, break the system, measure the fix, and keep the evidence.</p><div className="hero-actions"><a className="button primary" href="#curriculum">Start the curriculum <span>↓</span></a><a className="text-link" href="/awsome-ai-agents/quiz/">Take the full quiz ↗</a></div><div className="hero-meta"><span><b>44</b> scenario notebooks</span><span><b>55</b> repo lessons</span><span><b>1</b> learning hub</span></div></div><div className="hero-art"><div className="orbit orbit-one"/><div className="orbit orbit-two"/><div className="core"><span>AGENTS</span><small>autonomous systems</small></div><div className="node node-a">01<br/><b>PLAN</b></div><div className="node node-b">02<br/><b>ACT</b></div><div className="node node-c">03<br/><b>OBSERVE</b></div><div className="art-caption">Your agent is only<br/><strong>as good as its bounds.</strong></div></div></section>
+  <section className="hero"><div className="hero-copy"><div className="eyebrow">THE OPEN-SOURCE PATH · FROM THEORY TO OPERATIONS</div><h1>Build agents<br/><span>that know why.</span></h1><p className="hero-lede">A notebook-first learning hub built from the <em>awsome-ai-agents</em> repository: follow one scenario, learn the theory, run the Python, break the system, measure the fix, and keep the evidence.</p><div className="hero-actions"><a className="button primary" href="#curriculum">Start the curriculum <span>↓</span></a><a className="text-link" href="/awsome-ai-agents/quiz/">Take the full quiz ↗</a></div><div className="hero-meta"><span><b>36</b> scenario notebooks</span><span><b>36</b> repo lessons</span><span><b>1</b> learning hub</span></div></div><div className="hero-art"><div className="orbit orbit-one"/><div className="orbit orbit-two"/><div className="core"><span>AGENTS</span><small>autonomous systems</small></div><div className="node node-a">01<br/><b>PLAN</b></div><div className="node node-b">02<br/><b>ACT</b></div><div className="node node-c">03<br/><b>OBSERVE</b></div><div className="art-caption">Your agent is only<br/><strong>as good as its bounds.</strong></div></div></section>
   <section className="signal"><div><span className="signal-icon">↗</span><b>FOLLOW THE REPO</b><p>Objectives, notebooks, exercises, and next steps are mapped from the source material.</p></div><div><span className="signal-icon">⌁</span><b>LEARN IN LOOPS</b><p>Read a concept. Run the lab. Change one variable. Inspect the failure.</p></div><div><span className="signal-icon">◌</span><b>CHECK YOUR SIGNAL</b><p>Use the checkpoint quiz and the repo’s tests to see what actually stuck.</p></div></section>
 
   <section id="curriculum" className="curriculum"><div className="section-intro"><div><div className="eyebrow">THE CURRICULUM MAP</div><h2>One path.<br/>Four altitudes.</h2></div><p>The repo recommends starting with a beginner bounded loop, then improving tool engineering, and finally designing for teams, memory, and enterprise operations.</p></div><div className="progress-summary" aria-live="polite">{completed.length} of {subjects.length} lessons complete</div><div className="level-tabs"><button className={level==="All"?"active":""} onClick={()=>setLevel("All")}>All lessons <span>· {subjects.length} modules</span></button>{(["Beginner","Intermediate","Advanced","Enterprise Agent"] as Level[]).map(l=><button key={l} className={level===l?"active":""} onClick={()=>setLevel(l)}>{l}<span>· {levels[l].sub}</span></button>)}</div><div className="curriculum-grid">{filtered.map(s=><button className={"subject-card " + (selected.id===s.id?"selected ":"") + "level-" + s.level.replace(" ", "-")} key={s.id} onClick={()=>select(s)}><div className="card-top"><span className={"pill " + levels[s.level].color}>{s.level} · {s.step}</span><span className="duration">{s.time}</span>{completed.includes(s.id)&&<span className="completed-mark" aria-label="Completed">✓</span>}</div><h3>{s.title}</h3><p>{s.description}</p><span className="card-arrow">→</span></button>)}</div></section>

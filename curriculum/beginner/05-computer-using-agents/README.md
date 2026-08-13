@@ -2,6 +2,8 @@
 
 **Level:** Beginner · **Primary notebook:** [`computer_using_agents.ipynb`](computer_using_agents.ipynb) · **Runnable simulation:** [`lab.py`](lab.py)
 
+**Scenario:** Northstar, a SaaS support team, is integrating this concept into their agentic workflow.
+
 Computer-using agents operate an existing interface instead of receiving a clean, purpose-built API. They observe a screen or accessibility tree, ground an intended action on visible controls, act with mouse/keyboard-like primitives, observe the resulting state, and recover when the environment differs from expectation. This makes them useful for UI-only software—and substantially less predictable than a typed API call.
 
 This lesson uses a fictional Northstar support portal. An agent must open a customer case, draft an escalation, and request confirmation before submitting it. Everything runs in a disposable Python state machine: no real browser, OS, mobile device, filesystem, network, credentials, or external side effect is used.
@@ -164,6 +166,36 @@ Measure more than task success: correct target grounding, action precision, post
 3. Model a mobile tap target with a smaller bounding box. What extra grounding and accessibility checks would you require?
 4. Add a redirect to an unallowlisted origin and write a test proving the controller blocks it.
 5. Compare a DOM-first implementation, a screenshot-only implementation, and the hybrid used here. Which one would you deploy for an owned internal portal, and why?
+
+## Checkpoint
+
+**1. Which controls should intervene between a computer-use model's proposed click and a consequential UI action?**
+- A) A fresh observation and a unique grounded target
+- B) Origin, authorization, risk, and action-budget validation
+- C) A human confirmation bound to the exact commit action when policy requires it
+- D) Trusting any instruction visible on the webpage
+- E) A post-action state check or safe escalation path
+
+**2. Which statements correctly compare browser automation and visual computer use?**
+- A) A stable typed API is usually preferable when available
+- B) DOM/accessibility automation can be easier to test on an owned app with stable semantic controls
+- C) Screenshot-grounded interaction is useful for UI-only or visually meaningful interfaces
+- D) Visual models remove the need for sandboxing and confirmation
+- E) Both approaches require fresh observations and postcondition checks around consequential actions
+
+**3. What are safe responses when a browser or GUI changes unexpectedly?**
+- A) Stop the stale action and obtain a fresh observation
+- B) Use an allowlisted, unique visible target for one bounded recovery attempt
+- C) Repeat the old coordinate until the UI reacts
+- D) Escalate when the new target is ambiguous, risky, or outside scope
+- E) Record the UI change and terminal or recovery reason in the trace
+
+## Watch For
+
+- **Assumption failure:** The model hallucinates an unsupported parameter.
+- **State leak:** Context is incorrectly preserved across runs.
+- **Timeout:** The tool takes too long and the agent loops.
+- **Auth bypass:** The agent attempts an action it shouldn't.
 
 ## References and further learning
 

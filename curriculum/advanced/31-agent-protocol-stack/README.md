@@ -1,5 +1,7 @@
 # The Agent Protocol Stack
 
+**Level:** Advanced · **Time:** 60 min · **Prerequisites:** None
+
 **Enterprise Agent · 17** · **Notebook:** [`agent_protocol_stack.ipynb`](agent_protocol_stack.ipynb) · **Implementation:** [`lab.py`](lab.py)
 
 Agent systems increasingly need to cross framework, vendor, organizational, user-interface, tool, commerce, and payment boundaries. A protocol ecosystem is emerging because a tool contract cannot describe a remote agent’s task lifecycle, and a chat-stream protocol cannot safely authorize a payment. The goal is not to adopt every protocol; it is to place interoperable contracts at the right boundary while retaining application-owned identity, authorization, policy, audit, and recovery.
@@ -88,6 +90,22 @@ The credential-free [`lab.py`](lab.py) simulates an A2A-like Agent Card, trusted
 - Enforce tenant/data classification, egress, tool allowlists, rate/budget limits, idempotency, cancellation, and observability at protocol boundaries.
 - Keep an approved agent/tool registry, version/provenance inventory, revocation path, compatibility tests, and audit correlation across protocols.
 - Revalidate consequential actions after any delegation, UI interaction, status resume, or payment step.
+
+## Watch For
+
+- **Assumption failure:** The model hallucinates an unsupported parameter.
+- **State leak:** Context is incorrectly preserved across runs.
+- **Timeout:** The tool takes too long and the agent loops.
+- **Auth bypass:** The agent attempts an action it shouldn't.
+
+## Checkpoint
+
+**1. Which protocol-layer pairings are correctly described?**
+- A) A2A: remote agent discovery, tasks, messages, delegation, and status
+- B) AG-UI: agent-to-user-application interaction events and state
+- C) A2UI: schema-rendered dynamic interface descriptions
+- D) MCP: a replacement for payment-provider consent and fraud controls
+- E) UCP/AP2-style boundaries: commerce/payment intent that still require separate authorization controls
 
 ## References
 

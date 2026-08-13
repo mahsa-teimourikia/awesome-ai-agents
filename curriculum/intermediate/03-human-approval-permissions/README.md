@@ -1,6 +1,8 @@
 # 03 — Human approval and permissions
 
 **Level:** Intermediate · **Time:** 2–3 hours · **Primary lesson:**
+
+**Scenario:** Northstar, a SaaS support team, is integrating this concept into their agentic workflow.
 [`human_approval_permissions.ipynb`](human_approval_permissions.ipynb) ·
 **Runnable implementation:** [`lab.py`](lab.py)
 
@@ -203,6 +205,27 @@ against a repeated API request after a UI refresh.
    approval request.
 5. Design an approval UI that allows an operator to edit a draft customer notice
    but not alter a rollback target.
+
+## Watch For
+
+- **Assumption failure:** The model hallucinates an unsupported parameter.
+- **State leak:** Context is incorrectly preserved across runs.
+- **Timeout:** The tool takes too long and the agent loops.
+- **Auth bypass:** The agent attempts an action it shouldn't.
+
+## Checkpoint
+
+**1. What is the primary purpose of this module?**
+- A) To understand the core concept.
+- B) To write complex boilerplate.
+- C) To ignore system errors.
+- D) To bypass security.
+
+**2. How do we mitigate the primary failure mode?**
+- A) Retries.
+- B) Human approval.
+- C) Logging.
+- D) Idempotency keys.
 
 ## References
 

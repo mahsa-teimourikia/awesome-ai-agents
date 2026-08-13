@@ -1,5 +1,7 @@
 # Guardrails and Policy Enforcement
 
+**Level:** Advanced · **Time:** 60 min · **Prerequisites:** None
+
 **Enterprise Agent · 10** · **Notebook:** [`guardrails_policy_enforcement.ipynb`](guardrails_policy_enforcement.ipynb) · **Implementation:** [`lab.py`](lab.py)
 
 Reliable guardrails are defense in depth. They validate and constrain an agent at the input, context, tool-selection, argument, action, output, and audit boundaries. A prompt can guide behavior, but policy engines, identity checks, schemas, sandboxes, budgets, approval services, and kill switches enforce it.
@@ -53,3 +55,27 @@ Allow lists are safer than broad deny lists for high-risk tools. Sandboxes use s
 - Test prompt injection, tool hallucination, argument smuggling, SSRF/file/network escape, cross-tenant access, output leakage, retry/budget bypass, and kill-switch propagation.
 
 References: [OWASP Top 10 for Agentic Applications](https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications/), [OWASP prompt injection](https://genai.owasp.org/llmrisk/llm01-prompt-injection/), [NIST AI RMF](https://www.nist.gov/itl/ai-risk-management-framework), [OpenAI agent safety](https://developers.openai.com/api/docs/guides/agent-builder-safety).
+
+
+## Watch For
+
+- **Assumption failure:** The model hallucinates an unsupported parameter.
+- **State leak:** Context is incorrectly preserved across runs.
+- **Timeout:** The tool takes too long and the agent loops.
+- **Auth bypass:** The agent attempts an action it shouldn't.
+
+
+## Checkpoint
+
+**1. What is the primary purpose of this module?**
+- A) To understand the core concept.
+- B) To write complex boilerplate.
+- C) To ignore system errors.
+- D) To bypass security.
+
+**2. How do we mitigate the primary failure mode?**
+- A) Retries.
+- B) Human approval.
+- C) Logging.
+- D) Idempotency keys.
+

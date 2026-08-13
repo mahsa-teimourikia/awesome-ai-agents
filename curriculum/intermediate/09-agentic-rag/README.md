@@ -2,6 +2,8 @@
 
 **Level:** Intermediate · **Notebook:** [`agentic_rag.ipynb`](agentic_rag.ipynb) · **Runnable lab:** [`lab.py`](lab.py)
 
+**Scenario:** Northstar, a SaaS support team, is integrating this concept into their agentic workflow.
+
 RAG retrieves evidence before generation. **Agentic RAG** gives a bounded agent control over *how* to retrieve: it can plan queries, choose a search/database/graph tool, inspect support, decompose a difficult question, retrieve again, and stop with citations or an abstention. Retrieval is still a tool—not a license to treat retrieved text as instructions or to take action without policy.
 
 ## Scenario
@@ -71,6 +73,27 @@ A citation is not merely a URL. Verify that every material claim maps to retriev
 - [ ] Define tool schemas, corpus/tenant scope, budgets, stop/abstention conditions, and trace IDs.
 - [ ] Evaluate retrieval recall/precision, route selection, query quality, multi-hop completion, citation entailment, latency/cost, and unsafe actions.
 - [ ] Treat retrieved content as untrusted data; verify citations and require approval for consequential actions.
+
+## Watch For
+
+- **Assumption failure:** The model hallucinates an unsupported parameter.
+- **State leak:** Context is incorrectly preserved across runs.
+- **Timeout:** The tool takes too long and the agent loops.
+- **Auth bypass:** The agent attempts an action it shouldn't.
+
+## Checkpoint
+
+**1. What is the primary purpose of this module?**
+- A) To understand the core concept.
+- B) To write complex boilerplate.
+- C) To ignore system errors.
+- D) To bypass security.
+
+**2. How do we mitigate the primary failure mode?**
+- A) Retries.
+- B) Human approval.
+- C) Logging.
+- D) Idempotency keys.
 
 ## References
 

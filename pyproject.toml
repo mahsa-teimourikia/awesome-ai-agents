@@ -13,11 +13,14 @@ learner = [
     "anthropic",
     "langchain",
     "langgraph",
-    "autogen-agentchat",
+    "pyautogen",
     "crewai",
     "agentops",
     "pandas",
-    "mcp"
+    "mcp",
+    "chromadb",
+    "opentelemetry-api",
+    "opentelemetry-sdk"
 ]
 contributor = [
     "awsome-ai-agents[learner]",
@@ -28,4 +31,4 @@ contributor = [
 
 [tool.setuptools]
 py-modules = []
-packages = []
+packages = ["awsome_agents"]

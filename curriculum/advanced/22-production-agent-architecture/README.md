@@ -1,5 +1,7 @@
 # Production Agent Architecture
 
+**Level:** Advanced · **Time:** 60 min · **Prerequisites:** None
+
 **Enterprise Agent · 08** · **Notebook:** [`production_agent_architecture.ipynb`](production_agent_architecture.ipynb) · **Implementation:** [`lab.py`](lab.py)
 
 Production agents are systems, not a model call with tools. The runtime performs bounded reasoning and tool selection, while the surrounding platform owns identity, policy, sessions, persistence, queues, recovery, observability, evaluation, and operational resilience. This module assembles those components into one architecture and explains which state may be transient and which must survive failure.
@@ -72,3 +74,27 @@ Use queues for minutes-to-days work, schedules for bounded periodic runs, and au
 - Test dependency outage, duplicate/late event, worker crash, partial write, schema migration, cache leak/staleness, queue replay, region failover, and restore.
 
 References: [OpenAI agent guide](https://openai.com/business/guides-and-resources/a-practical-guide-to-building-ai-agents/), [LangGraph durable execution](https://docs.langchain.com/oss/python/langgraph/durable-execution), [Temporal workflows](https://docs.temporal.io/workflows), [MCP authorization](https://modelcontextprotocol.io/extensions/auth/enterprise-managed-authorization), and [NIST AI RMF](https://www.nist.gov/itl/ai-risk-management-framework).
+
+
+## Watch For
+
+- **Assumption failure:** The model hallucinates an unsupported parameter.
+- **State leak:** Context is incorrectly preserved across runs.
+- **Timeout:** The tool takes too long and the agent loops.
+- **Auth bypass:** The agent attempts an action it shouldn't.
+
+
+## Checkpoint
+
+**1. What is the primary purpose of this module?**
+- A) To understand the core concept.
+- B) To write complex boilerplate.
+- C) To ignore system errors.
+- D) To bypass security.
+
+**2. How do we mitigate the primary failure mode?**
+- A) Retries.
+- B) Human approval.
+- C) Logging.
+- D) Idempotency keys.
+

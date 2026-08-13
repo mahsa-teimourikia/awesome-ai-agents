@@ -1,5 +1,7 @@
 # Agentic Software Engineering
 
+**Level:** Advanced · **Time:** 60 min · **Prerequisites:** None
+
 **Enterprise Agent · 04** · **Notebook:** [`agentic_software_engineering.ipynb`](agentic_software_engineering.ipynb) · **Implementation:** [`lab.py`](lab.py)
 
 Coding agents make long-horizon behavior concrete: they must understand a repository, localize a change, plan, use a terminal, edit, generate and run tests, debug failures, review a patch, prepare a PR, and cooperate with CI/CD. The key production insight is that an agent may accelerate the engineering loop, but the repository, sandbox, tests, review, CI, and merge policy remain the safety and quality system.
@@ -71,6 +73,27 @@ Experiments: remove the regression test and see review block the PR; add a broad
 - [ ] PR includes evidence, test results, risks, rollback, and limitations.
 - [ ] CI/CD uses protected branches, required checks, code-owner/human review, and no agent merge/deploy bypass.
 - [ ] Evals cover task outcome, trajectory, test adequacy, security, latency, spend, and regressions.
+
+## Watch For
+
+- **Assumption failure:** The model hallucinates an unsupported parameter.
+- **State leak:** Context is incorrectly preserved across runs.
+- **Timeout:** The tool takes too long and the agent loops.
+- **Auth bypass:** The agent attempts an action it shouldn't.
+
+## Checkpoint
+
+**1. What is the primary purpose of this module?**
+- A) To understand the core concept.
+- B) To write complex boilerplate.
+- C) To ignore system errors.
+- D) To bypass security.
+
+**2. How do we mitigate the primary failure mode?**
+- A) Retries.
+- B) Human approval.
+- C) Logging.
+- D) Idempotency keys.
 
 ## References
 
