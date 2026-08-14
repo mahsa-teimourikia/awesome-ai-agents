@@ -2,61 +2,52 @@
 
 **Level:** Advanced · **Time:** 60 min · **Prerequisites:** None
 
-**Advanced · 07** · **Notebook:** [`world_models_environment_modeling.ipynb`](world_models_environment_modeling.ipynb) · **Implementation:** [`lab.py`](lab.py)
+**Advanced · 07** · **Notebook:** [`world_models_environment_modeling.ipynb`](world_models_environment_modeling.ipynb)
 
-World models are internal predictive representations: given observed state and a candidate action, they estimate how an environment may evolve. They support model-based planning, simulation, and counterfactual questions such as “what would likely happen if we roll back versus route traffic?” A digital twin is typically a task-specific model connected to an operational asset and telemetry; a learned world model may infer dynamics from data. Both are fallible and must be calibrated against reality.
+A purely reactive agent is dangerous. It guesses an action, executes it against Production, and waits to see if the system crashes. 
 
-## Scenario and outcomes
+Advanced agents use **World Models** (or Digital Twins). They construct an internal, deterministic replica of the environment. Before taking any real-world action, they simulate the consequences in the twin.
 
-Northstar’s EU checkout has low conversion and rising errors. Compare `rollback`, `route_traffic`, and `wait` in a simple digital twin before making a proposal. Learn internal representations, action-consequence prediction, environment models, simulation, model-based and counterfactual planning, digital twins, agent-environment simulation, and safety controls.
+We have broken this module down into three core deep-dives:
 
-![World-model planning loop](../../../assets/world-model-planning.svg)
+1. **[Deep Dive: Digital Twins](DIGITAL_TWINS.md)** (Building safe sandboxes. Why an agent must run `DROP TABLE` against a local SQLite replica before touching Production).
+2. **[Deep Dive: Counterfactual Planning](COUNTERFACTUAL_PLANNING.md)** (Tree of Thoughts. Simulating divergent futures like `Rollback` vs `Wait`, scoring them, and selecting the highest utility path).
+3. **[Deep Dive: The Sim-to-Real Gap](SIM_TO_REAL_GAP.md)** (The primary failure mode of World Models: when the simulation assumes 10ms latency but reality is 5000ms. Mitigating hallucinations with calibrated sensors).
 
-## Step-by-step training
+![World Model Simulation Loop](../../../assets/world_model_simulation_loop.svg)
 
-1. **Represent state:** choose observable variables, uncertainty, latent assumptions, time horizon, and scope. Do not confuse a dashboard snapshot with causal state.
-2. **Learn or engineer transition dynamics:** estimate `next_state = f(state, action, disturbance)`. A learned model can generalize; a rules/physics/process twin is often more interpretable and auditable.
-3. **Roll out candidates:** simulate bounded action sequences under plausible disturbances. Counterfactuals compare candidates under equivalent starting assumptions; they do not establish real causality without validation.
-4. **Plan:** choose a trajectory by expected utility subject to safety, cost, latency, policy, and uncertainty constraints. Model predictive control replans as new observations arrive.
-5. **Validate:** use shadow mode, replay, sandbox/staging, simulation-to-real checks, and low-risk probes. Require human approval for high-impact action.
-6. **Monitor drift:** compare predicted/observed outcomes, update the model/twin, retain calibration records, and fall back or stop when prediction uncertainty is high.
+---
 
-## Architecture choices and failure modes
+## State of the Art: Technology & Tools
 
-| Approach | Best for | Main risk | Control |
-| --- | --- | --- | --- |
-| Rules/process twin | stable enterprise workflows | missing/changed assumptions | versioned rules, replay, owner review |
-| Physics/digital twin | robotics, manufacturing | sim-to-real gap | calibrated sensors, safety envelope |
-| Learned world model | complex/high-dimensional dynamics | hallucinated or long-horizon drift | uncertainty, short rollouts, real validation |
-| Generative interactive environment | training/evaluation | visual plausibility without causal fidelity | task-grounded metrics, constrained evaluation |
+World modeling is transitioning from academic robotics into software agents.
 
-## Practical lab
+- **[Google Genie 3](https://deepmind.google/models/genie/):** A foundational world model capable of simulating interactive 2D environments purely from internet video data.
+- **Digital Twins (IoT/Cloud):** AWS IoT TwinMaker and Azure Digital Twins allow enterprises to build real-time, data-calibrated models of physical and digital assets for agents to query.
+- **Model-Based Reinforcement Learning (MBRL):** The algorithmic foundation for counterfactual planning, allowing agents to learn the transition dynamics (`next_state = f(state, action)`) without breaking the real environment.
 
-Run `python lab.py`. It compares candidate mitigations using expected conversion, error rate, and confidence; the output is a **proposal**, not authorization. Experiments: lower rollback confidence; add a cost/risk term; simulate telemetry drift; test a model that predicts high conversion but violates a policy constraint; and compare a single-step choice with receding-horizon replanning.
-
-## Watch For
-
-- **Assumption failure:** The model hallucinates an unsupported parameter.
-- **State leak:** Context is incorrectly preserved across runs.
-- **Timeout:** The tool takes too long and the agent loops.
-- **Auth bypass:** The agent attempts an action it shouldn't.
+---
 
 ## Checkpoint
 
-**1. What is the primary purpose of this module?**
-- A) To understand the core concept.
-- B) To write complex boilerplate.
-- C) To ignore system errors.
-- D) To bypass security.
+**1. An agent wants to delete a deprecated microservice. Instead of executing the terraform immediately, it runs the command against a local, mocked infrastructure graph. What is this mocked graph called?**
+- A) A Vector Database.
+- B) A Digital Twin / World Model.
+- C) An LLM Judge.
+- D) A Multi-Agent Swarm.
 
-**2. How do we mitigate the primary failure mode?**
-- A) Retries.
-- B) Human approval.
-- C) Logging.
-- D) Idempotency keys.
+<details>
+<summary>Answer</summary>
+<b>B</b>. The agent is using a Digital Twin to verify its assumptions in a safe sandbox before executing in reality.
+</details>
 
-## References
+**2. The agent simulates a rollback. The simulation predicts 100% success. The agent executes the rollback in production, but it fails because a hard drive is unexpectedly full. What concept explains this failure?**
+- A) Position Bias.
+- B) The Sim-to-Real Gap. The simulation's assumptions deviated from the actual physical state of the real world.
+- C) Rate Limiting.
+- D) Context Window Exhaustion.
 
-- [Genie / generative interactive environments](https://deepmind.google/research/publications/60474/) · [Genie 3](https://deepmind.google/models/genie/)
-- [World Models for Embodied AI survey](https://arxiv.org/abs/2510.16732) · [World Model for Robot Learning survey](https://arxiv.org/abs/2605.00080)
-- [Counterfactual world models via digital twins](https://arxiv.org/abs/2511.17481) · [Digital twin/model-based RL](https://research.dial.uclouvain.be/server/api/core/bitstreams/348ef001-d056-4e39-8c17-d3b528a32e2e/content)
+<details>
+<summary>Answer</summary>
+<b>B</b>. The Sim-to-Real Gap occurs when a World Model lacks perfect fidelity or up-to-date telemetry, leading the agent to trust a hallucinated simulation.
+</details>
