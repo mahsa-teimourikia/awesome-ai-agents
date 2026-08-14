@@ -2,67 +2,52 @@
 
 **Level:** Advanced · **Time:** 60 min · **Prerequisites:** None
 
-**Advanced · 08** · **Notebook:** [`proactive_agents.ipynb`](proactive_agents.ipynb) · **Implementation:** [`lab.py`](lab.py)
+**Advanced · 08** · **Notebook:** [`proactive_agents.ipynb`](proactive_agents.ipynb)
 
-Proactive agents move beyond request/response by maintaining an approved goal, observing events or schedules, and offering timely assistance. They should behave like bounded digital workers—not unsolicited autonomous actors. Their most important behavior is often to *wait*, suppress a duplicate, respect quiet hours, or escalate with evidence.
+Proactive agents shift the paradigm from reactive (user types a prompt, agent responds) to proactive (agent monitors a datastream, decides to act, and notifies the user).
 
-## Scenario and outcomes
+However, building proactive agents introduces a massive risk: **Notification Spam and Flapping**. If an agent monitors a noisy database stream without noise-reduction mechanisms, it will trigger thousands of LLM invocations and page engineers at 3 AM for minor fluctuations.
 
-A Northstar checkout-health worker monitors EU conversion under an approved tenant-scoped goal. It is triggered by a metric event and scheduled heartbeat, deduplicates events, validates freshness, checks notification preference/quiet hours, and notifies on-call only when intervention is warranted. It cannot restart a service, modify a ticket, or contact customers without separate authorization.
+We have broken this module down into three core deep-dives focusing on noise reduction and user consent:
 
-![Proactive agent lifecycle](../../../assets/proactive-agent-lifecycle.svg)
+1. **[Deep Dive: Event Deduplication](EVENT_DEDUPLICATION.md)** (Using Redis/Memcached with TTLs to store `alert_signatures` so the same error only alerts once).
+2. **[Deep Dive: Hysteresis and Cooldowns](HYSTERESIS_AND_COOLDOWNS.md)** (Using control theory to prevent "flapping" when a metric oscillates around a threshold).
+3. **[Deep Dive: Quiet Hours and Preferences](QUIET_HOURS_AND_PREFERENCES.md)** (User-scoped routing: downgrading a 3 AM low-priority alert into a morning email digest).
 
-## 1. Core patterns
+![Proactive Hysteresis Loop](../../../assets/proactive_hysteresis_loop.svg)
 
-| Pattern | Use | Reliability requirement |
-| --- | --- | --- |
-| Event-driven | React to an explicit event stream | idempotency, ordering/late-event policy, schema validation |
-| Scheduled | Periodic checks/consolidation | timezone, missed-run, rate/spend, stale-data controls |
-| Trigger-based | Threshold or state transition | hysteresis, dedupe, evidence/freshness check |
-| Monitoring/background | Long-running observation | durable state, heartbeat, cancellation, recovery |
-| Notification | Alert or recommendation | consent, relevance, preference, quiet hours, rate limit, opt-out |
+---
 
-## 2. Step-by-step design
+## State of the Art: Technology & Tools
 
-1. **Create an explicit goal contract:** owner, tenant, purpose, monitored signal, trigger/expiry, notification channel/preferences, success, non-goals, and stop/cancel path.
-2. **Ingest a trustworthy trigger:** verify producer, schema, timestamp, tenant, replay/idempotency key, and rate. A webhook or schedule is not permission to act broadly.
-3. **Persist state safely:** store goal state, last observation, dedupe keys, cooldown, alert history, and audit trace. Separate working state from long-term user preference/memory.
-4. **Assess whether intervention helps:** retrieve only permitted current evidence; compare threshold, confidence, user context, and expected value against interruption cost. Prefer `no action` for weak evidence.
-5. **Act under boundaries:** notifications require opt-in and quiet-hours/rate checks. Consequential tools remain proposal-only or approval-gated. Background work has time/tool/cost/cancellation budgets.
-6. **Evaluate:** measure event detection, correct timing, relevance, precision/recall, duplicate/false alerts, suppression correctness, end-to-end latency, cost, opt-out, and user correction rate.
+Building proactive systems requires robust event-streaming and caching infrastructure.
 
-## Goal persistence and permissions
+- **[Apache Kafka](https://kafka.apache.org/) / [AWS EventBridge](https://aws.amazon.com/eventbridge/):** The industry standards for securely piping system events to your agent's webhook triggers.
+- **[Redis](https://redis.io/):** The standard caching layer for storing event signatures with Time-To-Live (TTL) for ultra-fast deduplication.
+- **[Courier](https://www.courier.com/) / [Knock](https://knock.app/):** Notification routing APIs that natively handle quiet hours, user preferences, and digest batching so your agent doesn't have to build it from scratch.
 
-Goal persistence is not unlimited autonomy. It is a versioned, reviewable intent with tenant/user scope, expiry, revocation, clear owner, and bounded allowed actions. Avoid stale or inferred goals, notification spam, cross-tenant memory, action on cancelled events, and unbounded background retries. Expose pause/resume/cancel controls to people.
-
-## Practical lab and references
-
-Run `python lab.py`. The worker emits one evidence-backed notification for a low conversion event, then suppresses a replay. Experiments: test quiet hours, opt-out, a stale event, threshold flapping/hysteresis, cancellation, event ordering, a cost budget, and escalation when data conflicts.
-
-- [Proactive Conversational AI survey](https://doi.org/10.1145/3715097) · [ProEvent benchmark](https://arxiv.org/abs/2607.17701) · [Long-term task-oriented agent](https://arxiv.org/abs/2601.09382)
-- [LangGraph ambient agents](https://www.langchain.com/blog/introducing-ambient-agents) · [background subagents](https://www.langchain.com/blog/running-subagents-in-the-background) · [persistent memory](https://docs.langchain.com/oss/python/deepagents/memory)
-- [OpenAI practical agent guide](https://openai.com/business/guides-and-resources/a-practical-guide-to-building-ai-agents/)
-
-
-## Watch For
-
-- **Assumption failure:** The model hallucinates an unsupported parameter.
-- **State leak:** Context is incorrectly preserved across runs.
-- **Timeout:** The tool takes too long and the agent loops.
-- **Auth bypass:** The agent attempts an action it shouldn't.
-
+---
 
 ## Checkpoint
 
-**1. What is the primary purpose of this module?**
-- A) To understand the core concept.
-- B) To write complex boilerplate.
-- C) To ignore system errors.
-- D) To bypass security.
+**1. A proactive agent is monitoring CPU usage and alerts the team if it exceeds 90%. The CPU hovers at 89%, hits 91%, drops to 89%, and hits 91% again over 10 seconds. The agent sends two alerts. How do you fix this "flapping"?**
+- A) Upgrade to a faster LLM.
+- B) Implement Hysteresis. Define a Recovery Threshold (e.g., CPU must drop below 70%) or a strict 30-minute cooldown before the agent is allowed to alert on CPU again.
+- C) Delete the agent.
+- D) Change the activation threshold to 95%.
 
-**2. How do we mitigate the primary failure mode?**
-- A) Retries.
-- B) Human approval.
-- C) Logging.
-- D) Idempotency keys.
+<details>
+<summary>Answer</summary>
+<b>B</b>. Hysteresis (requiring a distinct recovery state) or strict cooldowns are mandatory for continuous metric monitoring.
+</details>
 
+**2. An agent detects a spelling error on the company website at 3:00 AM on a Sunday. What is the correct architectural pattern for notifying the on-call engineer?**
+- A) Send a PagerDuty alert immediately. Accuracy is critical.
+- B) Propose a notification to a Notification Router. The router checks the user's timezone and urgency, blocks the immediate push notification, and adds it to a daily digest email sent at 9:00 AM Monday.
+- C) Automatically fix the spelling error without telling anyone.
+- D) Sleep the Python script until Monday morning.
+
+<details>
+<summary>Answer</summary>
+<b>B</b>. Notification Routing and Downgrading is essential for respecting quiet hours and user consent.
+</details>
