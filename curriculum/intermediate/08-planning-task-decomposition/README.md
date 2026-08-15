@@ -23,7 +23,7 @@ By the end, you can:
 
 Complete [the agent loop](../../beginner/02-agent-loop/README.md), [workflow or agent](../../beginner/03-workflow-or-agent/README.md), and [tool engineering](../01-tool-engineering/README.md) first. This lesson assumes a planner may use an LLM, but it deliberately keeps authorization, validation, scheduling, retries, and termination in application code.
 
-![Diagram](https://kroki.io/mermaid/svg/eNpNkcFOwzAMhu88hV9gr4C0tluHxGFMiEvUg-W6NCwkIXGZqol3x02RSm62Pv__b2dw4UYjJoHnywPo25sLZ8ZEIyT-mjhLB7vdI1SmDeiAgpeEJIC-X4qslfWSuzJcFbQ2Z4fec4KYQgyZM8gcuQfBfP0j60I29zd0tkdhaPZt0YzBWZp_CtQopCk-WP2K8NZFIo5r92DOmNA5dsDftmdP_N_pUKCjqcNnxMTFJLFGJ-t4RY4Fae8vk6aRGWhkusage6052sXxHWOGkGBA6ybVWUZOpgqT73lRjLrzKndad9tG8zQMlix72RIuyJN5ZRq9JT2sCgT9hZuVEcgKitXjdr8XdYFO)
+![Diagram](diagram.svg)
 
 ## Step 1 — Convert a request into a goal contract
 

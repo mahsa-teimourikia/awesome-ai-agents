@@ -10,7 +10,7 @@
 
 Northstar’s checkout agent investigates EU latency and prepares rollback proposals. A polished answer can still be unsafe: it may skip required evidence, use the wrong tool, call a forbidden rollback tool, leak a tenant, or cost ten times more than a simpler path. This lesson evaluates the **run**, not only the prose.
 
-![Diagram](https://kroki.io/mermaid/svg/eNptjsFqwzAQRO_9imWvTegf9BSaS8DBMb2IHBZ5Y2-RJSFtEgz5-G5dF1ronAbmMTOXkO5-pKJwaJ_AtHP4zqVKitwD3yhAT0qVFc-w3b5C67C9RqCBo8ILFM6BZtBCnvG8NLQL1zhsrurTxDAU6q3yT9w57Ap9sNdUZniGnIL4-V_06PBAytHPG_Cp6sZGtQj_UM1C7e0XB7anMBi9Zt13tvjjL7__8g_MVCs-4OTwNEqGu-gIU4pipyQOa8fKXkiCsW8Od0JDTDZEsQeZckk32_sEt69hRA==)
+![Diagram](diagram.svg)
 
 ## Outcomes
 

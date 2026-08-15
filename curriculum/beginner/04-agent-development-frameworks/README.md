@@ -11,7 +11,7 @@ An agent framework is not an agent architecture. A framework packages recurring 
 
 This course takes one bounded business domain—investigating checkout and support issues—and implements different slices with frameworks chosen for their natural strengths. The deterministic lab stays runnable without credentials. Each notebook also includes an optional real-framework implementation that you can enable locally with the framework and provider credentials named in that lesson.
 
-![Diagram](https://kroki.io/mermaid/svg/eNpdksFOwzAMhu88hZUzEy-AQNXYJsTQpiEOKOKQpm4X1tYhcZkq4Lm482Q43UAdvcSOfn_5bbesaW-3JjAsN2cg36NWD533JDcBXzuMrJ5hMrmCtVaZ97Wzhh214EnC_jIPF1euwJYd9_D9BXlXVMgxhR5D42IUcVTPA3s9gObvah5Mg3sKO7DGm9zVqbpFLLC4Vp-Ddp60H6oxramwACaq4zlsTVtQWUrEwViM6gNWWq08ttktZJX4iPBwc3d878jg3guBOvYdgwCgQCkQ07YH176gTQ0Jaf2k1bovjDRjIbs9hUQ2jFAF47cHRhdMXqMAGEPoPCcvy4VWS9NWiyQ7rV8QVSJHS7GPjM0AMckxWGo8RXd0kd3c6V919r-Ve2cDRSr5UBoHShpkKXtMDu6zuR6phpHA37hPYYHkiQtgE3dy2IB7ORJIONONVlO5-RvDatjdTKvZW9q3xUlu7E7mGjB2Nf9u-OkgG5LlYpRIK6NMbI6y6WaUzA5_2w8Ows1V)
+![Diagram](diagram.svg)
 
 ## Learning outcomes
 

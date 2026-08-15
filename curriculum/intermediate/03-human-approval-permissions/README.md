@@ -18,7 +18,7 @@ scoped action, evidence, risk, and expiry; the decision is durable and
 auditable; no duplicate action occurs on replay; and a rejected action stays
 rejected.
 
-![Diagram](https://kroki.io/mermaid/svg/eNpdkd1Kw0AQhe99imFvpfgAgtIfoQEvQoUihl5Md6fN6mYn7m5SY-u7O_lBirlawvnOOTNzcHzSJYYEz5sbkG9eqA2hmbF3HVjfUkz2iMmyVzuYzR5gUag8UI2BILBze9QfUAeuOaJTu8FjMQiXZ5Wzs7qDW4i6pArlQa015DVBi86aR_UzAMseuCjP6gKvhXpJXAMHoKjRYaLJdlJ1FEWWSw0K0cYEWEu--EGgz0b6TvJ8aLEu1LxJJQf7TQbKpkIvutbSaZKtB9nqrFakbeznHDutxrTRnCQxK1RmqKo5kU9AX6Sbfi2w58YbDN3kN3EVG3voBNsWatvPKnMAGZukBepxn4N-O-Rn12ygd9JJ2E1_DM3BwPhLqHvQ7JP1Df2_zrXD3-Yu8CQe3Eh4YuCTpwB3IBf3R5LmGMwEZkONt35bUhLQG2gpyAggsOZKjvALHg6uSg==)
+![Diagram](diagram.svg)
 
 ## Learning outcomes
 
@@ -90,7 +90,7 @@ approved—not a broad role grant that lasts indefinitely.
 - original action fingerprint and the reviewer’s allowed choices;
 - a visible statement that approval authorizes this exact request once.
 
-![Diagram](https://kroki.io/mermaid/svg/eNpVjz9vAjEMxXc-hZUVEDsDElKZK_5sJwY38R0uuSRyzNF8-5pWDOfJln_vPbuP-elvKAqXjwVYHTu3L0XyhBEKtpgxuCus1zvY28Yr5wRL0FYoAMrwGClpddd_7R936Nxh4kDJk5EvK0powww6de7E9W7AV8SqIBj4Mfc5d-7sc6Et6MtAV1BJJva0AqHB7pjRF0v9KSzNLC18LNlUvkHPaSApwkln_Of7T4INjDlw36wR-iav1lD1GFHt6F8u-ljN)
+![Diagram](diagram_2.svg)
 
 Modification is powerful but risky. Treat an edited action as a new action:
 revalidate arguments, recompute risk and its idempotency key, verify the editor

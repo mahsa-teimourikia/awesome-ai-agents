@@ -15,7 +15,7 @@ must keep the agent helpful—continue read-only investigation—while preventin
 the document from changing policy, accessing another tenant, or triggering a
 side effect.
 
-![Diagram](https://kroki.io/mermaid/svg/eNp1kM1qwzAMx-97CuHrUvYGg60r62A9NLAyMD2ojtKIOlaw5X5AH35OtjF6mA9Ch9__w2q9nFyHUeG9voPy3qz5SBThAU60K7N-ei1TRTxI1iGr2cJs9ghza-YeU-L2AkOUIwUMjgBDAxpzKthkNx_hq0k5DexYcjJXWFuzzhgxKAeCe0jYErTo_Q7d4VaXE-48QYOKRbiw5oU896zUQA5TTtmcBKXzb-JiqreyZiUN-bHbIIkSpII7zbEI0ClL-OFXE78ZrZViz4GTsoPkOuqxAh0_phUM4tld4IieS5s_-ea7aCRsSsPamrpsMwn-AnQml1XiLdnxvoPI6VDwpTXL3GMAHMYboi_X4Ib6QUqs_mPAYSpR5J_WPHtxhwq87Cug5NCjktl-ATgRlzs=)
+![Diagram](diagram.svg)
 
 ## Outcomes
 

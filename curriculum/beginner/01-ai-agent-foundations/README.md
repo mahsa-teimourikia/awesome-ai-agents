@@ -29,7 +29,7 @@ The word *agentic* should not mean “more autonomous.” It describes a system
 where the model participates in choosing a path through tools and state. The
 application, not the model, remains the authority for side effects.
 
-![Diagram](https://kroki.io/mermaid/svg/eNpNkMFugzAQRO_9itVem_xAD61yqOgBFFTICeVgzBZQjNeyTdoo6r93Y0gVnyzNG8-Mvwx_60H5CPnnE8g5NHgI5KFnZfAI2-0rFA3mefECo43knacIynagB-ZAeEyuIoFlg6VRFiz9RGh5th11ECK5lSoTVV9x55zns4iR2QhOAr7hb4JqgQAtY4J3DWZ-fclTcGz_MxfwQmEhMwlnM-oLPEPQA01KLo78NIYwsoVexbszS4Z9g_UtnlvZe1ZRoFXfL7MfllVXrGatKYQNtHPXU9wAe9nGDjTbbry57wuqVEzz5AxJ5rLjQWkN6xN1i_DR4HvQykg7-Q1QMMyTkiJ_SfF25g==)
+![Diagram](diagram.svg)
 
 This is the core mental model:
 
@@ -60,7 +60,7 @@ workflow with an LLM component—not an autonomous agent.
 
 Use the lowest autonomy level that reliably meets the goal.
 
-![Diagram](https://kroki.io/mermaid/svg/eNpVkEFuwjAQRfc9xZe3bdQbFFGgLAosCpsqYjEkE7BwxpE9LqqUw9dJoRXejaX3359pnL9UJwqK3fwB-U1L8y7-IrDSJcUjzuMUlbs4MXsUxUv_ybHHa2l2gWqr1gs5UFLf0jDAB9SsHForNqqtcPHh3GSR2f8qxpCN7zErzYa5hiM5JjpylmauC6zXJHHfkys1-1fPS7O1cnSM1WqNipwbnB_TZUExZmVODBw7L5Hv4EG5KM06RUV18j4y-MvWLBU_q_cughQhidqWb9rFTfuEg09Sc93j7c9__ULuLnpHbDuuLLncZlwfNiJyR4EOjnsshxZObTGCUKYW1OTdcaDIzsrQjFwaz2D2PxMTjX0=)
+![Diagram](diagram.svg)
 
 Autonomy levels are not maturity badges:
 

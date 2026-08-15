@@ -11,7 +11,7 @@ nine steps, repeats search and log calls, costs more, and takes longer. The
 other gathers the minimum independent evidence and produces the same supported
 recommendation. Optimize the **full trajectory**, never token count in isolation.
 
-![Diagram](https://kroki.io/mermaid/svg/eNo9jtFKxDAQRd_7FcM87-IfKBTKIrjIWtiX0IeQTjEaJjEzcbe4_rtJRV9nzrn3LiFe3KvNCk8vHZwMPrLzM7GCWnnHCfb7e-gN9rHwTDPQZ_s6ghQs49RBvxGDweFKrihB5LACEzVaYwzSqGGjzl84_PlSlsU7X5se8LuDcwNuyBFvcDD4zARvRdQvvsYwXRU-CuW1ZR1-G_-dlaRKo8GxpBSzVsGyXCjDHaQcUxQbmjdu3tHgkayUXCfYhXTd1SnOkcgOgtW6rV5cFMXpB4qJW0w=)
+![Diagram](diagram.svg)
 
 ## What you learn
 

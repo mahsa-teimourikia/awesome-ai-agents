@@ -19,7 +19,7 @@ from instructions, select ReAct, Plan-and-Execute, reflection, and event-driven
 patterns, specify termination and recovery rules, and design an agent harness
 that cannot run forever.
 
-![Diagram](https://kroki.io/mermaid/svg/eNpNj8FqwzAMhu97CqHrKHuDwWhKL4PACLuYHGxZW8UcKdhOujH27nPTDqaTDt__6ddbsjOdfK7w_HIHbY4Oj-YTjrDbPULvsA-F88pQqq8MD8C6SjadWOsN6hx2TBIZlD8rBFs0cmwBnnHcpN3GPTl89UnixXMPnv7y_T9m-MaB8yTqE5BplCqm-LMRQyMAy0LEpeCG7x3ubZoTN-VZ6gl4bT2U-Hb4GglLfOfaus-WhL7aEpLRB-er5ODwUMinSy_L4EN7VRTHX20SVYI=)
+![Diagram](diagram.svg)
 
 ## 1. The execution contract
 
@@ -45,7 +45,7 @@ without an observation cannot correct a mistaken plan. Record a concise trace
 such as `hypothesis → allowed tool → arguments → result → next decision`; do
 not depend on hidden reasoning as an audit log.
 
-![Diagram](https://kroki.io/mermaid/svg/eNplj7tuwzAMRfd8BffEP-AhQIG09WI0KIzsjESkAmRRIeU8_j40ZCQookXDubwPpfNEydEu4ElwXIG9jFKCCxlTgQ5QoUNJpPoG-xn27Cm-oWFGHzkLX8hDYa6Srtlu-xa-GSOsQQsWsh9j5Osiqym96boW9sKZ1Qi6Ejg9LQwdMAY_n6v7oxE3kEnGoGqyDRwnf6LylA8tfN7ITaYWQt9wivdXp6Gpjj9HJbngvyDr-kve0q0Dv7h1nvKc7uuGpXP1-QrJ1mHSKwmwQKJbWQY8AMcBdHM=)
+![Diagram](diagram_2.svg)
 
 The original [ReAct paper](https://arxiv.org/abs/2210.03629) showed that
 interleaving reasoning and actions can improve interactive task behavior and
@@ -75,7 +75,7 @@ for defined transient failures. Invalid arguments require correction;
 permission denials require escalation; repeated observations or actions should
 terminate rather than accumulate cost.
 
-![Diagram](https://kroki.io/mermaid/svg/eNqFkLFOxTAMRXe-wjNShcTYAQk9-AFWxOCmfqml1Klsp6h_T9rXPpUFMjkn997YNkenN8aoODbz8wPU8_n4BU3zAh9FhCVubK9vnFyXemnBFcWYxIFUswJKD7q-Qlf6SH6z7vJ_MqeE0oLQN9DMPUkgCANKJINhmbIPZGx74Kr9M-6SxymRUwtWQiAzCMpOyllgPPo66d8tYKqb6FuYSEc2W5VPgGPHsbAvtT6PdLK-dnXqLKu1iFLIMyl2ieCKnIrSZjj62Rx1vxu8f_qL3vMO-gNYOoXC)
+![Diagram](diagram_3.svg)
 
 Practical runaway controls: monotonic budget counters, duplicate-action
 detection, no-progress threshold, deadline, idempotency keys for events,

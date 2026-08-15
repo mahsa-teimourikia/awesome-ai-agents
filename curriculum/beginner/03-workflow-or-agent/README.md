@@ -20,7 +20,7 @@ workflow is not inferior to an agent: it is usually cheaper, easier to test,
 and easier to audit when the path is known. Add model-directed choice only where
 fixed routing cannot handle meaningful variation.
 
-![Diagram](https://kroki.io/mermaid/svg/eNpVkc9uwjAMxu97CivXUe0NNgHlzzRth4lbxSGkLkSkdhU7IIT27svaMkFOVuzv931OmsBnd7BRYVM-QT7TypTYeELYsw3wDJKcQxFoUaN3ZgtF8Qqzq_kgPhOIYidgqQZPXVJ5Mz89ZpbHwFxQTD8_r8w0KbdWPRO8QI2KsfXkRb2DM8djk4OY7Z2WeJCWV_OFWANTuIBLMSIp4MnXSA5vduWj3aIy39NVYUWyQdZGlI5JcDQoHwyWV_OZRMEdmAVBmUPeSCEmUt_-Wyx70Y4T1ZmYh73DAbDKy-1zqrtNgCOIp31AsH-t0XhgCHY22l3uSYfO25BD9soBt67MBm0LtslvBHbkFD0HdlYw5N8ZgfNe8V6ZxcmGZBWBkzpucQLRy3ECId-Ru0zAsdxSLAZRX6_u6vVQ_wKlvp_Z)
+![Diagram](diagram.svg)
 
 ## Architecture vocabulary
 

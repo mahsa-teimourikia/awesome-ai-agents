@@ -11,7 +11,7 @@
 
 A model tool call is only a proposal. Application code must validate the schema, actor, tenant, permission, budget, idempotency key, result, and approval before any capability executes. Tool engineering is interface design, distributed-systems design, and security engineering—not merely writing tool descriptions.
 
-![Diagram](https://kroki.io/mermaid/svg/eNpNkMFqwzAMhu97CuHrKHuDQQs7BFYKSSkF04NiK62ZExnZadc-_VQXRk5C6NOvX_8Q-eYuKAW-2zeArTVb9hQhCSfOlMFhjOYEq9UndNZ07kIjwhVj8FgCT-akW10dr61Zz-XCEh51BO9QaMKpQHacqJLrSrbWtCH_KIBJD6kaJI7B3SvTVqaxpvE0JlYNd4cPECykpZ_9mQqctat0U-mjNV-_5GZFJhThm_pO2IcYykv0WLGDNYeXddLjE8uo3YNAKM-xVPBQwZ01uz6TXF-fDCwwPnNZIHtr9oLuKYSzD0VFHItfBLJR4p7IA6kjUe8ZB4JcOC2y2Px_vPkDiXx40g==)
+![Diagram](diagram.svg)
 
 ## Outcomes
 
@@ -52,7 +52,7 @@ Use short action-oriented names, explicit required fields and enums, compact res
 
 Tool selection is constrained routing, not a free-form model capability. Filter a catalog deterministically by actor, tenant, environment, and task before the model can choose from it.
 
-![Diagram](https://kroki.io/mermaid/svg/eNo9kE1qw0AMhfc9hdC25AotJY6zaLIoDWQxdCHGim0yGZkZmTg0vXtVtXQneN_7Qack1zhQUTg0DwBvAQ9Uz_AIWuaq3AFFlQJRsvKi-AGr1RO0AdsxKReoUSauQLkD5UzZCEtpnVoHfL9QShBNHjtStkspSe_Q2qHmE1-zXDNMpMMzfpnQ_Ah3vHHFOxwDHqWcTzbT3ClV4GVKYxwVVCRVj_pzZDHDLuBeOrbWQaTatv92R3feug34Uvr5wll9-yQWeYPeqN_ErWObgJuF42zL7QdcbYDnfAO04mI4)
+![Diagram](diagram_2.svg)
 
 For large catalogs, use namespaced capabilities, progressive disclosure, and dynamic discovery with allowlists. Every capability should describe purpose, risk tier, required scopes, cost/latency class, and result schema. The [MCP tools specification](https://modelcontextprotocol.io/specification/2025-11-25/server/tools) standardizes discovery, but it does not authorize calls for you.
 

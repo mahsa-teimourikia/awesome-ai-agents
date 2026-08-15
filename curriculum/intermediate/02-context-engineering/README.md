@@ -23,7 +23,7 @@ You will be able to:
 
 The model does not “see the whole application.” It sees the token packet constructed for this turn. A stronger model can still make a weak decision if it receives an irrelevant transcript, stale tool result, wrong tenant’s data, or a document that tries to manipulate its behavior. A larger context window is capacity—not automatic relevance, truth, authorization, or memory.
 
-![Diagram](https://kroki.io/mermaid/svg/eNpVUMtOAzEMvPMVvsOWP0CiLfQB4kDpKeohZF0aNWsvjndLhfh33GyRSi6O7JnxjLeJD2HnReH59Qrs3bt1RoEP9gmuIdZIGvW4gaq6g7GbMCl-KQh3irIpjIlbHbNiAy2nGP6gZTQ9EXqU7DUymR5SH4WpMVXI6hUv0Q_uTTpTqkGZUwZPNQiqROx9ugQ-ulXg1nBmBYXMaYMNy7_V4_KffRfJG1AkT1a3gnlHmLO1eI8EYYdhn38KZ1Y4c7dqfDJNrjFBOCdufdijDonnBbdwUwwxn4LdFsfQCreczWtBLQpq6V7wAPxuR-3LFYbh8sLqk1uTnpOzQBDOuRoMD-tJLdkIPjsv1ouEMDpl-wU6Mov9)
+![Diagram](diagram.svg)
 
 ## 1. Context anatomy
 

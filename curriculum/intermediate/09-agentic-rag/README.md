@@ -10,7 +10,7 @@ RAG retrieves evidence before generation. **Agentic RAG** gives a bounded agent 
 
 “Why did EU checkout payments fail and what should we do?” The Northstar incident agent must join operational runbook guidance, an incident database record, and a service dependency graph. It may propose evidence-backed mitigation, but it may not execute a rollback.
 
-![Diagram](https://kroki.io/mermaid/svg/eNotjzFuwzAMRfecghcIeoMCTex0ydDUQBchA0FTEgFFNCTaQXr6KkoXDuT7H3w-6Z0iFoPz9w4-3GXlaqL5Cvv9OxzcV8IMmGcouhpfd3Doh6ObGAtFeIPpcm4zFFwimGpqzLEzgxs3TCsaA28ycyYG0o0LhmfR0CAIuICWts4-CVnPjW5g0tuilVtxYSvCGwMGlNxy4-uB_4K6ei8knF_Zk5se2SJX-WW4i0UgMXwK1RY9debT_XAR_wBKKLfa7ULTyzPPgNTt_wBclVoP)
+![Diagram](diagram.svg)
 
 ## RAG versus Agentic RAG
 
