@@ -4,23 +4,14 @@
 
 **Scenario:** Northstar, a SaaS support team, is integrating this concept into their agentic workflow.
 
-**Notebook:** [`trajectory_optimization.ipynb`](trajectory_optimization.ipynb) · **Runnable lab:** [`lab.py`](lab.py)
+**Notebook:** [`06_trajectory_optimization.ipynb`](06_trajectory_optimization.ipynb) 
 
 Northstar’s EU checkout investigator succeeds in both versions below. One takes
 nine steps, repeats search and log calls, costs more, and takes longer. The
 other gathers the minimum independent evidence and produces the same supported
 recommendation. Optimize the **full trajectory**, never token count in isolation.
 
-```mermaid
-flowchart LR
- Q["Incident task"] --> B["Bounded evidence plan"]
- B --> E["Execute only needed tools"]
- E --> V{"Evidence sufficient?"}
- V -->|"no"| G["One justified next query"]
- G --> E
- V -->|"yes"| S["Supported answer / proposal"]
- S --> M["Measure safety, success, latency, cost"]
-```
+![Diagram](https://kroki.io/mermaid/svg/eNo9jtFKxDAQRd_7FcM87-IfKBTKIrjIWtiX0IeQTjEaJjEzcbe4_rtJRV9nzrn3LiFe3KvNCk8vHZwMPrLzM7GCWnnHCfb7e-gN9rHwTDPQZ_s6ghQs49RBvxGDweFKrihB5LACEzVaYwzSqGGjzl84_PlSlsU7X5se8LuDcwNuyBFvcDD4zARvRdQvvsYwXRU-CuW1ZR1-G_-dlaRKo8GxpBSzVsGyXCjDHaQcUxQbmjdu3tHgkayUXCfYhXTd1SnOkcgOgtW6rV5cFMXpB4qJW0w=)
 
 ## What you learn
 
@@ -98,3 +89,13 @@ dependent calls and rate-limited systems must remain sequential.
 - [Anthropic: Building effective agents](https://www.anthropic.com/engineering/building-effective-agents)
 - [OpenAI evaluation best practices](https://developers.openai.com/api/docs/guides/evaluation-best-practices)
 - [LangGraph workflows and agents](https://docs.langchain.com/oss/python/langgraph/workflows-agents)
+
+## Deep Dives & State of the Art
+
+- **[Few-Shot Prompting and DSPy](DEEP_DIVE_FEW_SHOT.md)**
+
+
+## SOTA Deep Dives
+Explore industry-standard architectural patterns and enterprise implementation details:
+
+- [Few Shot](DEEP_DIVE_FEW_SHOT.md)

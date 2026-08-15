@@ -4,7 +4,7 @@
 
 **Scenario:** Northstar, a SaaS support team, is integrating this concept into their agentic workflow.
 
-**Primary lesson:** [`guardrails_untrusted_content.ipynb`](guardrails_untrusted_content.ipynb) · **Runnable code:** [`lab.py`](lab.py)
+**Primary lesson:** **Notebook:** [`04_guardrails_untrusted_content.ipynb`](04_guardrails_untrusted_content.ipynb) 
 
 ## Scenario: the poisoned checkout runbook
 
@@ -15,17 +15,7 @@ must keep the agent helpful—continue read-only investigation—while preventin
 the document from changing policy, accessing another tenant, or triggering a
 side effect.
 
-```mermaid
-flowchart LR
-    I["User / web / RAG / tool output"] --> C["Classify provenance and trust"]
-    C -->|"suspicious"| Q["Quarantine + safe fallback"]
-    C -->|"usable data"| E["Delimited untrusted context"]
-    E --> M["Model proposes structured action"]
-    M --> V["Deterministic schema, tenant, policy validation"]
-    V -->|"read"| R["Read-only executor"]
-    V -->|"high risk"| H["Human approval + idempotent executor"]
-    V -->|"invalid"| X["Block, log, escalate"]
-```
+![Diagram](https://kroki.io/mermaid/svg/eNp1kM1qwzAMx-97CuHrUvYGg60r62A9NLAyMD2ojtKIOlaw5X5AH35OtjF6mA9Ch9__w2q9nFyHUeG9voPy3qz5SBThAU60K7N-ei1TRTxI1iGr2cJs9ghza-YeU-L2AkOUIwUMjgBDAxpzKthkNx_hq0k5DexYcjJXWFuzzhgxKAeCe0jYErTo_Q7d4VaXE-48QYOKRbiw5oU896zUQA5TTtmcBKXzb-JiqreyZiUN-bHbIIkSpII7zbEI0ClL-OFXE78ZrZViz4GTsoPkOuqxAh0_phUM4tld4IieS5s_-ea7aCRsSsPamrpsMwn-AnQml1XiLdnxvoPI6VDwpTXL3GMAHMYboi_X4Ib6QUqs_mPAYSpR5J_WPHtxhwq87Cug5NCjktl-ATgRlzs=)
 
 ## Outcomes
 
@@ -167,3 +157,15 @@ tenant boundary; the second is blocked because unknown tools default to deny.
 - [LangChain guardrails](https://docs.langchain.com/oss/python/langchain/guardrails)
 - [LangGraph interrupts](https://docs.langchain.com/oss/python/langgraph/interrupts)
 - [Indirect prompt injection research](https://arxiv.org/abs/2302.12173)
+
+## Deep Dives & State of the Art
+
+- **[Pre-LLM Regex Scrubbing (PII Protection)](DEEP_DIVE_REGEX.md)**
+- **[Output Validation (Guardrails)](DEEP_DIVE_OUTPUT_VALIDATION.md)**
+
+
+## SOTA Deep Dives
+Explore industry-standard architectural patterns and enterprise implementation details:
+
+- [Output Validation](DEEP_DIVE_OUTPUT_VALIDATION.md)
+- [Regex](DEEP_DIVE_REGEX.md)

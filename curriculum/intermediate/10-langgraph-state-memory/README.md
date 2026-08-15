@@ -7,7 +7,7 @@ diagnosis into the next incident.
 
 | Learn | Build | Test |
 | --- | --- | --- |
-| [`langgraph_state_memory.ipynb`](langgraph_state_memory.ipynb) | [`lab.py`](lab.py) | checkpoints, resume, approval pause, and memory isolation |
+| **Notebook:** [`10_langgraph_state.ipynb`](10_langgraph_state.ipynb)
 
 The notebook is the primary learning artifact: it explains every design choice,
 runs the same dependency-free scenario, and includes a small real-LangGraph
@@ -28,23 +28,7 @@ The key distinction is not "memory or no memory." It is **what information is
 allowed to persist, under which identity and scope, for how long, and how it is
 validated before it influences an action**.
 
-```mermaid
-flowchart LR
-    U["EU checkout investigation"] --> T["Triage node"]
-    T --> E["Collect one independent evidence signal"]
-    E --> A["Analyze state"]
-    A -->|"confidence < threshold<br/>and budget remains"| E
-    A -->|"enough evidence"| R["Prepare recommendation"]
-    R --> I{"High-impact proposal?"}
-    I -->|"yes"| H["Interrupt: human approval"]
-    H -->|"approve or reject"| Z["Complete"]
-    I -->|"no"| Z
-    C[("Checkpointer<br/>thread-scoped snapshots")] -. "after each node" .-> T
-    C -.-> E
-    C -.-> A
-    C -.-> H
-    M[("Store<br/>verified cross-thread memory")] -. "narrow, namespaced read" .-> T
-```
+![Diagram](https://kroki.io/mermaid/svg/eNpNUcFu2zAMve8rCJ06YO7uQ9EhCAIkwAoMWXqZ0QMrM7Y2SxQoOUXa7t9HyW4QHSSQfI9PjzyO_GIHlAw_9p9Az2NrNo9gB7J_ecrgwolSdj1mx8E8QdPcw6E1B3HYEwTuyDxV3qGWNq1Z8ziSzcCBlN1RJL1CBjo5fS1Bcn3AcaFtKm3VmpXmzq9azZg_eq5K8d1YDseFewd5EEoDj93ds3y9x9DB89T1lEHIowvJvMPmmkyBp364qGt535qfQhGFlGPZe_3gYq8S9_VLuzezdf3QOB9R3UThyAnH7-ZfBe3m7mcqgtvW7EImkSnmbzBMHgNgVMrp4nM74-csAYtq_9ExKft3mZmPI118L80Dl2rNrNsbsy47ieyKUjVfRoFdkyxH6iAFjDqYnMxnXdMtGDwqEAjtMO8Jbsvu5nYKKNu6DlbXwbYGD6r6K7NQlTuRuKNTJSucUjOrgyfPcv7QDCjCL18goKekg1N0QS3a_wHZUL5U)
 
 ## Learning outcomes
 
@@ -129,17 +113,7 @@ the independent-evidence budget remains. A robust route function also considers:
 - idempotency keys for any external side effect;
 - a fallback terminal state such as `needs_human_review`.
 
-```mermaid
-stateDiagram-v2
-    [*] --> Running
-    Running --> Collecting: insufficient confidence
-    Collecting --> Analysing: evidence added
-    Analysing --> Collecting: retry with a new signal
-    Analysing --> Paused: rollback proposal requires approval
-    Paused --> Complete: approve or reject recorded
-    Running --> Failed: budget or unrecoverable policy error
-    Collecting --> Failed: retry policy exhausted
-```
+![Diagram](https://kroki.io/mermaid/svg/eNptkLFOxDAMQHe-wjNSF8YbkBCIGbEiBjdxe4ack3OSHv173LQFJC5LEuc923EuWOiJcVQ8ddPdDdh6u32HrruH1yrCMrbYdm7xxxgCuWLXA7DkOgzsmKSAizKwJ3HUnF-uaQ-CYc7NomnFAL0n3-Cf138llIrOcOFyBAShC2QeDb5ivWDN5M0wu0f3CUljihmD5ThXVsqAyWLTZq_8VvCUAhU6bARBVLM-rAnbXNS9z7-DeEYOS72--pHKYlRZ4IkU-0CQYmA3A6lGvTaR3V9_uNNfR2urkP8GHR6KKw==)
 
 Do not retry a mutation blindly. If a node may be replayed, move its
 non-idempotent side effect after the interrupt or record an idempotency key in
@@ -195,17 +169,7 @@ hypothesis ([checkpointer vs store](https://docs.langchain.com/oss/python/langgr
 | Semantic | customer's incident-update preference | user confirmed or trusted source | tenant namespace + relevance |
 | Procedural | verified rollback checklist version | change-controlled artifact | explicit version and access policy |
 
-```mermaid
-flowchart TD
-    W["Candidate memory write"] --> V{"Verified source,<br/>purpose, and consent?"}
-    V -->|"no"| Q["Quarantine or discard"]
-    V -->|"yes"| N["Namespace by tenant + purpose"]
-    N --> R["Retention / deletion policy"]
-    R --> S["Long-term store"]
-    S --> K{"Retrieve relevant,<br/>authorized, non-stale item?"}
-    K -->|"yes"| C["Add bounded context with provenance"]
-    K -->|"no"| X["Do not influence diagnosis"]
-```
+![Diagram](https://kroki.io/mermaid/svg/eNpNkEFrAkEMhe_9FSHXuvgHiqXozbKgFltYPIwzUQd2kyWT1W61_73jVsE5BeZ77yVvV8vJH5wafMyeIL_PCqeOQwzOCBpqRHs4aTTCDRTFBNZnXJPGXaQASTr1NHrZ6njSdtpKohFkMXjhRGyv-Dt4rq_KC7LgBRYVLjqnji0ygSiEmLzTgJtHtKeU2bLC0jWUWucJtj0YcdbBM9zCbppyWGxZ4ZIyYVEYxhCopmFspY6-v6HLAV1V-C68L4y0gWSid6fV8D0_X5000pFAs80xh_4f6To7iMYfCiNg4SKZqwlyOc391Pnj_tMK30KArXQcaGjF6NvgFO0Arcrxeo6_Z88fSvqqcCY5wSDyru4oU7knt2dJMeHmDzw6i7U=)
 
 The lab’s `MemoryStore.read_verified()` excludes an unverified Redis hunch. Try
 removing that filter only as an adversarial experiment; the lesson is that a
@@ -322,3 +286,13 @@ For the Northstar system, test more than the final diagnosis:
 - [LangGraph streaming](https://docs.langchain.com/oss/python/langgraph/streaming)
 - [LangGraph workflows and agents](https://docs.langchain.com/oss/python/langgraph/workflows-agents)
 - [MemGPT: Towards LLMs as Operating Systems](https://arxiv.org/abs/2310.08560) — useful context for tiered memory, not a substitute for access control or data governance.
+
+## Deep Dives & State of the Art
+
+- **[LangGraph Checkpointers & Time Travel](DEEP_DIVE_CHECKPOINTERS.md)**
+
+
+## SOTA Deep Dives
+Explore industry-standard architectural patterns and enterprise implementation details:
+
+- [Checkpointers](DEEP_DIVE_CHECKPOINTERS.md)

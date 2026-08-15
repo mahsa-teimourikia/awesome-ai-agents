@@ -6,7 +6,7 @@
 checkout questions without giving an untrusted system permission to change
 production data.
 **Notebook:** [`01_agent_foundations.ipynb`](01_agent_foundations.ipynb)
-**Runnable lab:** [`lab.py`](lab.py)
+
 
 ## Outcomes
 
@@ -29,19 +29,7 @@ The word *agentic* should not mean “more autonomous.” It describes a system
 where the model participates in choosing a path through tools and state. The
 application, not the model, remains the authority for side effects.
 
-```mermaid
-flowchart LR
-    U["User goal"] --> M["LLM: interpret and choose"]
-    M --> P["Plan next bounded step"]
-    P --> T{"Approved tool needed?"}
-    T -- "no" --> A["Grounded response"]
-    T -- "yes" --> G["Policy + schema + permission gate"]
-    G --> O["Tool observation"]
-    O --> M
-    M --> S{"Success, budget, or stop condition?"}
-    S -- "complete" --> A
-    S -- "blocked" --> H["Escalate to a human"]
-```
+![Diagram](https://kroki.io/mermaid/svg/eNpNkMFugzAQRO_9itVem_xAD61yqOgBFFTICeVgzBZQjNeyTdoo6r93Y0gVnyzNG8-Mvwx_60H5CPnnE8g5NHgI5KFnZfAI2-0rFA3mefECo43knacIynagB-ZAeEyuIoFlg6VRFiz9RGh5th11ECK5lSoTVV9x55zns4iR2QhOAr7hb4JqgQAtY4J3DWZ-fclTcGz_MxfwQmEhMwlnM-oLPEPQA01KLo78NIYwsoVexbszS4Z9g_UtnlvZe1ZRoFXfL7MfllVXrGatKYQNtHPXU9wAe9nGDjTbbry57wuqVEzz5AxJ5rLjQWkN6xN1i_DR4HvQykg7-Q1QMMyTkiJ_SfF25g==)
 
 This is the core mental model:
 
@@ -72,15 +60,7 @@ workflow with an LLM component—not an autonomous agent.
 
 Use the lowest autonomy level that reliably meets the goal.
 
-```mermaid
-flowchart TD
-    A["Known input + known steps?"] -->|Yes| B["Traditional automation or deterministic workflow"]
-    A -->|No| C["Need language interpretation only?"]
-    C -->|Yes| D["Single LLM call or RAG-assisted response"]
-    C -->|No| E["Must choose evidence/tools at runtime?"]
-    E -->|Yes, bounded| F["Single bounded agent"]
-    E -->|Specialist work is separable| G["Multi-agent team after baseline evaluation"]
-```
+![Diagram](https://kroki.io/mermaid/svg/eNpVkEFuwjAQRfc9xZe3bdQbFFGgLAosCpsqYjEkE7BwxpE9LqqUw9dJoRXejaX3359pnL9UJwqK3fwB-U1L8y7-IrDSJcUjzuMUlbs4MXsUxUv_ybHHa2l2gWqr1gs5UFLf0jDAB9SsHForNqqtcPHh3GSR2f8qxpCN7zErzYa5hiM5JjpylmauC6zXJHHfkys1-1fPS7O1cnSM1WqNipwbnB_TZUExZmVODBw7L5Hv4EG5KM06RUV18j4y-MvWLBU_q_cughQhidqWb9rFTfuEg09Sc93j7c9__ULuLnpHbDuuLLncZlwfNiJyR4EOjnsshxZObTGCUKYW1OTdcaDIzsrQjFwaz2D2PxMTjX0=)
 
 Autonomy levels are not maturity badges:
 
@@ -212,3 +192,17 @@ Work through the notebook, then apply this checklist to a proposed AI feature:
 - [ReAct paper](https://arxiv.org/abs/2210.03629) — interleaving reasoning and actions with environmental observations.
 - [LangGraph overview](https://docs.langchain.com/oss/python/langgraph/overview) — stateful orchestration concepts.
 - [Model Context Protocol](https://modelcontextprotocol.io/) — interoperable tool/context integration; apply authorization independently.
+
+## Deep Dives & State of the Art
+
+To truly master agent foundations in an enterprise context, review the following expanded topics:
+
+- **[Autonomy vs. Determinism: The Spectrum of Control](DEEP_DIVE_AUTONOMY_VS_DETERMINISM.md)**
+- **[State of the Art (SOTA) Models for Tool Calling](DEEP_DIVE_SOTA_MODELS.md)**
+
+
+## SOTA Deep Dives
+Explore industry-standard architectural patterns and enterprise implementation details:
+
+- [Autonomy Vs Determinism](DEEP_DIVE_AUTONOMY_VS_DETERMINISM.md)
+- [Sota Models](DEEP_DIVE_SOTA_MODELS.md)

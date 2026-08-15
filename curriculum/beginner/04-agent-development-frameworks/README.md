@@ -3,7 +3,6 @@
 **Level:** Beginner · **Prerequisites:** [the agent loop](../02-agent-loop/README.md) and [workflow or agent?](../03-workflow-or-agent/README.md)
 
 **Scenario:** Northstar, a SaaS support team, is integrating this concept into their agentic workflow.
-**Run:** [`lab.py`](lab.py)
 **Primary scenario:** an operations assistant for the fictional Northstar Commerce SaaS platform
 
 ## Why this course exists
@@ -12,24 +11,7 @@ An agent framework is not an agent architecture. A framework packages recurring 
 
 This course takes one bounded business domain—investigating checkout and support issues—and implements different slices with frameworks chosen for their natural strengths. The deterministic lab stays runnable without credentials. Each notebook also includes an optional real-framework implementation that you can enable locally with the framework and provider credentials named in that lesson.
 
-```mermaid
-flowchart LR
-    U["Support request"] --> P["Application policy<br/>identity · budgets · permissions"]
-    P --> F{"Framework capability needed?"}
-    F -->|"managed tools, handoffs, traces"| O["OpenAI Agents SDK"]
-    F -->|"typed output and dependency injection"| PY["Pydantic AI"]
-    F -->|"state graph and durable interrupts"| LG["LangGraph"]
-    F -->|"Google ecosystem and agent composition"| ADK["Google ADK"]
-    F -->|"Microsoft agents and workflows"| MAF["Microsoft Agent Framework"]
-    F -->|"role / task / crew / flow"| CR["CrewAI"]
-    O --> E["Evidence-backed result"]
-    PY --> E
-    LG --> E
-    ADK --> E
-    MAF --> E
-    CR --> E
-    E --> P
-```
+![Diagram](https://kroki.io/mermaid/svg/eNpdksFOwzAMhu88hZUzEy-AQNXYJsTQpiEOKOKQpm4X1tYhcZkq4Lm482Q43UAdvcSOfn_5bbesaW-3JjAsN2cg36NWD533JDcBXzuMrJ5hMrmCtVaZ97Wzhh214EnC_jIPF1euwJYd9_D9BXlXVMgxhR5D42IUcVTPA3s9gObvah5Mg3sKO7DGm9zVqbpFLLC4Vp-Ddp60H6oxramwACaq4zlsTVtQWUrEwViM6gNWWq08ttktZJX4iPBwc3d878jg3guBOvYdgwCgQCkQ07YH176gTQ0Jaf2k1bovjDRjIbs9hUQ2jFAF47cHRhdMXqMAGEPoPCcvy4VWS9NWiyQ7rV8QVSJHS7GPjM0AMckxWGo8RXd0kd3c6V919r-Ve2cDRSr5UBoHShpkKXtMDu6zuR6phpHA37hPYYHkiQtgE3dy2IB7ORJIONONVlO5-RvDatjdTKvZW9q3xUlu7E7mGjB2Nf9u-OkgG5LlYpRIK6NMbI6y6WaUzA5_2w8Ows1V)
 
 ## Learning outcomes
 
@@ -82,7 +64,7 @@ This is a practical comparison, not a benchmark. Version, model provider, deploy
 
 ### Suggested order
 
-1. Run `python lab.py` to see the same deterministic evidence and policy boundary used by every notebook.
+1. Open `04_agent_development_frameworks.ipynb` to see the same deterministic evidence and policy boundary used by every notebook.
 2. Complete **04a** first. It is the closest continuation of the manual loop.
 3. Complete **04b** when typed, machine-consumed outputs are the central risk.
 4. Complete **04c** when a run needs stateful branching or an approval pause.
@@ -142,3 +124,15 @@ This is a practical comparison, not a benchmark. Version, model provider, deploy
 - [Anthropic: Building effective agents](https://www.anthropic.com/engineering/building-effective-agents)
 - [ReAct: Synergizing reasoning and acting in language models](https://arxiv.org/abs/2210.03629)
 - [OWASP Top 10 for LLM Applications](https://genai.owasp.org/)
+
+## Deep Dives & State of the Art
+
+To understand the rapidly evolving landscape of agent frameworks, review these expanded topics:
+
+- **[The Framework Landscape Deep Dive](DEEP_DIVE_FRAMEWORK_LANDSCAPE.md)**
+
+
+## SOTA Deep Dives
+Explore industry-standard architectural patterns and enterprise implementation details:
+
+- [Framework Landscape](DEEP_DIVE_FRAMEWORK_LANDSCAPE.md)

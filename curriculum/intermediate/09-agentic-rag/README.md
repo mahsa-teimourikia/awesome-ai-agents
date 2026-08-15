@@ -1,6 +1,6 @@
 # 09 — Agentic RAG / Knowledge-Grounded Agents
 
-**Level:** Intermediate · **Notebook:** [`agentic_rag.ipynb`](agentic_rag.ipynb) · **Runnable lab:** [`lab.py`](lab.py)
+**Level:** Intermediate · **Notebook:** [`09_agentic_rag.ipynb`](09_agentic_rag.ipynb) 
 
 **Scenario:** Northstar, a SaaS support team, is integrating this concept into their agentic workflow.
 
@@ -10,16 +10,7 @@ RAG retrieves evidence before generation. **Agentic RAG** gives a bounded agent 
 
 “Why did EU checkout payments fail and what should we do?” The Northstar incident agent must join operational runbook guidance, an incident database record, and a service dependency graph. It may propose evidence-backed mitigation, but it may not execute a rollback.
 
-```mermaid
-flowchart LR
- A[Question] --> B[Plan and route]
- B --> C[Search / SQL / graph tool]
- C --> D[Evaluate evidence coverage]
- D -- gap or conflict --> E[Decompose / retrieve again]
- E --> C
- D -- sufficient --> F[Synthesize with citations]
- F --> G[Verify claims and grounded action]
-```
+![Diagram](https://kroki.io/mermaid/svg/eNotjzFuwzAMRfecghcIeoMCTex0ydDUQBchA0FTEgFFNCTaQXr6KkoXDuT7H3w-6Z0iFoPz9w4-3GXlaqL5Cvv9OxzcV8IMmGcouhpfd3Doh6ObGAtFeIPpcm4zFFwimGpqzLEzgxs3TCsaA28ycyYG0o0LhmfR0CAIuICWts4-CVnPjW5g0tuilVtxYSvCGwMGlNxy4-uB_4K6ei8knF_Zk5se2SJX-WW4i0UgMXwK1RY9debT_XAR_wBKKLfa7ULTyzPPgNTt_wBclVoP)
 
 ## RAG versus Agentic RAG
 
@@ -61,7 +52,7 @@ A citation is not merely a URL. Verify that every material claim maps to retriev
 
 ## Guided lab
 
-1. Run `python lab.py`; inspect its query plan and trace.
+1. Open `09_agentic_rag.ipynb`; inspect its query plan and trace.
 2. Identify why a single search is insufficient: the runbook gives procedure, SQL gives incident history, and the graph exposes dependency context.
 3. Remove the graph evidence and make the evidence gate request a bounded second retrieval.
 4. Add a conflicting old incident; require temporal/source ranking before synthesis.
@@ -103,3 +94,15 @@ A citation is not merely a URL. Verify that every material claim maps to retriev
 - [GraphRAG](https://microsoft.github.io/graphrag/)
 - [LangGraph workflows and agents](https://docs.langchain.com/oss/python/langgraph/workflows-agents)
 - [OWASP prompt injection](https://genai.owasp.org/llmrisk/llm01-prompt-injection/)
+
+## Deep Dives & State of the Art
+
+- **[Semantic Routing](DEEP_DIVE_SEMANTIC_ROUTING.md)**
+- **[Self-Reflective Retrieval](DEEP_DIVE_SELF_REFLECTION.md)**
+
+
+## SOTA Deep Dives
+Explore industry-standard architectural patterns and enterprise implementation details:
+
+- [Self Reflection](DEEP_DIVE_SELF_REFLECTION.md)
+- [Semantic Routing](DEEP_DIVE_SEMANTIC_ROUTING.md)

@@ -5,7 +5,6 @@
 **Scenario:** Northstar - European customers report checkout failures. Is a status report,
 runbook workflow, bounded investigator, or specialist team warranted?
 **Notebook:** [`03_workflow_or_agent.ipynb`](03_workflow_or_agent.ipynb)
-**Run:** [`lab.py`](lab.py)
 
 ## Outcomes
 
@@ -21,20 +20,7 @@ workflow is not inferior to an agent: it is usually cheaper, easier to test,
 and easier to audit when the path is known. Add model-directed choice only where
 fixed routing cannot handle meaningful variation.
 
-```mermaid
-flowchart TD
-    A["Define goal + success metric"] --> B{"Known steps and inputs?"}
-    B -- "yes" --> C["Automation / deterministic workflow"]
-    B -- "no" --> D{"Need only current evidence?"}
-    D -- "yes" --> E["RAG-assisted response"]
-    D -- "no" --> F{"Must choose tools at runtime?"}
-    F -- "bounded choice" --> G["Agentic workflow or single agent"]
-    F -- "separable specialist work" --> H["Team after a single-agent baseline"]
-    C --> I["Evaluate outcome, risk, latency, cost"]
-    E --> I
-    G --> I
-    H --> I
-```
+![Diagram](https://kroki.io/mermaid/svg/eNpVkc9uwjAMxu97CivXUe0NNgHlzzRth4lbxSGkLkSkdhU7IIT27svaMkFOVuzv931OmsBnd7BRYVM-QT7TypTYeELYsw3wDJKcQxFoUaN3ZgtF8Qqzq_kgPhOIYidgqQZPXVJ5Mz89ZpbHwFxQTD8_r8w0KbdWPRO8QI2KsfXkRb2DM8djk4OY7Z2WeJCWV_OFWANTuIBLMSIp4MnXSA5vduWj3aIy39NVYUWyQdZGlI5JcDQoHwyWV_OZRMEdmAVBmUPeSCEmUt_-Wyx70Y4T1ZmYh73DAbDKy-1zqrtNgCOIp31AsH-t0XhgCHY22l3uSYfO25BD9soBt67MBm0LtslvBHbkFD0HdlYw5N8ZgfNe8V6ZxcmGZBWBkzpucQLRy3ECId-Ru0zAsdxSLAZRX6_u6vVQ_wKlvp_Z)
 
 ## Architecture vocabulary
 
@@ -174,3 +160,17 @@ often safer for a consequential action even if an agent prepared the evidence.
 - [LangGraph overview](https://docs.langchain.com/oss/python/langgraph/overview) — stateful graph orchestration.
 - [ReAct](https://arxiv.org/abs/2210.03629) — evidence-driven reasoning/action cycles.
 - [The Landscape of Emerging AI Agent Architectures](https://arxiv.org/abs/2309.07864) — survey context for planning, tools, memory, and feedback.
+
+## Deep Dives & State of the Art
+
+To understand when to build an agent vs a workflow, review these expanded topics:
+
+- **[DAGs vs Agents: An Architectural Deep Dive](DEEP_DIVE_DAGS_VS_AGENTS.md)**
+- **[State of the Art Framework Comparison (LangGraph vs AutoGen)](DEEP_DIVE_FRAMEWORK_COMPARISON.md)**
+
+
+## SOTA Deep Dives
+Explore industry-standard architectural patterns and enterprise implementation details:
+
+- [Dags Vs Agents](DEEP_DIVE_DAGS_VS_AGENTS.md)
+- [Framework Comparison](DEEP_DIVE_FRAMEWORK_COMPARISON.md)

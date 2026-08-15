@@ -1,6 +1,6 @@
 # 02 — Context Engineering for Agents
 
-**Level:** Intermediate · **Primary notebook:** [`context_engineering.ipynb`](context_engineering.ipynb) · **Runnable implementation:** [`lab.py`](lab.py)
+**Level:** Intermediate · **Primary notebook:** **Notebook:** [`02_context_engineering.ipynb`](02_context_engineering.ipynb) 
 
 **Scenario:** Northstar, a SaaS support team, is integrating this concept into their agentic workflow.
 
@@ -23,20 +23,7 @@ You will be able to:
 
 The model does not “see the whole application.” It sees the token packet constructed for this turn. A stronger model can still make a weak decision if it receives an irrelevant transcript, stale tool result, wrong tenant’s data, or a document that tries to manipulate its behavior. A larger context window is capacity—not automatic relevance, truth, authorization, or memory.
 
-```mermaid
-flowchart LR
-    A[User goal + identity] --> B[Context router]
-    C[System policy] --> B
-    D[Conversation + environment state] --> B
-    E[Trusted tools and retrieval] --> B
-    F[Scoped external memory] --> B
-    B --> G{Trust, tenant, freshness, token checks}
-    G --> H[Small model context packet]
-    H --> I[Decision / tool proposal]
-    I --> J[New observation]
-    J --> B
-    K[Untrusted or cross-tenant content] -. quarantine .-> G
-```
+![Diagram](https://kroki.io/mermaid/svg/eNpVUMtOAzEMvPMVvsOWP0CiLfQB4kDpKeohZF0aNWsvjndLhfh33GyRSi6O7JnxjLeJD2HnReH59Qrs3bt1RoEP9gmuIdZIGvW4gaq6g7GbMCl-KQh3irIpjIlbHbNiAy2nGP6gZTQ9EXqU7DUymR5SH4WpMVXI6hUv0Q_uTTpTqkGZUwZPNQiqROx9ugQ-ulXg1nBmBYXMaYMNy7_V4_KffRfJG1AkT1a3gnlHmLO1eI8EYYdhn38KZ1Y4c7dqfDJNrjFBOCdufdijDonnBbdwUwwxn4LdFsfQCreczWtBLQpq6V7wAPxuR-3LFYbh8sLqk1uTnpOzQBDOuRoMD-tJLdkIPjsv1ouEMDpl-wU6Mov9)
 
 ## 1. Context anatomy
 
@@ -108,7 +95,7 @@ The lab quarantines an Acme document containing an instruction injection and dro
 
 ## 6. Guided lab
 
-1. Run `python lab.py`. Inspect the selected items, token estimate, dropped items, quarantine list, cache key, and structured summary.
+1. Open `02_context_engineering.ipynb`. Inspect the selected items, token estimate, dropped items, quarantine list, cache key, and structured summary.
 2. Compare `triage` and `investigate` requests. Why should raw tool/document evidence appear only in the latter?
 3. Add a huge old conversation turn. Confirm it is pruned under the budget rather than displacing current incident state.
 4. Add a trusted but stale source. Extend the routing policy with freshness and show how the packet changes.
@@ -162,3 +149,15 @@ The lab quarantines an Acme document containing an instruction injection and dro
 - [OpenAI context-engineering personalization cookbook](https://developers.openai.com/cookbook/examples/agents_sdk/context_personalization) — state and memory considerations for agents.
 - [A Survey on Large Language Model based Autonomous Agents](https://arxiv.org/abs/2308.11432) — agent components including planning, memory, and tool use.
 - [OWASP Top 10 for LLM Applications](https://genai.owasp.org/llmrisk/llm01-prompt-injection/) — prompt-injection risks and defenses.
+
+## Deep Dives & State of the Art
+
+- **[Dynamic Context & Vector DBs](DEEP_DIVE_DYNAMIC_CONTEXT.md)**
+- **[Prompt Injection & XML Tagging](DEEP_DIVE_PROMPT_INJECTION.md)**
+
+
+## SOTA Deep Dives
+Explore industry-standard architectural patterns and enterprise implementation details:
+
+- [Dynamic Context](DEEP_DIVE_DYNAMIC_CONTEXT.md)
+- [Prompt Injection](DEEP_DIVE_PROMPT_INJECTION.md)

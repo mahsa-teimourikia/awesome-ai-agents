@@ -4,24 +4,13 @@
 
 **Scenario:** Northstar, a SaaS support team, is integrating this concept into their agentic workflow.
 
-**Primary lesson:** [`agent_evaluation.ipynb`](agent_evaluation.ipynb) · **Runnable evaluator:** [`lab.py`](lab.py)
+**Primary lesson:** **Notebook:** [`05_agent_evaluation.ipynb`](05_agent_evaluation.ipynb) 
 
 ## Scenario
 
 Northstar’s checkout agent investigates EU latency and prepares rollback proposals. A polished answer can still be unsafe: it may skip required evidence, use the wrong tool, call a forbidden rollback tool, leak a tenant, or cost ten times more than a simpler path. This lesson evaluates the **run**, not only the prose.
 
-```mermaid
-flowchart LR
-    D["Versioned eval dataset"] --> R["Run agent / replay trace"]
-    R --> O["Outcome graders"]
-    R --> T["Trajectory + policy graders"]
-    R --> P["Latency, cost, retries"]
-    O --> G["Release gate"]
-    T --> G
-    P --> G
-    G -->|"pass"| S["Ship with monitoring"]
-    G -->|"fail"| F["Diagnose and improve"]
-```
+![Diagram](https://kroki.io/mermaid/svg/eNptjsFqwzAQRO_9imWvTegf9BSaS8DBMb2IHBZ5Y2-RJSFtEgz5-G5dF1ronAbmMTOXkO5-pKJwaJ_AtHP4zqVKitwD3yhAT0qVFc-w3b5C67C9RqCBo8ILFM6BZtBCnvG8NLQL1zhsrurTxDAU6q3yT9w57Ap9sNdUZniGnIL4-V_06PBAytHPG_Cp6sZGtQj_UM1C7e0XB7anMBi9Zt13tvjjL7__8g_MVCs-4OTwNEqGu-gIU4pipyQOa8fKXkiCsW8Od0JDTDZEsQeZckk32_sEt69hRA==)
 
 ## Outcomes
 
@@ -69,7 +58,7 @@ grader’s inputs and rationale traceable; an LLM judge can be wrong or biased.
 
 The lab compares a baseline that makes a plausible but unsupported answer and
 executes a forbidden rollback against a hardened route that gathers evidence and
-prepares an approval-gated proposal. Run `python lab.py`, inspect each result,
+prepares an approval-gated proposal. Open `05_agent_evaluation.ipynb`, inspect each result,
 then compare `success_rate`, `forbidden_actions`, latency, and
 `cost_per_success`.
 
@@ -165,3 +154,13 @@ Extend the Northstar suite with: a tool timeout requiring bounded retry; an ambi
 - [LangSmith evaluation](https://docs.langchain.com/langsmith/evaluation)
 - [INSTRUCTEVAL](https://arxiv.org/abs/2306.04757)
 - [AgentBench](https://arxiv.org/abs/2308.03688) · [τ-bench](https://arxiv.org/abs/2406.12045) · [Agent evaluation survey](https://arxiv.org/abs/2508.10416)
+
+## Deep Dives & State of the Art
+
+- **[Outcome vs Trajectory Scoring SOTA](DEEP_DIVE_SCORING.md)**
+
+
+## SOTA Deep Dives
+Explore industry-standard architectural patterns and enterprise implementation details:
+
+- [Scoring](DEEP_DIVE_SCORING.md)

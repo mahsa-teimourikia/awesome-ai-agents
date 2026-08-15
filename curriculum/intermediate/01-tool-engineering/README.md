@@ -3,7 +3,7 @@
 **Level:** Intermediate · **Prerequisites:** [the agent loop](../../beginner/02-agent-loop/README.md), [workflow or agent](../../beginner/03-workflow-or-agent/README.md), and [agent development frameworks](../../beginner/04-agent-development-frameworks/README.md)
 
 **Scenario:** Northstar, a SaaS support team, is integrating this concept into their agentic workflow.
-**Notebook:** [tool_engineering.ipynb](tool_engineering.ipynb) · **Run:** [lab.py](lab.py)
+**Notebook:** [`01_tool_engineering.ipynb`](01_tool_engineering.ipynb) · **Run:** [lab.py](lab.py)
 
 ## The conceptual shift
 
@@ -11,20 +11,7 @@
 
 A model tool call is only a proposal. Application code must validate the schema, actor, tenant, permission, budget, idempotency key, result, and approval before any capability executes. Tool engineering is interface design, distributed-systems design, and security engineering—not merely writing tool descriptions.
 
-```mermaid
-flowchart LR
-  M["Model proposes call"] --> S["Schema validation"]
-  S --> A["Authorization + tenant scope"]
-  A --> R["Risk + approval policy"]
-  R --> I["Idempotency / rate / budget gate"]
-  I --> X["Execute narrow capability"]
-  X --> V["Validate + normalize result"]
-  V --> O["Observation for model"]
-  V --> T["Trace + audit record"]
-  S --> B["Typed error / safe stop"]
-  A --> B
-  R --> B
-```
+![Diagram](https://kroki.io/mermaid/svg/eNpNkMFqwzAMhu97CuHrKHuDQQs7BFYKSSkF04NiK62ZExnZadc-_VQXRk5C6NOvX_8Q-eYuKAW-2zeArTVb9hQhCSfOlMFhjOYEq9UndNZ07kIjwhVj8FgCT-akW10dr61Zz-XCEh51BO9QaMKpQHacqJLrSrbWtCH_KIBJD6kaJI7B3SvTVqaxpvE0JlYNd4cPECykpZ_9mQqctat0U-mjNV-_5GZFJhThm_pO2IcYykv0WLGDNYeXddLjE8uo3YNAKM-xVPBQwZ01uz6TXF-fDCwwPnNZIHtr9oLuKYSzD0VFHItfBLJR4p7IA6kjUe8ZB4JcOC2y2Px_vPkDiXx40g==)
 
 ## Outcomes
 
@@ -65,16 +52,7 @@ Use short action-oriented names, explicit required fields and enums, compact res
 
 Tool selection is constrained routing, not a free-form model capability. Filter a catalog deterministically by actor, tenant, environment, and task before the model can choose from it.
 
-```mermaid
-flowchart TD
-  Q["Task + trusted actor context"] --> F["Filter scopes and tenant"]
-  F --> C["Small candidate catalog"]
-  C --> D{"Known path?"}
-  D -->|"yes"| W["Workflow calls explicit tools"]
-  D -->|"no"| L["Model chooses candidate"]
-  L --> G["Argument and policy gates"]
-  G --> E["Execute or escalate"]
-```
+![Diagram](https://kroki.io/mermaid/svg/eNo9kE1qw0AMhfc9hdC25AotJY6zaLIoDWQxdCHGim0yGZkZmTg0vXtVtXQneN_7Qack1zhQUTg0DwBvAQ9Uz_AIWuaq3AFFlQJRsvKi-AGr1RO0AdsxKReoUSauQLkD5UzZCEtpnVoHfL9QShBNHjtStkspSe_Q2qHmE1-zXDNMpMMzfpnQ_Ah3vHHFOxwDHqWcTzbT3ClV4GVKYxwVVCRVj_pzZDHDLuBeOrbWQaTatv92R3feug34Uvr5wll9-yQWeYPeqN_ErWObgJuF42zL7QdcbYDnfAO04mI4)
 
 For large catalogs, use namespaced capabilities, progressive disclosure, and dynamic discovery with allowlists. Every capability should describe purpose, risk tier, required scopes, cost/latency class, and result schema. The [MCP tools specification](https://modelcontextprotocol.io/specification/2025-11-25/server/tools) standardizes discovery, but it does not authorize calls for you.
 
@@ -303,3 +281,19 @@ This is the practical rule: **the shortest reliable trajectory to a safe outcome
 - D) Unlimited delegation breadth and depth
 - E) Per-worker budgets
 
+
+## Deep Dives & State of the Art
+
+To build enterprise-grade tool integrations, review these expanded topics:
+
+- **[Schema Contracts & Pydantic Validation](DEEP_DIVE_SCHEMA_CONTRACTS.md)**
+- **[Narrow Capabilities (Preventing Confused Deputies)](DEEP_DIVE_NARROW_CAPABILITIES.md)**
+- **[Typed Errors (Self-Healing Agents)](DEEP_DIVE_TYPED_ERRORS.md)**
+
+
+## SOTA Deep Dives
+Explore industry-standard architectural patterns and enterprise implementation details:
+
+- [Narrow Capabilities](DEEP_DIVE_NARROW_CAPABILITIES.md)
+- [Schema Contracts](DEEP_DIVE_SCHEMA_CONTRACTS.md)
+- [Typed Errors](DEEP_DIVE_TYPED_ERRORS.md)
