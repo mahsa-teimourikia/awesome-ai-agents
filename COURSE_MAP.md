@@ -23,7 +23,7 @@
 - 02-autogen-selector-teams
 - 03-crewai-teams
 - 04-hybrid-production-architecture
-- 05-incident-response-capstone
+- 05-incident-response
 - 06-agent-memory
 - 07-world-models-environment-modeling
 - 08-proactive-agents
