@@ -3,7 +3,7 @@
 **Level:** Intermediate · **Prerequisites:** [the agent loop](../../beginner/02-agent-loop/README.md), [workflow or agent](../../beginner/03-workflow-or-agent/README.md), and [agent development frameworks](../../beginner/04-agent-development-frameworks/README.md)
 
 **Scenario:** Northstar, a SaaS support team, is integrating this concept into their agentic workflow.
-**Notebook:** [`01_tool_engineering.ipynb`](01_tool_engineering.ipynb) · **Run:** [lab.py](lab.py)
+**Notebook:** [`01_tool_engineering.ipynb`](01_tool_engineering.ipynb) 
 
 ## The conceptual shift
 

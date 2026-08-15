@@ -9,10 +9,6 @@ diagnosis into the next incident.
 | --- | --- | --- |
 | **Notebook:** [`10_langgraph_state.ipynb`](10_langgraph_state.ipynb)
 
-The notebook is the primary learning artifact: it explains every design choice,
-runs the same dependency-free scenario, and includes a small real-LangGraph
-translation. `lab.py` is the runnable reference implementation used by the
-notebook. It has no model or API dependency.
 
 ## Why this topic matters
 
