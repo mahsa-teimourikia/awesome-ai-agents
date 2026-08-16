@@ -1,6 +1,6 @@
 # 05 — Computer-Using Agents
 
-**Level:** Beginner · **Primary notebook:** [`computer_using_agents.ipynb`](computer_using_agents.ipynb) · **Runnable simulation:** [`lab.py`](lab.py)
+**Level:** Beginner · **Primary notebook:** **Notebook:** [`05_computer_using_agents.ipynb`](05_computer_using_agents.ipynb) 
 
 **Scenario:** Northstar, a SaaS support team, is integrating this concept into their agentic workflow.
 
@@ -27,20 +27,7 @@ After completing the notebook and lab, you can:
 
 **Non-goals:** scraping the open web, solving CAPTCHAs, bypassing login/MFA, entering secrets, making purchases, or controlling a real operating system. Those tasks require a separate risk assessment and usually a human takeover flow.
 
-```mermaid
-flowchart LR
-    A[Screenshot or accessibility snapshot] --> B[Visual grounding]
-    B --> C[Propose narrow action]
-    C --> D{Policy and target validation}
-    D -- reject or ambiguous --> E[Observe, recover, or escalate]
-    D -- read or draft --> F[Sandboxed UI action]
-    D -- commit --> G[Human confirmation]
-    G --> F
-    F --> H[Verify post-action state]
-    H --> I{Goal or terminal state?}
-    I -- no --> A
-    I -- yes --> J[Trace and completion record]
-```
+![Diagram](diagram.svg)
 
 ## 1. What counts as computer use?
 
@@ -139,7 +126,7 @@ Computer use needs a stronger sandbox than a pure read-only API call. At minimum
 
 ## Guided lab
 
-1. Run `python lab.py` from this directory. It executes the support flow in a simulated portal with a renamed UI label.
+1. Open `05_computer_using_agents.ipynb` from this directory. It executes the support flow in a simulated portal with a renamed UI label.
 2. In the notebook, inspect `screenshot_summary` and explain why the agent has enough grounding to choose the Acme case.
 3. Try `dom_click(session, '#escalate-button')` after the UI rename and observe the controlled failure.
 4. Run the semantic visual-grounding path. Confirm that a point outside the verified bounds is rejected.
@@ -206,3 +193,17 @@ Measure more than task success: correct target grounding, action precision, post
 - [WebArena](https://arxiv.org/abs/2307.13854) — reproducible long-horizon web-agent tasks and functional-correctness evaluation.
 - [BrowserGym / WorkArena](https://github.com/ServiceNow/BrowserGym) — maintained environments for developing and evaluating browser agents.
 - [browser-use](https://github.com/browser-use/browser-use) and [Stagehand](https://github.com/browserbase/stagehand) — open-source browser-agent libraries; evaluate their security boundaries before production use.
+
+## Deep Dives & State of the Art
+
+To truly master computer-using agents, review these expanded topics:
+
+- **[Accessibility Trees vs Raw DOM](DEEP_DIVE_ACCESSIBILITY_TREES.md)**
+- **[State of the Art Multimodal UI Agents](DEEP_DIVE_SOTA_MULTIMODAL.md)**
+
+
+## SOTA Deep Dives
+Explore industry-standard architectural patterns and enterprise implementation details:
+
+- [Accessibility Trees](DEEP_DIVE_ACCESSIBILITY_TREES.md)
+- [Sota Multimodal](DEEP_DIVE_SOTA_MULTIMODAL.md)

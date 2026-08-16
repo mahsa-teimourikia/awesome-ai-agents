@@ -2,78 +2,73 @@
 
 **Level:** Advanced · **Time:** 60 min · **Prerequisites:** None
 
-**Enterprise Agent · 09** · **Notebook:** [`agent_governance_responsible_ai.ipynb`](agent_governance_responsible_ai.ipynb) · **Implementation:** [`lab.py`](lab.py)
+**Enterprise Agent · 09** · **Notebook:** [`agent_governance_responsible_ai.ipynb`](agent_governance_responsible_ai.ipynb)
 
-Agent governance is the operating system for accountable autonomy. It governs a deployed socio-technical system—models, instructions, tools, memory, data, people, workflows, vendors, and operational controls—not a compliance label attached to one model. The agent remains useful only while its purpose, owner, scope, evidence, access, and recovery path are current and revocable.
+Agent governance is the operating system for accountable autonomy. It governs a deployed socio-technical system—models, instructions, tools, memory, data, people, and operational controls—not just a compliance label attached to one model. 
 
-## Scenario and outcomes
+An agent remains useful only while its purpose, owner, scope, evidence, and recovery paths are explicitly defined and easily revocable.
 
-Northstar wants to release an incident adviser that reads internal logs, prepares evidence-backed remediation proposals, and requires an incident commander before any consequential change. Learners register it, assign accountability, classify its risk/autonomy/data/tools, gate release on evidence, monitor it, handle an incident, and retire/revoke it safely.
+Because Governance bridges the gap between engineering, legal, and security, we have broken this curriculum down into three core modules and a deployment checklist:
 
-![Agent governance lifecycle](../../../assets/agent-governance-lifecycle.svg)
+1. **[The Governance Lifecycle](#the-governance-lifecycle)** (This Page)
+2. **[Deep Dive: AI Risk Management & Autonomy](AI_RISK_MANAGEMENT.md)** (NIST, EU AI Act, Autonomy Tiers)
+3. **[Deep Dive: AI BOM & Registration](AI_BOM_AND_REGISTRATION.md)** (System Cards, Deployment Gates, Kill Switches)
+4. **[Actionable Template: Agent Governance Checklist](AGENT_GOVERNANCE_CHECKLIST.md)** (Pre-deployment questionnaire)
 
-```mermaid
-flowchart LR
- I[Inventory + owner] --> R[Risk and autonomy classification]
- R --> A[Data and tool/access approval]
- A --> E[Evaluation + change approval]
- E --> M[Monitor, audit, human oversight]
- M --> X[Incident response / revoke / retire]
- X --> I
-```
+---
 
-## 1. Inventory, ownership, and lifecycle
+## The Governance Lifecycle
 
-Maintain an agent inventory with immutable ID/version, business purpose/non-goals, accountable business owner, technical owner, model/prompt/tool/memory/knowledge dependencies, tenant/data classification, risk/autonomy tier, allowed actions, approval requirements, evaluation evidence, deployment/change history, incident contacts, retention, and retirement date. An inventory is not a static spreadsheet: discovery, change, revocation, and audit must update it.
+Deploying an agent is not like deploying a static microservice. The CI/CD pipeline must enforce organizational accountability before the agent is granted its Identity.
+
+![Agent Governance Lifecycle](../../../assets/agent_governance_lifecycle.svg)
+
+### Essential Lifecycle Controls
 
 | Control | Questions it answers | Evidence |
 | --- | --- | --- |
-| Ownership/accountability | Who can approve purpose, risk, release, access, and shutdown? | named owner, RACI, escalation/on-call |
-| Risk/autonomy classification | What harm could occur; does it assist, propose, or execute under approval? | threat model, impact tier, approval policy |
-| Tool/access inventory | Which read/write tools, credentials, MCP servers, and scopes can it use? | capability grants, least privilege, revocation test |
-| Data governance | Which data, tenants, retention, residency, consent, and provenance rules apply? | classification, DPIA/records where required, access logs |
-| Auditability | Can an investigator reconstruct input, policy, tool/evidence trace, decision, and action? | privacy-aware trace, versioned artifacts, retention policy |
+| **Accountability** | Who can approve purpose, risk, release, access, and shutdown? | A named Human Owner; escalation/on-call paths in the AI BOM. |
+| **Risk/Autonomy** | What harm could occur? Does it assist, propose, or execute autonomously? | Threat model, impact tier (e.g. EU AI Act High-Risk), approval policy. |
+| **Access Inventory** | Which read/write tools, MCP servers, and scopes can it use? | Capability grants, least privilege definitions. |
+| **Data Governance** | Which tenants, retention policies, and provenance rules apply? | Data classification; PII masking policies. |
+| **Incident Response** | How do we stop the agent if it hallucinates or is hijacked? | Global IAM Kill Switch, versioned artifacts, privacy-aware trace. |
 
-## 2. Human oversight, change management, and incidents
+### Registration and CI/CD Gating
 
-Human oversight is an explicit authority design: who can approve, modify, reject, pause, revoke, or override an agent; what information they receive; deadlines; and how resumes are idempotent. Use least autonomy that reliably achieves the outcome. High-impact actions should be proposal-only or execute-with-approval with an exact action fingerprint, evidence, expiry, and audit.
+Maintain an agent inventory (The AI BOM) with immutable ID/versions, business purpose, accountable owners, model/prompt dependencies, and risk tiers. 
 
-Change management treats model/catalog/prompt/tool/MCP/memory/policy/data/evaluation changes as releases. Assess changed risk, run regression and adversarial evaluations, version artifacts, obtain appropriate approval, use staged rollout/rollback, and update inventory. Incident response covers detection, containment (disable/revoke/kill switch), evidence preservation, owner notification, user/customer process where required, root cause, remediation, re-evaluation, and lifecycle update.
+This inventory is **not a static spreadsheet**. It must be evaluated in your deployment pipeline. If a developer attempts to deploy an agent that is classified as "High Risk" but the codebase does not include a Human-in-the-loop (HITL) approval step, the pipeline must reject the deployment.
 
-## 3. Step-by-step lab and operational checklist
-
-1. Run `python lab.py`; the high-risk adviser passes only because it has an owner, valid autonomy classification, data classification, and an approval control.
-2. Remove `approval` from the tool inventory and observe the release gate block it.
-3. Add a versioned evaluation record, access-review date, kill-switch owner, and incident runbook reference.
-4. Simulate a prompt-injection/tool misuse incident: freeze deployment, revoke the capability, preserve the trace, and require re-evaluation before re-enablement.
-
-- Review inventory and tool/data grants on a schedule and on every meaningful change.
-- Keep policy/identity/approval server-side; prompts alone cannot supply governance.
-- Monitor outcome, trajectory, access denials, policy blocks, overrides, latency/cost, drift, and fairness/safety slices.
-- Test revocation, audit retrieval, incident containment, rollback, and retirement/deletion.
+---
 
 ## Watch For
 
-- **Assumption failure:** The model hallucinates an unsupported parameter.
-- **State leak:** Context is incorrectly preserved across runs.
-- **Timeout:** The tool takes too long and the agent loops.
-- **Auth bypass:** The agent attempts an action it shouldn't.
+- **Phantom Ownership:** An agent deployed under a generic service account or distribution list (`team@corp.com`). When it causes a P0 incident, no specific human can be held accountable or authorize the kill switch.
+- **Rubber Stamping:** Human oversight that provides no context. The human just clicks "Approve" without understanding what the agent is doing.
+- **Inability to Revoke:** You realize the agent is corrupted, but because it relies on a hardcoded API key instead of Workload Identity, you cannot shut it down without breaking other production systems.
+
+---
 
 ## Checkpoint
 
-**1. What is the primary purpose of this module?**
-- A) To understand the core concept.
-- B) To write complex boilerplate.
-- C) To ignore system errors.
-- D) To bypass security.
+**1. What is the primary purpose of an AI Bill of Materials (AI BOM)?**
+- A) To track software licenses for open source libraries.
+- B) To cryptographically bind the specific models, prompts, tools, and accountable Human Owner to a specific release version of an agent.
+- C) To calculate the API costs of the agent.
+- D) To train the LLM on better data.
 
-**2. How do we mitigate the primary failure mode?**
-- A) Retries.
-- B) Human approval.
-- C) Logging.
-- D) Idempotency keys.
+<details>
+<summary>Answer</summary>
+<b>B</b>. The AI BOM acts as the system card and inventory record. It ensures that during an incident, investigators know exactly what components were running and who is accountable.
+</details>
 
-## References
+**2. How should you design a "Kill Switch" for an autonomous agent?**
+- A) Tell the LLM in its system prompt to stop executing if it detects an error.
+- B) Build an API endpoint in the agent's code that calls `sys.exit()`.
+- C) Revoke the agent's Workload Identity (e.g. its SPIFFE SVID or AWS IAM Role) at the infrastructure layer, causing all tool calls to fail with `401 Unauthorized`.
+- D) Unplug the server.
 
-- [OWASP Top 10 for Agentic Applications](https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications/) · [NIST AI RMF](https://www.nist.gov/itl/ai-risk-management-framework) · [NIST AI RMF Playbook](https://airc.nist.gov/airmf-resources/playbook)
-- [OpenAI practical guide to building agents](https://openai.com/business/guides-and-resources/a-practical-guide-to-building-ai-agents/) · [Anthropic: building effective agents](https://www.anthropic.com/engineering/building-effective-agents)
+<details>
+<summary>Answer</summary>
+<b>C</b>. A compromised agent cannot be trusted to shut itself down (B). You must revoke its identity at the infrastructure level (C) so it loses all authority immediately.
+</details>

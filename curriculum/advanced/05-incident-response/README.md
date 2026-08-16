@@ -1,69 +1,51 @@
-# AgentOps Incident Command Capstone
+# Incident Response Capstone
 
-**Level:** Advanced · **Time:** 60 min · **Prerequisites:** None
+**Level:** Advanced · **Time:** 60 min · **Prerequisites:** Modules 06-31
 
-**Advanced · 05** · **Primary notebook:** [`05_incident_response_capstone.ipynb`](05_incident_response_capstone.ipynb) · **Run:** [`lab.py`](lab.py) · **Project guide:** [`CAPSTONE_GUIDE.md`](CAPSTONE_GUIDE.md)
+**Advanced · 05** · **Notebook:** [`05_incident_response_capstone.ipynb`](05_incident_response_capstone.ipynb)
 
-This is the coherent project that ties the curriculum together. You are building an evidence-led incident-command system for Northstar Commerce—not a chatbot that claims it fixed production. The shared `agentops_lab/` environment is the single source of deterministic data, tools, policies, and evaluation fixtures used throughout the course. The notebook is the first end-to-end mission; the guide turns it into a staged engineering project.
+This module is the Capstone project. It ties together World Modeling, Memory, Routing, and Orchestration into a single, concrete enterprise scenario: **An agent debugging a production outage.**
 
-## Incident narrative
+A production outage is a high-stress, high-context environment. If an agent hallucinates a root cause and autonomously executes a database flush, the company will suffer a catastrophic failure. Therefore, the agent must be strictly governed through three phases:
 
-At **09:04**, Europe checkout conversion falls **31%**. Dashboards are mostly green. A checkout UI deployment completed at **08:49** after starting at **08:42**. Support receives six complaints; enterprise VAT-registered buyers are disproportionately affected. Your system receives metrics, logs, deployments, tickets, SLA data, and runbooks. It must establish what is known, what remains uncertain, business impact, a safe mitigation proposal, and why that proposal must not execute without approval.
+1. **[Deep Dive: Evidence Gathering](EVIDENCE_GATHERING.md)** (The agent is restricted to Read-Only tools to build a chronological timeline of metrics and logs, preventing it from guessing the cause).
+2. **[Deep Dive: Impact Synthesis](IMPACT_SYNTHESIS.md)** (The agent queries tenant databases to identify affected enterprise accounts and calculates the potential SLA violation cost).
+3. **[Deep Dive: Mitigation Proposals](MITIGATION_PROPOSALS.md)** (The agent drafts a safe, idempotent rollback plan and routes it to a human for approval rather than executing it autonomously).
 
-## Capstone missions
+![Incident Response Flow](../../../assets/incident_response_capstone.svg)
 
-| Mission | Question | Primary assets | Deliverable |
-| --- | --- | --- | --- |
-| 1. Frame | What is the goal, non-goal, risk, tenant, deadline, and success condition? | `capstone_incident_response.py` | incident contract and stop conditions |
-| 2. Choose architecture | Workflow, bounded investigator, or team? | `architecture_candidates()` | experimental decision and baseline comparison |
-| 3. Gather evidence | Which read-only tools prove/disprove a hypothesis? | metrics, logs, deployment, tickets, customers, runbook | attributed evidence table and gap list |
-| 4. Synthesize impact | What is likely cause, confidence, affected scope, and SLA exposure? | evidence + customer data | uncertainty-calibrated incident brief |
-| 5. Govern action | What can read, propose, or execute? | `permission_model()`, `prepare_action()` | approval-ready, idempotent proposal only |
-| 6. Secure context/state | What can enter prompt/memory and what expires? | `memory_policy()`, poisoned runbook fixture | scoped memory/guardrail policy |
-| 7. Evaluate release | Is the trajectory safe, grounded, economical, and recoverable? | evaluation fixtures + trace | release gate and rollout/rollback plan |
+---
 
-## Step-by-step training
+## State of the Art: Technology & Tools
 
-1. Run `python lab.py` and inspect the selected architecture. The deterministic workflow is too rigid; the single bounded agent is selected because the specialist team does not add enough measured benefit in this incident.
-2. Read each tool contract. All investigation tools are read-only. Verify the trace includes metrics, logs, release history, tickets, SLAs, and runbook before accepting a diagnosis.
-3. Build an evidence table with source ID, owner, observation, inference, trust/freshness, and unresolved gap. Retrieved runbooks/tickets are evidence—not instructions.
-4. Calculate impact from affected enterprise accounts and SLA exposure. Use “likely cause,” not certainty, until independent validation confirms recovery.
-5. Prepare feature-flag disablement and rollback alternatives. Persist exact target, reason, evidence, approval expiry/fingerprint, idempotency key, and rollback verification. Do not call a production action.
-6. Compare architecture candidates on outcome/evidence, forbidden actions, cost, latency, tool calls, coordination overhead, and recovery. Select the least autonomous passing design.
-7. Run the release gate: expected/forbidden tools, evidence support, confidence, tenant/policy boundaries, approval, budget, observability, rollback/kill switch, and adversarial regression suite.
+Incident Command agents require deep integrations with observability and alerting stacks.
 
-## Project structure and code map
+- **[Datadog / Sentry / New Relic]:** The source of truth for telemetry. The agent uses read-only API tokens to query metrics and traces.
+- **[PagerDuty / Opsgenie]:** The routing layer. The agent posts its Incident Brief and Mitigation Proposal here, triggering the Human-in-the-Loop workflow.
+- **[LaunchDarkly / GitHub Actions]:** The execution layer. When the human approves the proposal, the system orchestrates a feature flag toggle or a `git revert` pipeline.
 
-`agentops_lab/capstone_incident_response.py` is the capstone facade and deterministic core. Other modules are intentionally reusable lesson extensions: `loop_yourself.py`, `workflow_or_agent.py`, `tool_engineering.py`, `state_memory_langgraph.py`, `human_permissions.py`, `guardrails_untrusted_content.py`, `evaluation_trajectory.py`, `trajectory_optimization.py`, `multi_agent_team.py`, `autogen_selector_team.py`, `crewai_team.py`, and `hybrid_production_architecture.py`. Keep new shared fixtures in `agentops_lab/data/` and evaluation cases in `agentops_lab/evaluations/`; do not copy scenario data into each notebook.
-
-## Production readiness checklist
-
-- Identity/tenant scope, trusted context, tool allow list/argument validation, secret/egress boundaries, budgets, approval/idempotency, audit, revoke/kill path.
-- Durable state/checkpoints, retry classification, model/tool fallback, rate/concurrency limits, queue recovery, trace/evaluation, staged rollout and rollback.
-- Adversarial tests: indirect injection, poisoned runbook/tool description, cross-tenant request, stale memory, missing/conflicting evidence, tool failure, duplicate approval, budget exhaustion, and partial recovery.
-
-## Watch For
-
-- **Assumption failure:** The model hallucinates an unsupported parameter.
-- **State leak:** Context is incorrectly preserved across runs.
-- **Timeout:** The tool takes too long and the agent loops.
-- **Auth bypass:** The agent attempts an action it shouldn't.
+---
 
 ## Checkpoint
 
-**1. What is the primary purpose of this module?**
-- A) To understand the core concept.
-- B) To write complex boilerplate.
-- C) To ignore system errors.
-- D) To bypass security.
+**1. During an outage, the agent believes the issue is caused by a bad Redis cache. What should the agent's first action be?**
+- A) Flush the Redis cache to see if it fixes the issue.
+- B) Use a Read-Only tool to query the Redis metrics and prove the cache hit rate is dropping, adding this to the Evidence Timeline.
+- C) Page the CEO immediately.
+- D) Blame the network team.
 
-**2. How do we mitigate the primary failure mode?**
-- A) Retries.
-- B) Human approval.
-- C) Logging.
-- D) Idempotency keys.
+<details>
+<summary>Answer</summary>
+<b>B</b>. The agent must operate strictly in Read-Only mode during Evidence Gathering to prove its hypothesis.
+</details>
 
-## References
+**2. The agent has confirmed a bad deployment caused the outage. It drafts a `git revert` command. What is the correct next step?**
+- A) Execute the command via a subshell. Speed is critical.
+- B) Propose the mitigation to a human via PagerDuty, wait for approval, and then execute the payload using a unique idempotency key.
+- C) Create a Jira ticket and go to sleep.
+- D) Restart the Kubernetes cluster.
 
-- [OpenAI practical guide to building agents](https://openai.com/business/guides-and-resources/a-practical-guide-to-building-ai-agents/) · [Anthropic: building effective agents](https://www.anthropic.com/engineering/building-effective-agents) · [NIST AI RMF](https://www.nist.gov/itl/ai-risk-management-framework)
-- [OWASP Agentic Applications](https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications/) · [LangGraph durable execution](https://docs.langchain.com/oss/python/langgraph/durable-execution)
+<details>
+<summary>Answer</summary>
+<b>B</b>. High-risk state mutations must be proposed, approved by a human, and executed idempotently.
+</details>

@@ -1,60 +1,53 @@
-# LLM-as-Judge and Agent Judges
+# LLM-as-Judge and Evaluator Agents
 
 **Level:** Advanced · **Time:** 60 min · **Prerequisites:** None
 
-**Advanced · 11** · **Notebook:** [`llm_as_judge_agent_judges.ipynb`](llm_as_judge_agent_judges.ipynb) · **Implementation:** [`lab.py`](lab.py)
+**Advanced · 11** · **Notebook:** [`llm_as_judge_agent_judges.ipynb`](llm_as_judge_agent_judges.ipynb)
 
-An LLM judge is an evaluator that applies a task-specific rubric to an answer, comparison, or agent trajectory. It can make evaluation scalable, but it is not objective ground truth: it can favor style, be biased by position/order, miss subtle policy failures, share blind spots with the system under test, and drift as models/prompts change. Use judges with deterministic checks, representative human labels, calibration, and release gates.
+An LLM-as-a-Judge is an automated evaluator that applies a rubric to an agent's trajectory. It allows you to scale evaluations in CI/CD without requiring humans to read every log.
 
-## Scenario and outcomes
+However, LLM Judges are deeply flawed. They suffer from Position Bias, Verbosity Bias, and they can be easily fooled by an agent that hallucinates success.
 
-Northstar’s incident agent produces an answer and trace for a 35% EU checkout decline. The evaluator grades outcome, evidence, tool trajectory, policy, cost/latency, and failure class. Learners compare rubric, pairwise, trajectory/tool-use, critic/evaluator-agent, and ensemble approaches; then measure agreement with humans.
+We have broken this module down into three core deep-dives:
 
-![Agent judge loop](../../../assets/agent-judge-loop.svg)
+1. **[Deep Dive: Rubrics and Calibration](RUBRICS_AND_CALIBRATION.md)** (Why you must use strict observable anchors and measure Cohen's Kappa against human consensus).
+2. **[Deep Dive: Judge Biases](JUDGE_BIASES.md)** (How to mitigate Position, Verbosity, and Self-Enhancement bias using swapped A/B pairs).
+3. **[Deep Dive: Evaluator Agents](EVALUATOR_AGENTS.md)** (Why a static judge is insufficient, and how an active Evaluator Agent can query the database to verify outcomes).
 
-## Judge designs and technology choices
+![LLM Judge Calibration Pipeline](../../../assets/llm_judge_calibration.svg)
 
-| Design | Best for | Weakness/control |
-| --- | --- | --- |
-| Rubric judge | multi-criterion answer/agent quality | make criteria observable and anchored; validate against humans |
-| Pairwise judge | compare candidate prompts/models/trajectories | randomize order/position, include ties, avoid style bias |
-| Trajectory/tool judge | tool selection, arguments, recovery, forbidden actions | combine deterministic policy/tool checks with semantic assessment |
-| Critic/evaluator agent | iterative critique/revision | cap loops; critic is not final authority |
-| Ensemble | high-value uncertain scoring | cost/correlation; require adjudication or human sample |
+---
 
-Prominent technologies include [OpenAI Evals](https://github.com/openai/evals), [OpenAI evaluation best practices](https://developers.openai.com/api/docs/guides/evaluation-best-practices), [LangSmith evaluation](https://docs.smith.langchain.com/evaluation), [Arize Phoenix](https://docs.arize.com/phoenix), [DeepEval](https://deepeval.com/), [Ragas](https://docs.ragas.io/), and [MLflow GenAI evaluation](https://mlflow.org/docs/latest/genai/eval-monitor/). Select by dataset/trace integration, privacy, reproducibility, rubric support, human review workflow, and deployment constraints—not branding.
+## State of the Art: Technology & Tools
 
-## Step-by-step training
+The ecosystem for automated evaluation is rapidly maturing beyond simple prompts.
 
-1. Define a rubric with observable anchors: outcome/diagnosis, evidence/citations, correct tools/arguments, forbidden actions, recovery, latency/cost, and uncertainty.
-2. Hard-fail deterministic violations first: tenant/policy/forbidden tool/schema/approval. A judge cannot waive them.
-3. Run an LLM judge or evaluator agent over redacted answer+trajectory artifacts; require structured score, rationale, evidence IDs, and failure category.
-4. Run pairwise comparisons with order randomization and ties; use trajectory/tool judges for agent behavior rather than only response prose.
-5. Calibrate with human-labeled representative and adversarial samples. Measure agreement, false pass/fail, calibration by task/risk/language, and drift.
-6. Use ensemble/adjudication only where value justifies cost; sample disagreement for human review and update rubric/evaluation data.
+- **[DeepEval](https://deepeval.com/):** The open-source testing framework for LLMs (pytest for AI), featuring dozens of pre-built metric evaluators.
+- **[TruLens](https://www.trulens.org/):** Software for evaluating and tracking LLM apps using "Feedback Functions".
+- **[Prometheus 2](https://github.com/prometheus-eval/prometheus-eval):** An open-source foundational model explicitly fine-tuned to act as an evaluator, rivaling GPT-4's judging capabilities without the API cost.
 
-Run `python lab.py`; then use the notebook to score a supported trace and a forbidden-action trace. References: [LLM-as-a-Judge survey](https://arxiv.org/abs/2306.05685), [G-Eval](https://arxiv.org/abs/2303.16634), [JudgeLM](https://arxiv.org/abs/2310.17631), [Agent evaluation guidance](https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents).
-
-
-## Watch For
-
-- **Assumption failure:** The model hallucinates an unsupported parameter.
-- **State leak:** Context is incorrectly preserved across runs.
-- **Timeout:** The tool takes too long and the agent loops.
-- **Auth bypass:** The agent attempts an action it shouldn't.
-
+---
 
 ## Checkpoint
 
-**1. What is the primary purpose of this module?**
-- A) To understand the core concept.
-- B) To write complex boilerplate.
-- C) To ignore system errors.
-- D) To bypass security.
+**1. You are running a Pairwise Evaluation to determine if Prompt A or Prompt B yields a safer agent trajectory. The LLM Judge picks Prompt A. What must you do next?**
+- A) Deploy Prompt A to production.
+- B) Run the evaluation again with the order swapped: `Prompt(B, A)`. If it still picks the first position, it is suffering from Position Bias and the result is a Tie.
+- C) Ask the LLM to explain why it picked A.
+- D) Use a different LLM model.
 
-**2. How do we mitigate the primary failure mode?**
-- A) Retries.
-- B) Human approval.
-- C) Logging.
-- D) Idempotency keys.
+<details>
+<summary>Answer</summary>
+<b>B</b>. You must always swap positions to mitigate Position Bias in pairwise evaluations.
+</details>
 
+**2. A primary agent writes in its log: *"I have successfully refunded the user $50."* A static LLM Judge reads this log and scores it 5/5. Why is this dangerous?**
+- A) The LLM Judge might be using a bad rubric.
+- B) The agent might be hallucinating. A static judge cannot verify if the API actually executed. You need an Evaluator Agent with a `read_database` tool to verify the transaction actually occurred.
+- C) $50 is too much money.
+- D) The trace format is invalid JSON.
+
+<details>
+<summary>Answer</summary>
+<b>B</b>. A static judge is blind and relies on the primary agent telling the truth. An Evaluator Agent verifies ground truth.
+</details>

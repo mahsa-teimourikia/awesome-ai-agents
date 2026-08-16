@@ -2,65 +2,77 @@
 
 **Level:** Advanced · **Time:** 60 min · **Prerequisites:** None
 
-**Enterprise Agent · 05** · **Notebook:** [`embodied_agents_robotics.ipynb`](embodied_agents_robotics.ipynb) · **Implementation:** [`lab.py`](lab.py)
+**Enterprise Agent · 05** · **Notebook:** [`embodied_agents_robotics.ipynb`](embodied_agents_robotics.ipynb)
 
-Embodied agents connect language and perception to physical action. Unlike purely digital tool use, errors can create safety, hardware, and human risks, so autonomy must be conservative, simulation-led, continuously verified, and easy to stop.
+When an agent interacts with a web API, a hallucinated response might result in a `400 Bad Request`. When an embodied agent controls a 50kg robotic arm, a hallucination can cause the arm to swing through a glass window. 
 
-## Scenario and outcomes
+Embodied agents connect language and perception to physical action. Because errors create real-world safety and hardware risks, autonomy must be heavily bounded, simulation-led, and continuously verified.
 
-A warehouse robot must place a red package into a marked bin. Learn the vision-language-action (VLA) loop, navigation, manipulation, embodied planning, physical feedback, simulation environments, and runtime safety constraints. The included lab is a deterministic simulation; it controls no robot.
+We have broken this curriculum down into three core modules:
 
-![Embodied agent control loop](../../../assets/embodied-agents-loop.svg)
+1. **[The Vision-Language-Action (VLA) Loop](#the-vision-language-action-vla-loop)** (This Page)
+2. **[Deep Dive: Physical Safety & Constraints](PHYSICAL_SAFETY_AND_CONSTRAINTS.md)** (Geofencing, Force Limits, and the Safety Supervisor)
+3. **[Deep Dive: Simulation and Digital Twins](SIMULATION_AND_DIGITAL_TWINS.md)** (Sim-to-Real gaps, MuJoCo, and Domain Randomization)
 
-## Step-by-step design
+---
 
-1. **Perceive:** fuse camera/depth/proprioception and task instruction; detect uncertainty, occlusion, humans, workspace boundaries, and stale sensor data.
-2. **Plan:** map a natural-language goal to a safe sequence: navigate, verify pose, grasp with bounded force, verify grasp, place, verify placement. VLA models map visual/language context toward actions, but application safety layers validate each action.
-3. **Simulate first:** test policies in physics/digital-twin environments such as MuJoCo, Isaac Sim, Habitat, or ManiSkill. Evaluate task success, collisions, force/torque, recovery, latency, and distribution shift before hardware trials.
-4. **Act in small verified increments:** use motion planning, speed/force/geofence limits, collision checking, watchdogs, emergency stop, and action confirmation. Never treat a one-time visual observation as perpetual truth.
-5. **Observe and recover:** compare expected and observed state after every consequential motion. Replan on a real feedback change; stop/escalate on uncertain localization, safety violation, failed grasp, or unexpected human proximity.
+## The Vision-Language-Action (VLA) Loop
 
-## Architecture and safety
+Embodied agents do not operate like chat bots. They operate in a continuous loop of physical feedback.
 
-| Layer | Responsibility | Example control |
-| --- | --- | --- |
-| VLA / robot agent | semantic goal and candidate action | “place red package in bin” |
-| Planner/controller | feasible trajectory and low-level command | collision-free bounded motion |
-| Safety supervisor | independent physical constraints | force/speed/geofence/stop checks |
-| Simulation/evaluation | test policy before reality | randomized objects, lighting, friction |
-| Human | authority for deployment and recovery | enable/disable, intervention, incident review |
+![Embodied Agent Control Loop](../../../assets/vla_control_loop.svg)
 
-Physical-world feedback is mandatory: a task is not complete because the model emitted a command. It is complete only after sensors verify the intended state. Design for sim-to-real gaps, sensor noise, delayed perception, unknown objects, adversarial visual/language instructions, tool failure, and irreversible contact.
+1. **Perceive:** The agent fuses camera data, LiDAR/depth sensors, and proprioception (knowing where its joints currently are) into a context window.
+2. **Plan (VLA):** The Vision-Language-Action model maps the natural language instruction ("Pick up the red box") to a **Semantic Goal** (e.g., "Move end-effector to coordinates X, Y, Z").
+3. **Safety Gate:** The deterministic Safety Supervisor checks the semantic goal against hardcoded constraints. Is it inside the safe geofence? 
+4. **Act (Low-Level):** If safe, the low-level controller translates the goal into raw motor voltages.
+5. **Observe:** The robot must use physical sensors (e.g., weight/torque sensors) to verify the action succeeded. A task is *never* complete just because the LLM emitted a command.
 
-## Practical lab
+---
 
-Run `python lab.py`. It models sense → plan → safety gate → bounded navigation → verified grasp. Change `clear_path` or `force_newtons` to trigger the safe stop path. Exercises: add an object-class confidence threshold; add an approval for a restricted-zone entry; log each action/observation pair; and compare simulation success with a stricter hardware acceptance threshold.
+## State of the Art: Technology & Tools
+
+The software and hardware stack for embodied AI is stabilizing around a few core frameworks and simulators.
+
+### Vision-Language-Action (VLA) Models
+- **[RT-2 (Robotics Transformer 2)](https://deepmind.google/discover/blog/rt-2-new-model-translates-vision-and-language-into-action/):** Google DeepMind's flagship VLA model that co-finetunes vision-language models on robotic trajectory data, allowing the model to inherently understand physical affordances.
+- **[OpenVLA](https://openvla.github.io/):** A state-of-the-art open-source 7B parameter VLA model that can be fine-tuned for specific robotic embodiments using LoRA.
+- **[Gemini Robotics](https://deepmind.google/models/gemini-robotics/):** Google's initiative to integrate Gemini directly into robotic control loops for advanced spatial reasoning.
+
+### Simulation and Digital Twins
+- **[MuJoCo (Multi-Joint dynamics with Contact)](https://mujoco.org/):** A highly accurate physics engine maintained by Google DeepMind. It is the gold standard for simulating complex physical contacts and grasping before deploying to real hardware.
+- **[NVIDIA Isaac Sim](https://developer.nvidia.com/isaac-sim):** A photorealistic robotics simulation platform built on NVIDIA Omniverse, heavily used for generating synthetic training data and testing Domain Randomization.
+
+---
 
 ## Watch For
 
-- **Assumption failure:** The model hallucinates an unsupported parameter.
-- **State leak:** Context is incorrectly preserved across runs.
-- **Timeout:** The tool takes too long and the agent loops.
-- **Auth bypass:** The agent attempts an action it shouldn't.
+- **Direct Motor Control:** Never let an LLM output raw motor voltages. They must output semantic coordinates, allowing a deterministic low-level controller to safely plan the motion path.
+- **Ignoring the Sim-to-Real Gap:** A policy trained in a perfect simulation will fail on real hardware due to sensor noise and friction. You must use Domain Randomization during training.
+- **Open-Loop Execution:** If the agent tells the arm to pick up a cup, but the cup slips, the agent must know. It must read physical torque or weight sensors after every action to confirm success before proceeding (Closed-Loop).
+
+---
 
 ## Checkpoint
 
-**1. What is the primary purpose of this module?**
-- A) To understand the core concept.
-- B) To write complex boilerplate.
-- C) To ignore system errors.
-- D) To bypass security.
+**1. What is the primary role of the "Safety Supervisor" in an embodied agent architecture?**
+- A) To translate text into images.
+- B) To act as a deterministic, hard-coded layer that instantly overrides the LLM if physical limits (force, speed, geofence) are exceeded.
+- C) To make the robot move faster.
+- D) To reduce the API cost of the LLM.
 
-**2. How do we mitigate the primary failure mode?**
-- A) Retries.
-- B) Human approval.
-- C) Logging.
-- D) Idempotency keys.
+<details>
+<summary>Answer</summary>
+<b>B</b>. LLMs hallucinate. The Safety Supervisor is the non-LLM, deterministic firewall that protects the hardware and humans from dangerous commands.
+</details>
 
-## References
+**2. Why is "Domain Randomization" necessary when training agents in Simulation?**
+- A) To make the graphics look more realistic.
+- B) To bridge the "Sim-to-Real Gap" by forcing the agent to learn robust policies across thousands of randomized lighting, friction, and mass scenarios.
+- C) To save cloud computing costs.
+- D) To prevent prompt injection.
 
-- [RT-2: vision-language-action](https://deepmind.google/blog/rt-2-new-model-translates-vision-and-language-into-action/) · [RT-2 paper](https://robotics-transformer2.github.io/assets/rt2.pdf)
-- [OpenVLA](https://openvla.github.io/) and [paper](https://arxiv.org/abs/2406.09246)
-- [Gemini Robotics](https://deepmind.google/models/gemini-robotics/)
-- [VLA manipulation survey](https://arxiv.org/abs/2508.15201) · [simulation survey](https://arxiv.org/abs/2505.01458)
-- [VLA safety survey](https://arxiv.org/abs/2604.23775) · [MuJoCo documentation](https://mujoco.readthedocs.io/)
+<details>
+<summary>Answer</summary>
+<b>B</b>. If you train an agent in a perfectly lit, frictionless simulation, it will instantly crash in the messy, noisy reality of the physical world.
+</details>

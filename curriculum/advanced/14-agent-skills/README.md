@@ -2,116 +2,52 @@
 
 **Level:** Advanced · **Time:** 60 min · **Prerequisites:** None
 
-**Advanced · 14** · **Notebook:** [`agent_skills.ipynb`](agent_skills.ipynb) · **Implementation:** [`lab.py`](lab.py)
+**Advanced · 14** · **Notebook:** [`agent_skills.ipynb`](agent_skills.ipynb)
 
-Skills are reusable packages of **procedural knowledge**: a focused description of when a capability applies, instructions for how to perform it, and optional scripts, references, templates, or assets. They are an architectural abstraction above raw tools. A tool performs one operation; a skill explains a repeatable goal-oriented workflow, constraints, expected artifacts, and how to use tools safely. Skills make agent behavior more reusable, reviewable, versionable, and progressively loadable.
+A "Tool" is a raw function (e.g., `read_database`). An "Agent Skill" is a reusable package of **Procedural Knowledge** that tells the agent *how* to use the tools to achieve a specific workflow.
 
-![Agent Skills architecture](../../../assets/agent-skills-architecture.svg)
+If you give an agent 5 tools, it might hallucinate the wrong way to combine them. If you give an agent a Skill, it will follow the exact procedural instructions you designed, drastically improving reliability and reducing token costs.
 
-## Scenario: Northstar operational playbooks
+We have broken this module down into three core deep-dives:
 
-Northstar operates incident-analysis and customer-impact skills. An agent receives a task, discovers only metadata for eligible skills, activates the smallest relevant skill, progressively loads instructions and references, then uses policy-scoped MCP tools or delegates a bounded subtask. The application records which skill/version ran and does not let a skill broaden its own authority.
+1. **[Deep Dive: Anatomy of a Skill](ANATOMY_OF_A_SKILL.md)** (The directory structure, `SKILL.md` metadata, and Progressive Disclosure to save context window tokens).
+2. **[Deep Dive: Skill Libraries & Routing](SKILL_LIBRARIES_AND_ROUTING.md)** (How Semantic Routers choose the right skill from a library of 500, and Supply-Chain security hashes).
+3. **[Deep Dive: Skills vs MCP](SKILLS_VS_MCP.md)** (Clarifying the exact architectural boundary between an MCP Server enforcing access, and a Skill providing prompt instructions).
 
-## Tools versus skills
+![Skill Activation Lifecycle](../../../assets/skill_activation_lifecycle.svg)
 
-| Dimension | Tool | Skill |
-| --- | --- | --- |
-| Unit of reuse | one typed operation | a procedure/capability package |
-| Example | `read_deployment(id)` | “Investigate release contribution using evidence, stop criteria, and a report template” |
-| Contents | schema, arguments, result/error | `SKILL.md` metadata/instructions plus optional scripts, references, assets |
-| Loading | offered/called at runtime | discover metadata, activate instructions, load deeper material only if needed |
-| Control boundary | tool authorization/validation | skill provenance/version/review plus tool authorization/validation |
-| Failure to avoid | vague broad tool | vague prompt packaged and treated as executable authority |
+---
 
-A skill can tell an agent which tools to consider, how to sequence them, what evidence to collect, what to avoid, and when to escalate. It cannot grant access to a tool, bypass policy, execute untrusted code, or make an action safe merely by describing it.
+## State of the Art: Technology & Tools
 
-## Skill anatomy and reusable capabilities
+The industry is rapidly standardizing how procedural knowledge is packaged and shared across agentic ecosystems.
 
-The open Agent Skills format centers a directory with a required `SKILL.md` containing YAML frontmatter (`name` and `description` at minimum) followed by instructions. It may include `scripts/`, `references/`, and `assets/`. A well-designed skill has a narrow capability, clear trigger, expected inputs/outputs, deterministic stop/escalation conditions, ownership/version, safety constraints, and tests. Keep the main instruction file concise; place deep references behind progressive disclosure.
+- **[Agent Skills Specification](https://github.com/agentskills/agentskills):** The open-source standard for defining skill directories with YAML frontmatter, progressive disclosure, and dependency tracking.
+- **[OpenAI Skills](https://openai.com/academy/skills/):** OpenAI's approach to packaging custom instructions and RAG documents into callable routines.
+- **[NVIDIA Skills Catalog](https://github.com/NVIDIA/skills):** An enterprise-grade catalog demonstrating how to govern, version, and route between hundreds of specialized agent workflows.
 
-```text
-incident-analysis/
-├── SKILL.md          # metadata, trigger, workflow, guardrails
-├── scripts/          # deterministic validators/helpers
-├── references/       # load only for the relevant decision
-└── assets/           # report template, schema, examples
-```
-
-## Skill descriptions and discovery
-
-The description is a routing interface: it tells an agent or orchestrator what the skill does and when it should activate. It must be specific enough to distinguish triggers and constraints, not a marketing claim such as “expert analyst.” Discovery should start with lightweight metadata, then filter by tenant, identity, ownership, provenance, compatibility, data classification, allowed tools, risk, cost/SLO, and policy. A semantic router may rank candidates, but a deterministic allowlist/policy filter decides eligibility.
-
-**Bad description:** “Handle anything about incidents.”
-
-**Better description:** “Use for tenant-scoped SaaS checkout incidents that need read-only metrics and deployment evidence. Produce a cited mitigation proposal; never execute actions. Escalate missing or conflicting evidence.”
-
-## Dynamic loading and procedural knowledge
-
-Progressive disclosure prevents every agent session from carrying every procedure. Discovery loads only name/description; activation loads `SKILL.md`; execution loads a named reference or script when the current step requires it. This reduces context cost and limits irrelevant or sensitive material. It also creates risks: a dynamically loaded skill can be stale, malicious, overly broad, or incompatible. Pin versions, verify provenance, scan scripts/assets, require review, evaluate behavior, and make activation visible in traces.
-
-Procedural knowledge differs from semantic memory. A policy saying *how to run a release investigation* belongs in a skill; a historical fact that *deploy 842 changed the payment timeout* belongs in evidence/knowledge. Keep the two separate so a changing fact does not silently rewrite a workflow and a workflow does not become an unsupported fact.
-
-## Skill libraries, routing, and composition
-
-A **skill library** is a governed catalog rather than a pile of files. Record owner, version, source/provenance, description/trigger, dependencies, data/tool requirements, risk, tests/evaluations, compatibility, deprecation, and revocation. Evaluate discovery accuracy (correct selected, missed relevant, unsafe selection), activation quality, workflow success, token cost, tool behavior, and policy violations.
-
-**Composition** combines procedures only when their contracts fit. Define handoff artifacts, precedence, shared state, budget, conflict behavior, and terminal state. Do not simply concatenate instructions or union tool privileges. The safe default is to intersect allowed tools under the caller’s policy; the orchestrator grants additional scope only after explicit authorization. A composite `incident-response` skill may orchestrate `incident-analysis` then `customer-impact`, but each must receive minimized context and return typed evidence.
-
-## Skills + MCP and skills + subagents
-
-MCP exposes a standardized boundary to tools, resources, and prompts. A skill provides the portable procedure that chooses and sequences approved MCP capabilities. Keep the layers distinct: skill content may recommend `read_deployment`; the MCP gateway authorizes the call and validates result/side effects. Skills can also be delegated to subagents: a coordinator assigns a skill/version plus a bounded task contract, tools/data scope, budget, expected artifact, deadline, and stop condition. The subagent does not inherit all coordinator tools merely because it activated a skill.
-
-```mermaid
-flowchart LR
-  T["Task + tenant policy"] --> D["Discover skill metadata"]
-  D --> F["Eligibility filter: provenance, risk, tools, compatibility"]
-  F --> A["Activate versioned SKILL.md"]
-  A --> R["Load only needed reference/script"]
-  R --> M["Scoped MCP tool call or subagent task"]
-  M --> V["Validate artifact + trace + evaluate"]
-  V --> E["Result / escalation"]
-```
-
-## Security and production checklist
-
-- Trust skills only from approved, reviewable sources; inventory provenance, owner, version, dependencies, and revocation path.
-- Treat skill instructions, scripts, references, and assets as supply-chain inputs; scan and sandbox executable content.
-- Enforce policy at activation and every tool/action boundary; skill metadata cannot widen identity, tenant scope, tools, or budget.
-- Use least privilege, short-lived delegated scopes, context minimization, argument/result validation, approvals, idempotency, traces, and evaluation.
-- Measure selection/activation errors and maintain fallback/escalation when no safe skill matches.
-
-## Lab and references
-
-Run `python lab.py`, then the notebook. The simulator discovers a metadata-only library, activates a matching skill under tool policy, rejects unavailable tools, and demonstrates conservative composition. Extend it with a version/revocation record, a malicious skill test, a composite workflow, and an MCP tool adapter.
-
-- [Agent Skills specification](https://github.com/agentskills/agentskills/blob/main/docs/specification.mdx)
-- [Agent Skills project](https://github.com/agentskills/agentskills) and [OpenAI Skills overview](https://openai.com/academy/skills/)
-- [NVIDIA skills catalog and governance discussion](https://github.com/NVIDIA/skills)
-- [Agent Skills research survey](https://arxiv.org/abs/2602.12430)
-- [MCP specification](https://modelcontextprotocol.io/specification/) and [A2A protocol](https://a2a-protocol.org/latest/)
-
+---
 
 ## Checkpoint
 
-**1. Which statements distinguish an agent skill from a tool?**
-- A) A tool normally performs one typed operation
-- B) A skill can package a workflow, instructions, references, scripts, and assets
-- C) Activating a skill automatically broadens all tool permissions
-- D) Skills can use progressive disclosure so deeper material loads only when relevant
-- E) A skill is a form of application authorization
+**1. Why is "Progressive Disclosure" a critical design pattern for Agent Skills?**
+- A) It hides errors from the user.
+- B) If an agent loads the full instructions for 50 different skills at once, the context window will be maxed out, API costs will explode, and the agent will suffer from massive instruction-confusion.
+- C) It is required by MCP.
+- D) It encrypts the Python scripts.
 
-**2. Which controls make a skill library safe to operate?**
-- A) Record owner, provenance, version, compatibility, risk, tests, and revocation
-- B) Filter discovery and activation by tenant, policy, and permitted tools
-- C) Union every participating skill's tool privileges when composing skills
-- D) Treat scripts, references, and assets as supply-chain inputs subject to review and scanning
-- E) Trace the selected skill version and evaluate discovery/activation behavior
+<details>
+<summary>Answer</summary>
+<b>B</b>. The Orchestrator should only load the YAML description of the skills to pick one, and only load the full `SKILL.md` for the single skill it activates.
+</details>
 
+**2. An agent loads an `infrastructure_admin` Skill that states: *"I have permission to reboot the production database."* However, the agent's IAM token only has `read-only` access. What happens when the agent tries to reboot the DB?**
+- A) The database reboots because the Skill granted permission.
+- B) The Orchestrator crashes.
+- C) The MCP Server rejects the tool call because Skills are just text/prompts and cannot widen the agent's actual cryptographic authority.
+- D) The agent escalates to a human.
 
-
-## Watch For
-
-- **Assumption failure:** The model hallucinates an unsupported parameter.
-- **State leak:** Context is incorrectly preserved across runs.
-- **Timeout:** The tool takes too long and the agent loops.
-- **Auth bypass:** The agent attempts an action it shouldn't.
+<details>
+<summary>Answer</summary>
+<b>C</b>. Skills are behavioral instructions. They do not bypass application-layer security or IAM policies.
+</details>

@@ -2,103 +2,49 @@
 
 **Level:** Advanced · **Time:** 60 min · **Prerequisites:** None
 
-**Enterprise Agent · 04** · **Notebook:** [`agentic_software_engineering.ipynb`](agentic_software_engineering.ipynb) · **Implementation:** [`lab.py`](lab.py)
+**Enterprise Agent · 04** · **Notebook:** [`agentic_software_engineering.ipynb`](agentic_software_engineering.ipynb)
 
-Coding agents make long-horizon behavior concrete: they must understand a repository, localize a change, plan, use a terminal, edit, generate and run tests, debug failures, review a patch, prepare a PR, and cooperate with CI/CD. The key production insight is that an agent may accelerate the engineering loop, but the repository, sandbox, tests, review, CI, and merge policy remain the safety and quality system.
+Coding agents are the ultimate test of long-horizon reasoning. To successfully resolve a GitHub issue, an agent must: understand a massive repository, localize the bug, plan a fix, navigate a bash terminal, edit files, write regression tests, debug stack traces, and submit a Pull Request.
 
-## Scenario and outcomes
+The most critical production insight is this: **An agent accelerates the writing of code, but the CI/CD pipeline, the Sandbox, and Human Review remain the non-negotiable safety gates.**
 
-Northstar Commerce has an EU checkout bug: an incompatible provider-region mapping can reach checkout. Build a bounded agent harness that creates a minimal, tested patch and a reviewer-ready PR draft—never an automatic merge or production deploy.
+We have broken this massive topic down into three core deep-dives:
 
-You will learn repository understanding, code search, planning, code generation, terminal tools, test generation/execution, debugging, review and PR agents, CI/CD agents, and coding-agent benchmarks.
+1. **[Deep Dive: Workspace and Sandboxing](WORKSPACE_AND_SANDBOXING.md)** (Why you must never give an agent a terminal on a host OS, and how to use E2B microVMs).
+2. **[Deep Dive: Evidence-Driven Development](EVIDENCE_DRIVEN_DEVELOPMENT.md)** (Forcing the agent to write a failing test *first* to prove the bug exists, preventing infinite loops).
+3. **[Deep Dive: Multi-Agent SWE Workflows](MULTI_AGENT_SWE_WORKFLOWS.md)** (Solving the "Rubber Stamp" problem by separating Planners, Coders, and Adversarial Reviewers).
 
-![Agentic software engineering lifecycle](../../../assets/agentic-software-engineering.svg)
+![Agentic SWE Loop](../../../assets/agentic_swe_loop.svg)
 
-## 1. The reliable coding-agent loop
+---
 
-```mermaid
-flowchart LR
- I["Issue + acceptance criteria"] --> U["Repository map and code search"] --> P["Change plan + risk"] --> E["Sandboxed edit"] --> T["Focused + regression tests"] --> R["Diff / security / reviewer analysis"] --> PR["PR draft with evidence"] --> CI["Independent CI gates"] --> H["Human review and merge"]
- T -->|failure| U
- R -->|missing evidence| U
-```
+## State of the Art: Technology & Tools
 
-### Step 1 — Understand before editing
+The ecosystem for Agentic SWE is moving from academic benchmarks to production tools.
 
-Give the agent a scoped checkout of a pinned commit, issue text, architecture/readme pointers, build/test commands, and explicit acceptance criteria. It should map modules, symbols, tests, dependencies, and ownership using code search/AST/IDE indexes; it must not infer behavior from filename similarity. Record files read and evidence for the suspected change location.
+- **[SWE-bench](https://www.swebench.com/):** The gold standard benchmark for evaluating coding agents. It measures how many real-world GitHub issues an agent can resolve autonomously.
+- **[SWE-agent](https://github.com/princeton-nlp/SWE-agent):** Princeton's open-source agent framework that pioneered the ACI (Agent-Computer Interface), optimizing how an LLM views terminal outputs.
+- **[Aider](https://aider.chat/):** A highly popular command-line AI pair programmer that excels at AST-based code editing and Git integration.
+- **[OpenDevin / OpenHands](https://github.com/All-Hands-AI/OpenHands):** A powerful open-source framework aiming to build fully autonomous SWE agents with robust Sandboxing.
+- **[E2B (Ephemeral Environments)](https://e2b.dev/):** The leading infrastructure provider for agentic sandboxing. It allows you to spawn a secure, firecracker microVM for an agent in milliseconds, protecting your host infrastructure from arbitrary code execution.
 
-### Step 2 — Plan the smallest safe change
+---
 
-The plan names affected files, intended behavior, invariant, tests, migration/compatibility impact, security/privacy implications, rollback, and stop conditions. Prefer a minimal patch over a broad refactor unless the issue requires redesign. A planner and executor can be separated, but plans are hypotheses: replan after test evidence, not vague self-reflection.
+## Framework Evaluation Questionnaire
 
-### Step 3 — Work only in a sandbox
+If your enterprise is evaluating an Agentic SWE tool (or building one internally), use this rigorous checklist to validate its architecture. If the answer to any of these is "No," the system is not ready for production.
 
-Terminal tools require an isolated workspace, restricted network, secret-free environment, allow-listed commands, resource/time limits, log capture, and no direct production credentials. Treat command output, repositories, issues, and dependency scripts as untrusted input. Do not let an agent run arbitrary installation/deployment commands because an issue says so.
+### 1. Execution & Security
+- [ ] **Sandboxing:** Does the agent execute its bash commands in an ephemeral, isolated container/microVM that is destroyed after the run?
+- [ ] **Network Egress:** Is the agent's environment restricted from accessing the public internet to prevent downloading malicious payloads?
+- [ ] **Secret Management:** Is the agent strictly prevented from accessing production AWS keys, `.env` files, or database credentials?
 
-### Step 4 — Test and debug evidence-first
+### 2. The Development Loop
+- [ ] **Evidence-Driven:** Does the agent require a regression test to pass before it considers a task complete?
+- [ ] **AST Navigation:** Does the agent use Abstract Syntax Tree (AST) tools to map the repo, rather than fragile `grep` commands?
+- [ ] **Timeout Budgets:** Is there a hard limit on the number of bash executions to prevent the agent from getting stuck in an infinite debugging loop and burning API credits?
 
-Add a regression test that fails before the patch and passes after it; run focused tests then relevant broader checks. A passing test is evidence, not proof: inspect coverage, negative/edge paths, compatibility, security, and test quality. On failure, localize, state the observation, modify the plan, and retry within a fixed budget. Terminate with escalation when evidence remains insufficient.
-
-### Step 5 — Separate patch author, reviewer, CI, and merger
-
-The author produces a diff and evidence. A review agent checks requirements, scope creep, security, tests, and maintainability; it should not rubber-stamp its own patch. CI independently runs reproducible checks. A PR agent summarizes intent, files, tests, risk, rollback, and known limitations. Protected-branch policy and a human reviewer retain merge authority.
-
-## 2. Agent roles and controls
-
-| Role | Output | Must not do | Gate |
-| --- | --- | --- | --- |
-| Repository/search agent | Map, symbols, relevant tests | Modify files | Pinned commit and scoped read access |
-| Planner | Change/test/risk plan | Assume acceptance criteria | Human or policy review for high risk |
-| Coding agent | Minimal patch | Merge/deploy, access secrets | Sandboxed workspace + command budget |
-| Test/debug agent | Reproducible results and failures | Treat green tests as total correctness | Independent test/coverage/security checks |
-| Review agent | Findings with file/line evidence | Approve its own implementation | Separation of duties |
-| PR/CI agent | PR summary, workflow status | Bypass branch protection | Protected branch + human merge |
-
-## 3. Evaluation and benchmarks
-
-Use internal tasks first: pinned repositories, realistic issues, hidden/independent tests, security checks, review outcomes, cost/latency, and accepted-patch rate. SWE-bench evaluates real GitHub issue resolution and is useful for comparison, but it is not a complete deployment evaluation; current critique shows benchmark/task and test-quality limitations. Track repository understanding separately as it is a distinct capability. Useful public references include SWE-bench/Verified/Multimodal, SWE-agent, SWE-Explore, Terminal-Bench, and long-horizon benchmarks such as SWE-bench Pro. Do not claim production readiness from a leaderboard score.
-
-## 4. Practical lab
-
-Run `python lab.py`. The deterministic harness searches a simulated repository, plans a narrow region-mapping fix, edits a sandbox, runs a regression and contract test, and prepares a PR only after evidence exists. It deliberately has no merge/deploy capability.
-
-Experiments: remove the regression test and see review block the PR; add a broad refactor and ask the reviewer to reject scope creep; simulate a failing test and enforce a retry budget; add a leaked-secret scan; compare a one-shot patch with the evidence-driven loop; and record cost per accepted PR rather than cost per generation.
-
-## Production checklist
-
-- [ ] Pinned commit, task contract, ownership, and environment/secret boundaries.
-- [ ] Sandboxed terminal with command/network/resource controls and audit logs.
-- [ ] Repository-aware search/context plus explicit planning and scope budget.
-- [ ] Fail-to-pass regression tests, broader test/quality/security checks, and independent review.
-- [ ] PR includes evidence, test results, risks, rollback, and limitations.
-- [ ] CI/CD uses protected branches, required checks, code-owner/human review, and no agent merge/deploy bypass.
-- [ ] Evals cover task outcome, trajectory, test adequacy, security, latency, spend, and regressions.
-
-## Watch For
-
-- **Assumption failure:** The model hallucinates an unsupported parameter.
-- **State leak:** Context is incorrectly preserved across runs.
-- **Timeout:** The tool takes too long and the agent loops.
-- **Auth bypass:** The agent attempts an action it shouldn't.
-
-## Checkpoint
-
-**1. What is the primary purpose of this module?**
-- A) To understand the core concept.
-- B) To write complex boilerplate.
-- C) To ignore system errors.
-- D) To bypass security.
-
-**2. How do we mitigate the primary failure mode?**
-- A) Retries.
-- B) Human approval.
-- C) Logging.
-- D) Idempotency keys.
-
-## References
-
-- [SWE-bench](https://github.com/swe-bench/SWE-bench) and [SWE-agent](https://swe-agent.com/)
-- [OpenAI: separating signal from noise in coding evaluations](https://openai.com/index/separating-signal-from-noise-coding-evaluations/)
-- [Anthropic: demystifying evals for AI agents](https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents)
-- [SWE-Explore](https://arxiv.org/abs/2606.07297) · [UTBoost](https://arxiv.org/abs/2506.09289) · [Claw-SWE-Bench](https://arxiv.org/abs/2606.12344)
-- [Claude Code](https://www.anthropic.com/product/claude-code) · [OpenAI AI-native engineering team guide](https://cdn.openai.com/business-guides-and-resources/building-an-ai-native-engineering-team.pdf)
+### 3. CI/CD & Deployment
+- [ ] **Separation of Duties:** Does the system use an adversarial Reviewer agent to critique the code before submitting a PR?
+- [ ] **No Auto-Merge:** Is the agent completely blocked from merging code to the `main` branch or deploying to production?
+- [ ] **Human in the Loop:** Does the workflow end with a draft Pull Request that requires a human engineer's approval?

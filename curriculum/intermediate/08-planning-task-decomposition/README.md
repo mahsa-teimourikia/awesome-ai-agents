@@ -1,6 +1,6 @@
 # 07 — Planning and task decomposition
 
-**Level:** Intermediate · **Primary lab:** [`planning_task_decomposition.ipynb`](planning_task_decomposition.ipynb) · **Runnable implementation:** [`lab.py`](lab.py)
+**Level:** Intermediate · **Primary lab:** **Notebook:** [`08_planning_task_decomposition.ipynb`](08_planning_task_decomposition.ipynb)
 
 **Scenario:** Northstar, a SaaS support team, is integrating this concept into their agentic workflow.
 
@@ -23,19 +23,7 @@ By the end, you can:
 
 Complete [the agent loop](../../beginner/02-agent-loop/README.md), [workflow or agent](../../beginner/03-workflow-or-agent/README.md), and [tool engineering](../01-tool-engineering/README.md) first. This lesson assumes a planner may use an LLM, but it deliberately keeps authorization, validation, scheduling, retries, and termination in application code.
 
-```mermaid
-flowchart LR
-    A[Research request] --> B[Goal contract and constraints]
-    B --> C[Planner proposes typed tasks]
-    C --> D{Validate DAG and policy}
-    D -- reject --> C
-    D -- accept --> E[Parallel evidence tasks]
-    E --> F[Compare and reconcile]
-    F --> G{Quality checkpoint}
-    G -- gaps or failure --> H[Bounded replan]
-    H --> D
-    G -- sufficient evidence --> I[Technical report with citations]
-```
+![Diagram](diagram.svg)
 
 ## Step 1 — Convert a request into a goal contract
 
@@ -149,7 +137,7 @@ Set multiple terminal conditions: all required report sections are evidenced; an
 
 ## Guided lab
 
-1. Run `python lab.py` from this folder. The first run simulates a missing implementation source and shows the event trace.
+1. Open `08_planning_task_decomposition.ipynb` from this folder. The first run simulates a missing implementation source and shows the event trace.
 2. Open the notebook and inspect the initial topological layers. Which source tasks can run in parallel?
 3. Run the dynamic scenario. Identify the exact observation that triggered a replan and the dependency edge that changed.
 4. Add a required section such as “security implications.” Observe why a valid graph alone is not enough: the checkpoint must verify coverage.
@@ -190,3 +178,13 @@ Set multiple terminal conditions: all required report sections are evidenced; an
 - **State leak:** Context is incorrectly preserved across runs.
 - **Timeout:** The tool takes too long and the agent loops.
 - **Auth bypass:** The agent attempts an action it shouldn't.
+
+## Deep Dives & State of the Art
+
+- **[Plan-and-Execute Architecture](DEEP_DIVE_PLAN_AND_EXECUTE.md)**
+
+
+## SOTA Deep Dives
+Explore industry-standard architectural patterns and enterprise implementation details:
+
+- [Plan And Execute](DEEP_DIVE_PLAN_AND_EXECUTE.md)

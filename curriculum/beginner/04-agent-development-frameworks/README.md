@@ -3,7 +3,6 @@
 **Level:** Beginner · **Prerequisites:** [the agent loop](../02-agent-loop/README.md) and [workflow or agent?](../03-workflow-or-agent/README.md)
 
 **Scenario:** Northstar, a SaaS support team, is integrating this concept into their agentic workflow.
-**Run:** [`lab.py`](lab.py)
 **Primary scenario:** an operations assistant for the fictional Northstar Commerce SaaS platform
 
 ## Why this course exists
@@ -12,24 +11,7 @@ An agent framework is not an agent architecture. A framework packages recurring 
 
 This course takes one bounded business domain—investigating checkout and support issues—and implements different slices with frameworks chosen for their natural strengths. The deterministic lab stays runnable without credentials. Each notebook also includes an optional real-framework implementation that you can enable locally with the framework and provider credentials named in that lesson.
 
-```mermaid
-flowchart LR
-    U["Support request"] --> P["Application policy<br/>identity · budgets · permissions"]
-    P --> F{"Framework capability needed?"}
-    F -->|"managed tools, handoffs, traces"| O["OpenAI Agents SDK"]
-    F -->|"typed output and dependency injection"| PY["Pydantic AI"]
-    F -->|"state graph and durable interrupts"| LG["LangGraph"]
-    F -->|"Google ecosystem and agent composition"| ADK["Google ADK"]
-    F -->|"Microsoft agents and workflows"| MAF["Microsoft Agent Framework"]
-    F -->|"role / task / crew / flow"| CR["CrewAI"]
-    O --> E["Evidence-backed result"]
-    PY --> E
-    LG --> E
-    ADK --> E
-    MAF --> E
-    CR --> E
-    E --> P
-```
+![Diagram](diagram.svg)
 
 ## Learning outcomes
 
@@ -82,7 +64,7 @@ This is a practical comparison, not a benchmark. Version, model provider, deploy
 
 ### Suggested order
 
-1. Run `python lab.py` to see the same deterministic evidence and policy boundary used by every notebook.
+1. Open `04_agent_development_frameworks.ipynb` to see the same deterministic evidence and policy boundary used by every notebook.
 2. Complete **04a** first. It is the closest continuation of the manual loop.
 3. Complete **04b** when typed, machine-consumed outputs are the central risk.
 4. Complete **04c** when a run needs stateful branching or an approval pause.
@@ -142,3 +124,15 @@ This is a practical comparison, not a benchmark. Version, model provider, deploy
 - [Anthropic: Building effective agents](https://www.anthropic.com/engineering/building-effective-agents)
 - [ReAct: Synergizing reasoning and acting in language models](https://arxiv.org/abs/2210.03629)
 - [OWASP Top 10 for LLM Applications](https://genai.owasp.org/)
+
+## Deep Dives & State of the Art
+
+To understand the rapidly evolving landscape of agent frameworks, review these expanded topics:
+
+- **[The Framework Landscape Deep Dive](DEEP_DIVE_FRAMEWORK_LANDSCAPE.md)**
+
+
+## SOTA Deep Dives
+Explore industry-standard architectural patterns and enterprise implementation details:
+
+- [Framework Landscape](DEEP_DIVE_FRAMEWORK_LANDSCAPE.md)

@@ -2,115 +2,138 @@
 
 **Level:** Advanced · **Time:** 60 min · **Prerequisites:** None
 
-**Enterprise Agent · 17** · **Notebook:** [`agent_protocol_stack.ipynb`](agent_protocol_stack.ipynb) · **Implementation:** [`lab.py`](lab.py)
+**Enterprise Agent · 17** · **Notebook:** [`agent_protocol_stack.ipynb`](agent_protocol_stack.ipynb)
 
-Agent systems increasingly need to cross framework, vendor, organizational, user-interface, tool, commerce, and payment boundaries. A protocol ecosystem is emerging because a tool contract cannot describe a remote agent’s task lifecycle, and a chat-stream protocol cannot safely authorize a payment. The goal is not to adopt every protocol; it is to place interoperable contracts at the right boundary while retaining application-owned identity, authorization, policy, audit, and recovery.
+Agent systems increasingly need to cross framework, vendor, organizational, user-interface, tool, commerce, and payment boundaries. A protocol ecosystem is emerging because a simple tool contract cannot describe a remote agent’s task lifecycle, and a chat-stream protocol cannot safely authorize a payment. The goal is not to adopt every protocol—it is to place interoperable contracts at the right boundary while retaining application-owned identity, authorization, policy, audit, and recovery.
 
-![Agent protocol stack](../../../assets/agent-protocol-stack.svg)
+## Why a Protocol Stack is Emerging
 
-## Scenario: Northstar’s delegated incident proposal
+Without common contracts, every pair of agents, tools, frontends, and commerce providers requires bespoke integrations. The AI landscape is shifting from monolithic frameworks to a loosely coupled network of specialized models, sandboxed execution environments, and autonomous agents. 
 
-Northstar’s incident coordinator discovers a release-analysis agent, delegates a tenant-scoped `deployment-analysis` task, receives status updates, calls a permitted deployment tool, and displays a structured approval card to a human. It prepares a mitigation proposal only. This example makes four distinctions concrete: an agent is not a tool, an interface event is not authorization, discovered capability is not trust, and a payment/commerce intent is not permission to transact.
+Shared protocols make capabilities discoverable, reduce glue code, and prevent vendor lock-in. However, **protocols do not solve security, correctness, identity, tenancy, governance, or business authorization by themselves**. Treat protocol metadata, remote descriptions, tool responses, and agent messages as untrusted data until verified by the receiving application.
 
-## Why a protocol stack is emerging
+## The Modern Agent Protocol Stack
 
-Without common contracts, every pair of agents, tools, frontends, and commerce providers requires bespoke integrations. Shared protocols can make capabilities discoverable and reduce glue code, but they do not solve security, correctness, identity, tenancy, governance, or business authorization by themselves. Treat protocol metadata, remote descriptions, tool responses, and agent messages as untrusted data until verified by the receiving application.
+![The Modern Agent Protocol Stack](../../../assets/protocol_stack.svg)
 
-```mermaid
-flowchart TB
-  U["User / application"] <-->|"AG-UI events"| A["User-facing agent"]
-  A <-->|"A2UI schema-rendered components"| UI["Native web / mobile / desktop renderer"]
-  A <-->|"A2A Agent Card + Task + status"| R["Remote specialist agent"]
-  A <-->|"MCP tools/resources/prompts"| T["Tool and context servers"]
-  A --> C["Commerce: UCP"]
-  C --> P["Payment intent / mandate: AP2"]
-  I["Identity, delegated authority, policy, audit, observability"] --- A
-  I --- R
-  I --- T
-  I --- C
-  I --- P
-```
+## Layer-by-Layer Guide
 
-## Layer-by-layer guide
+### 1. Tool & Context Layer (Model Context Protocol - MCP)
+**Standard by:** Anthropic (2024)
 
-| Protocol | Boundary and purpose | What it does not decide | When it helps |
-| --- | --- | --- | --- |
-| [MCP](https://modelcontextprotocol.io/specification/) | Agent/client ↔ tools, resources, prompts, context servers | whether a model should call a tool; authorization policy; correctness of returned data | standardized integrations to enterprise data and actions |
-| [A2A](https://a2a-protocol.org/latest/) | Agent ↔ remote agent task collaboration | whether a remote agent is trusted, eligible, authorized, or worth delegating to | cross-framework/vendor agent discovery, delegated long-running tasks, progress/cancel flows |
-| [AG-UI](https://docs.ag-ui.com/) | Agent ↔ user-facing application events and state | backend authorization; UI action safety | streaming, stateful agent experiences and user approvals |
-| [A2UI](https://a2ui.org/specification/v0.9-a2ui/) | Agent-generated UI description ↔ native renderer | arbitrary code execution; server-side authorization | rich dynamic forms/cards rendered safely through an allowed component schema |
-| UCP | Commerce interaction contract | payment authorization, regulatory compliance, merchant risk | portable product/order/checkout interactions where adopted |
-| AP2 | Agent payment intent/delegation/authorization concepts | merchant execution, identity trust, fraud and policy decisions | separating user intent from payment credentials and transaction execution |
+The **Model Context Protocol (MCP)** acts as a "USB-C" for AI models. It uses JSON-RPC 2.0 to standardize how AI applications (Hosts) communicate with data sources and tools (Servers).
 
-### MCP — tools and context, not another agent runtime
+MCP servers expose three distinct capabilities:
+- **Resources:** Data and context (e.g., local files, database records, GitHub repositories).
+- **Tools:** Actionable functions the AI can execute (e.g., calculators, API actions).
+- **Prompts:** Templated messages and workflows.
 
-MCP servers expose resources, prompts, and tools through capability schemas. A client should discover only the capabilities allowed for the request’s authorization context, validate tool arguments/results, preserve provenance, and make side-effecting calls subject to application policy and approval. Tool descriptions and returned content can be malicious or wrong; the protocol’s existence does not make them instructions or authority. Use MCP when a capability is best understood as a constrained service/tool. Do not use it merely to make a complex autonomous peer look like a function call.
+**When to use:** Use MCP when connecting an LLM to internal business tools or enterprise databases. It eliminates the need to write custom integration code for every new LLM or tool.
+**Important:** A tool description or returned content can be malicious. MCP defines the *format* of the tool, but your application must enforce authorization policies on side-effecting calls.
 
-### A2A — agent discovery, tasks, and delegation
+### 2. Client-to-Agent Execution Layer (Agent Protocol)
+**Standard by:** AI Engineer Foundation (AIEF)
 
-A2A addresses a different problem: a remote agent may have opaque internal reasoning, its own tools, its own lifecycle, and need to collaborate over multiple messages. Its Agent Card advertises capabilities and authentication requirements; clients can submit tasks, receive messages/status updates, query/cancel tasks, and use discovery to identify candidates. A2A is valuable when delegation is cross-domain, cross-team, long-running, or cross-framework. It is unnecessary for a local function with a known schema.
+The **Agent Protocol** is a framework-agnostic REST/HTTP specification designed to standardize how clients interact with agents. It defines primitives like **Runs**, **Tasks**, **Steps**, and **Artifacts**, creating a predictable lifecycle for how agents process and report their activities.
 
-An Agent Card is a **candidate description**, not a security grant. Before delegation, validate issuer/discovery source, identity/auth method, tenant/residency, capability version, data classification, allowed purpose, risk tier, cost/SLO, and revocation status. Send a minimized task contract with correlation ID, expiry, scope, budget, and expected artifact. At completion, verify evidence and re-authorize any consequential follow-on action. The A2A documentation also notes that standard registry APIs are not defined: an enterprise registry/gateway is an application/control-plane decision.
+**When to use:** Use the Agent Protocol when you are orchestrating an agent within a cloud execution environment (like E2B sandboxes) or building a frontend that needs to reliably query the step-by-step progress of an agent built on arbitrary frameworks (AutoGPT, LangChain, etc.).
 
-### AG-UI and A2UI — interaction versus generated interfaces
+### 3. Agent-to-Agent Collaboration Layer (A2A)
+**Standard by:** Linux Foundation (Originally Google, 2025)
 
-AG-UI standardizes event-based agent-to-application interaction such as message, state, tool, and lifecycle events. It helps a frontend render streaming and interruptible agent work without coupling to every framework. A2UI focuses on the UI payload itself: a renderer receives streamed JSON component descriptions and renders an approved native component set. These protocols are complementary: AG-UI carries the interaction; A2UI can supply a structured dynamic interface. Neither permits an agent to execute arbitrary browser code or approve itself. Every user click remains an authenticated application event whose scope, consent, freshness, and policy must be rechecked server-side.
+The **Agent2Agent (A2A) Protocol** addresses peer-to-peer delegation between autonomous agents. A remote agent may have opaque internal reasoning, its own tools, its own lifecycle, and a need to collaborate over multiple messages. 
 
-### UCP and AP2 — commerce and payment boundaries
+A2A allows agents to publish **Agent Cards**—a manifest advertising their capabilities, required credentials, and accepted data formats. Clients can submit tasks, receive status updates, query/cancel tasks, and discover candidates.
 
-Commerce and payment protocols aim to express product discovery, cart/checkout, payment intent, and delegated transaction context across systems. The exact specifications and adoption remain evolving, so build adapters and isolate them behind your own transaction service. Keep the separation strict: an agent may prepare a cart or payment proposal; the user, merchant, payment provider, and policy system determine consent, authentication, mandates, fraud checks, limits, receipts, and execution. Never place payment credentials in prompt context or allow an agent-generated UI event to bypass authorization.
+**When to use:** Use A2A when delegation is cross-domain, cross-team, long-running, or cross-framework. 
+**Important:** An Agent Card is a *candidate description*, not a security grant. Always verify identity, tenant residency, and cost/SLO before delegating a task.
 
-## A2A delegation lifecycle: step by step
+### 4. Realtime & Multimodal Layer (WebRTC / Live APIs)
+With the advent of fast, multimodal models, stateless HTTP is often insufficient for fluid voice-to-voice or vision-to-voice interaction.
 
-1. **Discover:** resolve an Agent Card from an approved registry, allowlist, or trusted URI; do not use open-web discovery as an authorization source.
-2. **Verify eligibility:** confirm identity, authentication scheme, tenant/data residency, skill, version, risk tier, health/SLO, cost, and revocation status.
-3. **Create a bounded task:** include task/correlation ID, objective, input artifact references, allowed data, deadline, budget, cancellation, expected output, and no implied authority.
-4. **Observe progress:** process messages/status as untrusted records; correlate, rate-limit, trace, and persist task state. Support cancel/timeouts and duplicate delivery.
-5. **Validate result:** check schema, provenance, freshness, source support, tenant, policy, and claimed confidence before synthesis.
-6. **Authorize next action:** a remote recommendation is not permission. Revalidate identity, delegated scope, approval, idempotency, and business policy at the tool/action boundary.
+Modern agents leverage protocols like **WebRTC** or persistent WebSockets (e.g., OpenAI Realtime API, Gemini Live API) to stream bidirectional audio and video. These protocols handle latency, jitter, Server Voice Activity Detection (VAD), and interruptibility, allowing humans to literally converse with agents.
 
-## Implementation lab
+**When to use:** Use when building voice assistants, live vision processing, or any interface where sub-second latency and interruption handling are critical.
 
-The credential-free [`lab.py`](lab.py) simulates an A2A-like Agent Card, trusted discovery filtering, tenant-scoped task delegation, an MCP-style narrow tool call, and an AG-UI/A2UI-style approval event. It deliberately rejects capability/scope mismatches, denied tool access, and UI actions outside the allowed component schema. The notebook explains each contract, tests the failure paths, and compares the layers.
+### 5. UI & Presentation Layer (AG-UI & Generative UI)
+**AG-UI** standardizes event-based agent-to-application interactions, handling states, tool invocations, and lifecycle events seamlessly without coupling to a specific framework.
 
-## Technology, architecture, and evaluation choices
+Alternatively, **Generative UI protocols** (e.g., Vercel AI SDK, A2UI) focus on streaming rich, native UI components directly from the agent. The renderer receives streamed JSON descriptions and safely renders interactive components (like dynamic approval cards or charts).
 
-| Need | Prefer | Evaluate |
-| --- | --- | --- |
-| Local bounded tool | typed SDK/function or MCP server | schema validity, permission enforcement, tool success, audit |
-| Remote autonomous specialist | A2A task contract or a purpose-built async API | discovery/trust, delegation success, status/cancel/recovery, cross-tenant denial |
-| Streaming human experience | AG-UI | UI lifecycle, interruption, state consistency, approval trace |
-| Dynamic trusted UI | A2UI renderer with component allowlist | schema/render validation, no arbitrary code, consent path |
-| Commerce/payment | vendor/merchant controls with UCP/AP2 adapters where suitable | explicit intent, mandate/consent, limits, fraud, reconciliation, receipts |
+**When to use:** When you want an agent to render dynamic data (like a stock chart or a confirmation form) rather than just vomiting markdown text.
 
-## Security and production checklist
+### 6. Commerce & Identity Layer (UCP / AP2)
+Commerce (UCP) and payment (AP2) protocols aim to express product discovery, cart/checkout, payment intents, and delegated transactions across systems. 
 
-- Authenticate agents and users separately; propagate only short-lived, least-privilege delegated authority.
-- Treat cards, tool descriptions, messages, UI schemas, retrieved content, and remote results as untrusted data.
-- Enforce tenant/data classification, egress, tool allowlists, rate/budget limits, idempotency, cancellation, and observability at protocol boundaries.
-- Keep an approved agent/tool registry, version/provenance inventory, revocation path, compatibility tests, and audit correlation across protocols.
-- Revalidate consequential actions after any delegation, UI interaction, status resume, or payment step.
+**Important:** Never place payment credentials in prompt context. An agent may *prepare* a cart or payment proposal, but the user and payment provider must determine consent, authentication, and execution.
+
+---
+
+## Protocol Comparison Matrix
+
+| Protocol | Boundary & Purpose | Transport | When to Choose |
+| :--- | :--- | :--- | :--- |
+| **MCP** | Agent ↔ Tools, Resources, Data | JSON-RPC | When connecting an agent to enterprise data, databases, or local file systems. |
+| **Agent Protocol** | Client ↔ Agent Lifecycle | REST / HTTP | When you need a unified API to start, monitor, and retrieve artifacts from agent runs (e.g., UI to backend agent). |
+| **A2A** | Agent ↔ Agent Delegation | JSON-RPC + SSE | When an agent needs to delegate a complex, long-running task to another specialized agent. |
+| **Live APIs / WebRTC** | User ↔ Agent Multimodal | WebSockets / WebRTC | When building low-latency, bidirectional voice and vision experiences. |
+| **AG-UI / GenUI** | Agent ↔ Native UI Renderer | SSE / JSON streams | When rendering rich, interactive React/native components dynamically from agent outputs. |
+
+---
+
+## Scenario: Northstar’s Delegated Incident Proposal
+
+To make this concrete, imagine an incident response at Northstar Corporation:
+1. The **User** tells their Voice Agent (via **WebRTC**) that the production site is down.
+2. The Voice Agent uses **Agent Protocol** to spin up an Incident Coordinator agent.
+3. The Coordinator discovers a specialized Release-Analysis agent via an **A2A** registry and delegates a tenant-scoped `deployment-analysis` task.
+4. The Release-Analysis agent uses **MCP** to query the company's internal GitHub and Jira databases.
+5. The Coordinator agent aggregates the findings and streams a structured mitigation proposal back to the User's dashboard using a **Generative UI** component.
+6. The user clicks "Approve Mitigation", triggering a strict, out-of-band authorization flow.
+
+*This example makes three distinctions concrete: an agent is not a tool (MCP vs A2A), an interface event is not authorization, and discovered capability is not trust.*
+
+---
+
+## Security and Production Checklist
+
+- **Least Privilege:** Authenticate agents and users separately; propagate only short-lived, least-privilege delegated authority.
+- **Zero Trust:** Treat agent cards, tool descriptions, messages, UI schemas, retrieved content, and remote results as untrusted data.
+- **Boundaries:** Enforce tenant/data classification, egress, tool allowlists, rate/budget limits, idempotency, cancellation, and observability at every protocol boundary.
+- **Registry:** Keep an approved agent/tool registry, version/provenance inventory, revocation path, compatibility tests, and audit correlation across protocols.
+- **Revalidation:** Always revalidate consequential actions after any delegation, UI interaction, status resume, or payment step.
+
+---
 
 ## Watch For
 
-- **Assumption failure:** The model hallucinates an unsupported parameter.
-- **State leak:** Context is incorrectly preserved across runs.
-- **Timeout:** The tool takes too long and the agent loops.
-- **Auth bypass:** The agent attempts an action it shouldn't.
+- **Assumption failure:** The model hallucinates an unsupported parameter in an MCP tool call.
+- **State leak:** Context is incorrectly preserved across Agent Protocol runs.
+- **Timeout:** An A2A task takes too long, failing to send SSE heartbeats, and the orchestrator loops or retries destructively.
+- **Auth bypass:** The agent attempts an action it shouldn't, bypassing the backend policy engine.
+
+---
 
 ## Checkpoint
 
 **1. Which protocol-layer pairings are correctly described?**
-- A) A2A: remote agent discovery, tasks, messages, delegation, and status
-- B) AG-UI: agent-to-user-application interaction events and state
-- C) A2UI: schema-rendered dynamic interface descriptions
-- D) MCP: a replacement for payment-provider consent and fraud controls
-- E) UCP/AP2-style boundaries: commerce/payment intent that still require separate authorization controls
+- A) A2A: Remote agent discovery, tasks, messages, delegation, and status.
+- B) Agent Protocol: Standardizing client-to-agent lifecycle (runs, tasks, steps).
+- C) MCP: A standard for agent-to-agent collaboration and task delegation.
+- D) WebRTC: A standard for connecting LLMs securely to enterprise SQL databases.
+- E) Generative UI: Schema-rendered dynamic interface descriptions.
+
+<details>
+<summary>Answer</summary>
+<b>A, B, and E</b> are correct. C is incorrect (MCP is for tools/resources, not agent delegation). D is incorrect (WebRTC is for realtime streaming voice/video, not databases).
+</details>
+
+---
 
 ## References
 
-- [MCP specification](https://modelcontextprotocol.io/specification/) and [MCP tools specification](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/main/docs/specification/2026-07-28/server/tools.mdx)
-- [A2A protocol specification](https://a2a-protocol.org/latest/) and [A2A Agent Discovery](https://a2a-protocol.org/latest/topics/agent-discovery/)
-- [AG-UI documentation](https://docs.ag-ui.com/) and [A2UI specification](https://a2ui.org/specification/v0.9-a2ui/)
+- [MCP Specification](https://modelcontextprotocol.io/specification/)
+- [Agent Protocol (AI Engineer Foundation)](https://agentprotocol.ai/)
+- [A2A Protocol Specification](https://a2a-protocol.org/latest/)
 - [Survey of agent interoperability protocols](https://arxiv.org/abs/2505.02279)
 - [MCP/A2A coordination comparison](https://arxiv.org/abs/2607.23884)

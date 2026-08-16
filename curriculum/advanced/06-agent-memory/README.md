@@ -1,117 +1,53 @@
-# 06 — Agent Memory
+# Agent Memory
 
-**Level:** Advanced · **Notebook:** [`agent_memory.ipynb`](agent_memory.ipynb) · **Runnable lab:** [`lab.py`](lab.py)
+**Level:** Advanced · **Time:** 60 min · **Prerequisites:** None
 
-Memory is not a conversation transcript or a vector database feature. It is a governed **write → manage → read** subsystem: decide what may be stored, validate and scope it, consolidate or forget it, retrieve only what is useful now, and show why a memory influenced a decision.
+**Advanced · 06** · **Notebook:** [`agent_memory.ipynb`](agent_memory.ipynb)
 
-The Northstar scenario continues with Acme’s EU payments incident. The agent must retain verified SLA and incident knowledge across runs without preserving an unverified “it is always Redis” diagnosis, crossing tenants, or making a past event look like a present fact.
+A massive misconception in agent development is that "memory" simply means dumping every conversation transcript into a vector database. This approach leads to context window exhaustion, contradiction loops, and catastrophic data leaks.
 
-## Outcomes
+True agent memory is a governed subsystem across multiple cognitive layers (Working, Episodic, Semantic, and Procedural), complete with strict rules for consolidation, forgetting, and tenant isolation.
 
-1. Design working, episodic, semantic, and procedural memory with separate contracts and lifecycle rules.
-2. Compare short-term state, long-term memory, vector retrieval, structured records, knowledge graphs, and temporal histories.
-3. Implement safe writes, ranking, consolidation, forgetting, contradiction resolution, reflection, personalization, and privacy boundaries.
-4. Explain why memory needs source, confidence, scope, freshness, retention, and audit metadata.
+We have broken this module down into three core deep-dives:
 
-```mermaid
-flowchart LR
- A[Observation or completed task] --> B{Write policy}
- B -- reject --> C[Audit rejection]
- B -- scoped verified item --> D[Memory store]
- D --> E[Consolidate / resolve conflicts / expire]
- E --> F[Ranked retrieval for current task]
- F --> G[Working context]
- G --> H[Decision and new observation]
- H --> A
-```
+1. **[Deep Dive: Memory Taxonomy](MEMORY_TAXONOMY.md)** (Differentiating Working, Episodic, Semantic, and Procedural memory, and when to use Vector vs Graph vs Relational databases).
+2. **[Deep Dive: Consolidation and Forgetting](CONSOLIDATION_AND_FORGETTING.md)** (The Reflection Pattern: using background jobs to extract concrete facts from noisy logs, superseding contradictions, and expiring stale data).
+3. **[Deep Dive: Memory Isolation and RAG](MEMORY_ISOLATION_AND_RAG.md)** (Multi-tenant security: Why semantic similarity searches cause data leaks, and how to use Hybrid Retrieval for hard pre-filtering).
 
-## Memory taxonomy
+![Memory Cognitive Architecture](../../../assets/memory_cognitive_architecture.svg)
 
-| Type | Purpose | Example | Default lifetime |
-| --- | --- | --- | --- |
-| Working memory | current task, scratch state, intermediate artifacts | current evidence IDs and approval state | one run/thread |
-| Episodic memory | previous events and task trajectories | “July incident had a region mismatch” | retained with timestamp/provenance |
-| Semantic memory | durable facts/knowledge | Acme premium-SLA rule | versioned, verified, revocable |
-| Procedural memory | strategies and skills | evidence-first incident workflow | policy/version controlled |
+---
 
-Short-term state belongs to a thread/checkpoint. Long-term memory is recalled across threads and must be explicitly namespaced. Context window capacity is not memory: only selected, current items should enter the prompt. External memory is data outside the window, subject to retrieval, access control, freshness, and deletion.
+## State of the Art: Technology & Tools
 
-## Storage and retrieval choices
+The industry is moving away from raw vector databases towards managed memory APIs that handle reflection and entity extraction automatically.
 
-| Representation | Strength | Weakness | Use it for |
-| --- | --- | --- | --- |
-| Vector memory | semantic similarity across unstructured notes | approximate matches, stale/contradictory retrieval | supporting examples, document-like memories |
-| Structured memory | schema, filters, audit, precise updates | needs careful schema design | preferences, SLA, approvals, facts |
-| Knowledge graph | relationships and multi-hop reasoning | extraction/maintenance cost | entities, dependencies, ownership |
-| Temporal/event log | sequence, recency, replay | not semantic by itself | incidents, actions, policy decisions |
-| Hierarchical summary | compressed long-horizon context | can lose detail | milestones and handoffs |
+- **[Mem0](https://github.com/mem0ai/mem0):** A self-improving memory layer for LLMs that handles user preferences, session history, and semantic memory extraction automatically.
+- **[Zep](https://www.getzep.com/):** A long-term memory store for AI apps that asynchronously extracts facts, summaries, and intents from chat histories.
+- **[GraphRAG (Microsoft)](https://microsoft.github.io/graphrag/):** A framework for building Semantic Memory using Knowledge Graphs to answer global questions across massive datasets.
 
-Use hybrid retrieval: hard namespace/authorization filter first; then metadata (type, time, project), semantic or graph retrieval; then rank by relevance, confidence, importance, recency, and contradiction status. A vector score must never bypass tenant scope or a retention rule.
-
-## The write → manage → read lifecycle
-
-### 1. Write
-
-Write only a typed item with namespace, source, confidence, sensitivity, timestamp, retention/expiry, and a reason. Do not store raw user text, tool output, hidden instructions, secrets, or an agent’s unsupported belief as a durable fact. Working notes may be lower confidence but should be explicitly labeled as provisional.
-
-### 2. Manage
-
-**Consolidation** combines repeated verified observations into a stable fact or summary. **Forgetting** expires irrelevant, wrong, sensitive, or policy-disallowed records. **Temporal memory** keeps past events anchored in time so “a prior incident” does not become “the current cause.” **Reflection** can propose a memory update after a task, but a deterministic validator must check evidence and write policy before commit.
-
-### 3. Read
-
-Retrieve memories only for a specific decision. Return a compact, attributable packet—not every historical note. Rank using relevance plus recency, confidence, importance, source authority, and task/tenant match. Include an explanation such as `fact-2 from verified postmortem` so a reviewer can challenge it.
-
-## Contradictions and personalization
-
-Contradictions are normal. Never overwrite silently. Keep the old record, mark it superseded/expired with a reason, write a new verified record linked to its predecessor, and retain an audit trail. The lab replaces an unverified “always Redis” claim with a scoped, evidence-first fact.
-
-Personalized memory is an authorization problem before it is a relevance problem. Namespace by tenant/user/project, minimize collection, encrypt/control access according to the system’s policy, provide retention/deletion controls, separate preferences from sensitive attributes, and never let one tenant’s memory enter another tenant’s retrieval result or cache.
-
-## Guided lab
-
-1. Run `python lab.py`. Inspect the initial retrieval, consolidation event, forgetting record, replacement fact, and audit log.
-2. Add an expired preference and verify it is not retrieved.
-3. Add a memory from `globex` and prove Acme retrieval cannot return it.
-4. Add a reflection proposal without an evidence source; make write policy reject it.
-5. Change the ranking function to overvalue recency. Which correct but older SLA fact becomes at risk?
-
-## Production checklist
-
-- [ ] Separate working/thread state from cross-thread memory.
-- [ ] Namespace every item and cache by tenant/user/project plus policy/version.
-- [ ] Store provenance, timestamp, confidence, sensitivity, retention, and deletion state.
-- [ ] Treat vector retrieval as a ranking feature, never access control.
-- [ ] Consolidate and forget through policy; preserve supersession/audit links.
-- [ ] Evaluate recall, precision, staleness, contradiction handling, personalization benefit, leakage, deletion, cost, and downstream decision quality.
-- [ ] Keep sensitive and untrusted data out of memory by default; make writes reversible.
-
-## Watch For
-
-- **Assumption failure:** The model hallucinates an unsupported parameter.
-- **State leak:** Context is incorrectly preserved across runs.
-- **Timeout:** The tool takes too long and the agent loops.
-- **Auth bypass:** The agent attempts an action it shouldn't.
+---
 
 ## Checkpoint
 
-**1. What is the primary purpose of this module?**
-- A) To understand the core concept.
-- B) To write complex boilerplate.
-- C) To ignore system errors.
-- D) To bypass security.
+**1. A user tells the agent, "My billing address changed from New York to London." How should the agent's memory system handle this?**
+- A) Append "User moved to London" to the vector database. When the agent asks for the address, the DB will return both New York and London, and the agent must guess which is correct.
+- B) Use a Reflection process to extract the fact, explicitly supersede the old Semantic Memory record for "billing_address", and delete the old record to prevent contradictions.
+- C) Delete the agent's procedural memory.
+- D) Save it to Working Memory only.
 
-**2. How do we mitigate the primary failure mode?**
-- A) Retries.
-- B) Human approval.
-- C) Logging.
-- D) Idempotency keys.
+<details>
+<summary>Answer</summary>
+<b>B</b>. Contradictions must be resolved in Semantic memory. Do not rely on an LLM to guess the truth from conflicting episodic logs.
+</details>
 
-## References
+**2. A SaaS platform dumps all user PDFs into a single Pinecone index. Tenant A asks "What is my revenue?" The Vector DB returns a chunk from Tenant B's PDF because the semantic similarity was 99%. What is the architectural fix?**
+- A) Use a better embedding model.
+- B) Hybrid Retrieval. The query MUST include a hard SQL-like pre-filter (e.g., `WHERE tenant_id = 'A'`) before the semantic vector search is allowed to run.
+- C) Ask the LLM to ignore Tenant B's data.
+- D) Fine-tune the model.
 
-- [Anthropic: Effective context engineering for AI agents](https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents) — compaction, structured notes, and long-horizon context.
-- [LangGraph memory overview](https://docs.langchain.com/oss/python/concepts/memory) — thread-scoped and namespaced long-term memory concepts.
-- [MemGPT](https://arxiv.org/abs/2310.08560) — virtual context management and archival memory framing.
-- [Generative Agents](https://arxiv.org/abs/2304.03442) — memory stream, reflection, and retrieval for agent behavior.
-- [A Survey on LLM-based Autonomous Agents](https://arxiv.org/abs/2308.11432) — memory within agent architecture.
-- [OWASP LLM Top 10](https://genai.owasp.org/) — privacy, prompt injection, and data-exposure threats.
+<details>
+<summary>Answer</summary>
+<b>B</b>. Semantic similarity is not an access control mechanism. Hard isolation (namespaces or pre-filtering) is mandatory.
+</details>

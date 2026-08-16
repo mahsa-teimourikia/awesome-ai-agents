@@ -3,8 +3,7 @@
 **Level:** Intermediate · **Time:** 2–3 hours · **Primary lesson:**
 
 **Scenario:** Northstar, a SaaS support team, is integrating this concept into their agentic workflow.
-[`human_approval_permissions.ipynb`](human_approval_permissions.ipynb) ·
-**Runnable implementation:** [`lab.py`](lab.py)
+**Notebook:** [`03_human_approval_permissions.ipynb`](03_human_approval_permissions.ipynb) 
 
 ## Scenario: a rollback that must not happen by itself
 
@@ -19,21 +18,7 @@ scoped action, evidence, risk, and expiry; the decision is durable and
 auditable; no duplicate action occurs on replay; and a rejected action stays
 rejected.
 
-```mermaid
-flowchart LR
-    A["Read-only investigation"] --> B["Prepare rollback proposal"]
-    B --> C{"Policy + schema + evidence valid?"}
-    C -->|"no"| X["Stop or escalate"]
-    C -->|"yes"| P["Persist approval request"]
-    P --> H["Authorized human review"]
-    H --> D{"Decision"}
-    D -->|"approve"| I["Idempotent execution boundary"]
-    D -->|"modify"| V["Validate edited action"]
-    V --> I
-    D -->|"reject"| R["Record rejection; continue investigation"]
-    D -->|"escalate"| E["Route to owner / change board"]
-    I --> Z["Audit and verify outcome"]
-```
+![Diagram](diagram.svg)
 
 ## Learning outcomes
 
@@ -105,15 +90,7 @@ approved—not a broad role grant that lasts indefinitely.
 - original action fingerprint and the reviewer’s allowed choices;
 - a visible statement that approval authorizes this exact request once.
 
-```mermaid
-flowchart TD
-    Q["Approval payload"] --> A["Action + typed arguments"]
-    Q --> E["Evidence + provenance"]
-    Q --> R["Risk + blast radius"]
-    Q --> S["Scope: tenant, service, region"]
-    Q --> T["Expiry + idempotency fingerprint"]
-    Q --> O["Approve / modify / reject / escalate"]
-```
+![Diagram](diagram_2.svg)
 
 Modification is powerful but risky. Treat an edited action as a new action:
 revalidate arguments, recompute risk and its idempotency key, verify the editor
@@ -235,3 +212,15 @@ against a repeated API request after a UI refresh.
 - [NIST AI Risk Management Framework](https://www.nist.gov/itl/ai-risk-management-framework)
 - [OWASP GenAI Security Project](https://genai.owasp.org/)
 - [OWASP: LLM Top 10 (2025)](https://genai.owasp.org/llmrisk/)
+
+## Deep Dives & State of the Art
+
+- **[Idempotency Keys in Agentic Execution](DEEP_DIVE_IDEMPOTENCY.md)**
+- **[Human-in-the-Loop (HITL) Architectures](DEEP_DIVE_HITL.md)**
+
+
+## SOTA Deep Dives
+Explore industry-standard architectural patterns and enterprise implementation details:
+
+- [Hitl](DEEP_DIVE_HITL.md)
+- [Idempotency](DEEP_DIVE_IDEMPOTENCY.md)

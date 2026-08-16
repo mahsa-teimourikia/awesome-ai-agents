@@ -9,7 +9,7 @@
 **[Open the AI Agents Learning Hub →](https://mahsa-teimourikia.github.io/awsome-ai-agents/)**
 
 The Hub is the main learning experience. Choose a level, select a topic, read
-the explanation, run the linked notebook and `lab.py`, then complete its
+the explanation, run the linked notebook, then complete its
 checkpoint. It keeps progress in the browser and links every lesson to its
 source material.
 
@@ -37,9 +37,7 @@ Start with the least autonomous design that reliably solves the task:
 
 ## Explore the curriculum
 
-Every topic has a co-located `README.md`, self-contained notebook, and
-credential-free `lab.py`. The notebooks are the primary theory-and-practice
-surface; scripts hold reusable deterministic implementation.
+Every topic has a co-located `README.md`, deep dive topics, and self-contained notebook. The notebooks are the primary theory-and-practice surface.
 
 ### Beginner — build the mental model
 
@@ -73,7 +71,7 @@ surface; scripts hold reusable deterministic implementation.
 | 02 | [AutoGen Selector Teams](curriculum/advanced/02-autogen-selector-teams/README.md) | Selector-based collaboration and termination controls |
 | 03 | [CrewAI Teams](curriculum/advanced/03-crewai-teams/README.md) | Agents, tasks, crews, flows, and constrained collaboration |
 | 04 | [Hybrid Production Architecture](curriculum/advanced/04-hybrid-production-architecture/README.md) | Route tasks to workflows, agents, or teams with policy/approval controls |
-| 05 | [Incident Response Capstone](curriculum/advanced/05-incident-response-capstone/README.md) | End-to-end architecture, evaluation, observability, and trade-offs |
+| 05 | [Incident Response](curriculum/advanced/05-incident-response/README.md) | End-to-end architecture, evaluation, observability, and trade-offs |
 | 06 | [Agent Memory](curriculum/advanced/06-agent-memory/README.md) | Working, episodic, semantic, procedural, and governed memory |
 | 07 | [World Models and Environment Modeling](curriculum/advanced/07-world-models-environment-modeling/README.md) | Simulation, counterfactuals, digital twins, and model-based planning |
 | 08 | [Proactive Agents](curriculum/advanced/08-proactive-agents/README.md) | Events, schedules, persistent goals, and permission boundaries |
@@ -111,7 +109,7 @@ Each topic folder contains:
 curriculum/<level>/<topic>/
 ├── README.md     # guided theory, diagrams, references, and exercises
 ├── *.ipynb       # self-contained notebook: theory and implementation together
-└── lab.py        # deterministic reusable implementation
+└── *.md          # deep dive topics
 ```
 
 Clone the repository, create a Python environment, and install the project
@@ -119,7 +117,6 @@ dependencies listed in the relevant topic or repository setup guide. Run the
 lab first, then open the notebook:
 
 ```bash
-python curriculum/beginner/02-agent-loop/lab.py
 jupyter notebook curriculum/beginner/02-agent-loop/
 ```
 

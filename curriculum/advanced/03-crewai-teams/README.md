@@ -2,100 +2,49 @@
 
 **Level:** Advanced · **Time:** 60 min · **Prerequisites:** None
 
-**Advanced · 03** · **Notebook:** [`03_crewai_teams.ipynb`](03_crewai_teams.ipynb) · **Implementation:** [`lab.py`](lab.py)
+**Advanced · 03** · **Notebook:** [`03_crewai_teams.ipynb`](03_crewai_teams.ipynb)
 
-CrewAI’s core teaching model is **Agents + Tasks + Crew**. An agent owns a role and goal; a task defines a deliverable, expected output, tools/context, and dependencies; a crew runs the collaboration. This fits work that is naturally expressed as accountable work products. Use a deterministic Flow or application workflow around collaboration when ordering, branching, approval, persistence, or recovery must be explicit.
+CrewAI is a powerful framework that structures multi-agent systems using the **Agent + Task + Crew** paradigm. 
 
-## Scenario and outcomes
+The biggest pitfall in multi-agent engineering is allowing agents to freely "chat" with each other like humans in a Slack channel, which leads to infinite polite loops and hallucinated context. CrewAI solves this by enforcing strict Task dependency graphs. Agents do not pass conversational strings; they pass the completed, typed outputs of their assigned Tasks.
 
-Northstar’s EU checkout conversion fell 35%, without a clear outage. The program needs telemetry, release history, affected-customer evidence, a risk-aware remediation proposal, and an approval-ready incident brief. The team must determine whether a specialist crew improves on a bounded single investigator; it must not execute a rollback, notify customers, or access broad production tools.
+We have broken this module down into three core deep-dives:
 
-![Multi-agent topology](../../../assets/multi-agent-patterns.svg)
+1. **[Deep Dive: Agents and Tasks](AGENTS_AND_TASKS.md)** (Separating the "Who" from the "What". Why typed artifacts prevent multi-agent hallucinations).
+2. **[Deep Dive: Sequential vs Hierarchical](SEQUENTIAL_VS_HIERARCHICAL.md)** (When to use a strict ETL-style pipeline vs a dynamic Manager agent that delegates tasks).
+3. **[Deep Dive: CrewAI Flows](CREWAI_FLOWS.md)** (Event-driven state machines. Wrapping specialized Crews in deterministic Python logic for routing and persistence).
 
-```mermaid
-flowchart LR
- O[Observability Agent] --> MT[Telemetry task]
- D[Release Agent] --> DT[Deployment task]
- C[Customer-impact Agent] --> CT[Impact task]
- MT & DT & CT --> A[Incident analyst task]
- A --> R[Risk-review task]
- R --> H[Human approval / escalation]
-```
+![CrewAI Task Topology](../../../assets/crewai_task_topology.svg)
 
-## 1. Main CrewAI features and when to use them
+---
 
-| Feature | What it models | Good fit | Guardrail |
-| --- | --- | --- | --- |
-| `Agent` | Role, goal, backstory, permitted tools | A distinct accountable specialist | Narrow tools and application-owned identity/authorization |
-| `Task` | Deliverable, expected output, owner, context | Attributed artifact with dependencies | Typed output, evidence IDs, explicit non-goals |
-| `Crew` | Agents/tasks/process as collaboration unit | A bounded work plan | Time/cost/tool budgets and trace review |
-| Sequential process | Ordered dependent work | Analyst uses specialist artifacts | Use for causal dependencies, not fake parallelism |
-| Hierarchical process | Manager delegates work | Bounded manager with clear ownership | Manager is not broad authority; cap delegation |
-| Flows | Deterministic stateful orchestration around crews | Routing, approval, retry, persistence | Keep policy/side effects outside agents |
-| Guardrails/callbacks | Validation and lifecycle instrumentation | Schema/evidence checks, observability | Do not rely on prose-only safety |
+## State of the Art: Technology & Tools
 
-## 2. Step-by-step incident program
+- **[CrewAI Core](https://docs.crewai.com/):** The engine for defining Agents, Tasks, and Crews.
+- **[CrewAI Flows](https://docs.crewai.com/concepts/Flows/):** The newer, deterministic orchestration layer that allows you to trigger different Crews based on state changes (e.g., separating a `CodingCrew` from a `ReviewCrew`).
 
-1. Write a success contract: likely cause, evidence IDs, affected segment, uncertainty, mitigation alternatives, risk, and explicit proposal-only boundary.
-2. Define three read-only specialist tasks. Telemetry returns metrics/log IDs; Release returns timestamp/change/risk; Customer Impact returns segment/tickets/SLA.
-3. Give the Analyst task only these attributed artifacts as context. Require it to distinguish observation from inference and provide alternatives.
-4. Add a Risk Reviewer task that checks evidence coverage, rollback safety, customer commitment risk, and missing approvals. It may accept, revise, or escalate—never silently execute.
-5. Choose sequential execution when the analyst needs specialist outputs. Parallelize independent *read-only* tasks only when the runtime and upstream dependencies support it.
-6. Surround the crew with a Flow/application controller for request classification, tenant scope, budgets, tool policy, human approval, durable checkpoints, and final action.
-
-## 3. Complex scenario extensions
-
-The notebook adds a conflicting-evidence case (metrics point to 3DS redirects while deployment history shows a VAT change), a missing-artifact escalation, a customer-SLA priority decision, and a single-agent comparison. These expose a central CrewAI trade-off: tasks make artifacts and dependencies legible, but extra agents are valuable only if specialization and review improve measured outcome enough to offset coordination cost/latency.
-
-## 4. Optional CrewAI mapping
-
-```python
-from crewai import Agent, Task, Crew, Process
-
-analyst_task = Task(
-    description="Synthesize only cited specialist artifacts; state uncertainty and a proposal.",
-    expected_output="Structured incident brief with evidence IDs and approval requirement.",
-    agent=analyst,
-    context=[telemetry_task, deployment_task, impact_task],
-)
-crew = Crew(agents=[obs, release, impact, analyst, reviewer],
-            tasks=[telemetry_task, deployment_task, impact_task, analyst_task, review_task],
-            process=Process.sequential)
-```
-
-The default lab is credential-free. Consult current [CrewAI concepts](https://docs.crewai.com/en/concepts/agents), [tasks](https://docs.crewai.com/en/concepts/tasks), [crews](https://docs.crewai.com/en/concepts/crews), and [flows](https://docs.crewai.com/en/concepts/flows) before enabling a live runtime.
-
-## Production checklist and exercises
-
-- Use typed task outputs and source/artifact IDs; do not pass uncontrolled conversational transcripts as task context.
-- Keep tenant scope, tool permissions, data classification, approvals, idempotency, budgets, and action execution server-side.
-- Trace task owner, input artifacts, tool calls, output, cost, latency, retry, validation, reviewer outcome, and stop reason.
-- Compare a single-agent baseline; test missing/conflicting artifacts, reviewer rejection, duplicate work, timeout, and tool failure.
-
-Run `python lab.py`, then work through the notebook. Exercises: add a legal/compliance reviewer; change the process to hierarchical and define manager limits; route a simple status request around the crew; implement an approval-ready structured output; and set a release gate using outcome, evidence, risk, cost, and latency.
-
-## Watch For
-
-- **Assumption failure:** The model hallucinates an unsupported parameter.
-- **State leak:** Context is incorrectly preserved across runs.
-- **Timeout:** The tool takes too long and the agent loops.
-- **Auth bypass:** The agent attempts an action it shouldn't.
+---
 
 ## Checkpoint
 
-**1. What is the primary purpose of this module?**
-- A) To understand the core concept.
-- B) To write complex boilerplate.
-- C) To ignore system errors.
-- D) To bypass security.
+**1. You are building an Incident Report Crew. Agent A fetches metrics, and Agent B writes the report. How should Agent A communicate with Agent B?**
+- A) Agent A sends a message: "Hey Agent B, the metrics are bad!"
+- B) Agent A is assigned Task A. Task A's expected output is a JSON array. Task B (assigned to Agent B) is configured to depend on the exact JSON artifact produced by Task A.
+- C) They should share a Redis cache.
+- D) You should use a Hierarchical Manager to read the metrics aloud to Agent B.
 
-**2. How do we mitigate the primary failure mode?**
-- A) Retries.
-- B) Human approval.
-- C) Logging.
-- D) Idempotency keys.
+<details>
+<summary>Answer</summary>
+<b>B</b>. Agents should communicate through the strict, typed output schemas of their Tasks, not through conversational text.
+</details>
 
-## References
+**2. When should you use `Process.hierarchical` instead of `Process.sequential`?**
+- A) Always, because it sounds more advanced.
+- B) When you want to save money on token costs.
+- C) When the path to the goal is highly ambiguous, and you need a Manager agent to dynamically rethink the strategy and re-delegate sub-tasks if the worker agents fail.
+- D) When the tasks are completely independent and can be run in parallel.
 
-- [CrewAI Agents](https://docs.crewai.com/en/concepts/agents) · [Tasks](https://docs.crewai.com/en/concepts/tasks) · [Crews](https://docs.crewai.com/en/concepts/crews) · [Flows](https://docs.crewai.com/en/concepts/flows)
-- [CrewAI documentation](https://docs.crewai.com/) · [Building effective agents](https://www.anthropic.com/engineering/building-effective-agents)
+<details>
+<summary>Answer</summary>
+<b>C</b>. Hierarchical processes use a Manager agent to dynamically delegate. It is highly resilient but very expensive in tokens/latency.
+</details>

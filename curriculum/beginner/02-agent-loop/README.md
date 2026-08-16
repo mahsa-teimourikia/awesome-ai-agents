@@ -5,7 +5,6 @@
 **Scenario:** Northstar, a SaaS support team, is integrating this concept into their agentic workflow.
 
 **Notebook:** [`02_agent_loop.ipynb`](02_agent_loop.ipynb)
-**Run:** [`lab.py`](lab.py)
 
 An agent is not a magical prompt. It is a bounded execution loop in which a
 model proposes a next step, the application validates and performs permitted
@@ -20,14 +19,7 @@ from instructions, select ReAct, Plan-and-Execute, reflection, and event-driven
 patterns, specify termination and recovery rules, and design an agent harness
 that cannot run forever.
 
-```mermaid
-flowchart LR
-    G["Goal"] --> O["Observe state / environment"] --> D["Decide next bounded step"]
-    D --> A["Validate + act"] --> O
-    D --> T{"Terminal condition"}
-    T -- "success" --> C["Complete with evidence"]
-    T -- "budget / policy / blocker" --> E["Escalate or abstain"]
-```
+![Diagram](diagram.svg)
 
 ## 1. The execution contract
 
@@ -53,19 +45,7 @@ without an observation cannot correct a mistaken plan. Record a concise trace
 such as `hypothesis → allowed tool → arguments → result → next decision`; do
 not depend on hidden reasoning as an audit log.
 
-```mermaid
-sequenceDiagram
-    participant H as Harness
-    participant M as Model
-    participant T as Approved tool
-    H->>M: Goal + state + allowed tools
-    M->>H: Proposed action
-    H->>H: Validate schema, permission, budget
-    H->>T: Execute read-only tool
-    T-->>H: Observation
-    H->>M: Redacted observation + updated state
-    M-->>H: Final answer or next action
-```
+![Diagram](diagram_2.svg)
 
 The original [ReAct paper](https://arxiv.org/abs/2210.03629) showed that
 interleaving reasoning and actions can improve interactive task behavior and
@@ -95,20 +75,7 @@ for defined transient failures. Invalid arguments require correction;
 permission denials require escalation; repeated observations or actions should
 terminate rather than accumulate cost.
 
-```mermaid
-stateDiagram-v2
-    [*] --> Running
-    Running --> Retrying: transient error and retry budget
-    Retrying --> Running
-    Running --> Replan: new evidence changes hypothesis
-    Replan --> Running
-    Running --> Complete: success criterion met
-    Running --> Escalated: permission / ambiguity / budget
-    Running --> Abandoned: unrecoverable failure
-    Complete --> [*]
-    Escalated --> [*]
-    Abandoned --> [*]
-```
+![Diagram](diagram_3.svg)
 
 Practical runaway controls: monotonic budget counters, duplicate-action
 detection, no-progress threshold, deadline, idempotency keys for events,
@@ -307,3 +274,17 @@ counter, deadlines, kill switches, and human escalation.
 - [Anthropic: Building effective agents](https://www.anthropic.com/engineering/building-effective-agents)
 - [LangGraph overview](https://docs.langchain.com/oss/python/langgraph/overview)
 - [Agent survey: the landscape of LLM agents](https://arxiv.org/abs/2309.07864)
+
+## Deep Dives & State of the Art
+
+To truly master the agent loop in an enterprise context, review the following expanded topics:
+
+- **[The ReAct Pattern Deep Dive](DEEP_DIVE_REACT_PATTERN.md)**
+- **[State of the Art (SOTA) Agent Loops (Reflexion, Plan-and-Solve)](DEEP_DIVE_SOTA_LOOPS.md)**
+
+
+## SOTA Deep Dives
+Explore industry-standard architectural patterns and enterprise implementation details:
+
+- [React Pattern](DEEP_DIVE_REACT_PATTERN.md)
+- [Sota Loops](DEEP_DIVE_SOTA_LOOPS.md)
