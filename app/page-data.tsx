@@ -1,5 +1,5 @@
 export type Level = "Beginner" | "Intermediate" | "Advanced" | "Enterprise Agent";
-export type Subject = { id:string; level:Level; step:string; title:string; description:string; time:string; outcome:string; lesson:string; exercise:string; failures:string[]; notebook:string; refs:string[]; code:string; quiz:{q:string; options:string[]; answer:number | number[]}[] };
+export type Subject = { id:string; level:Level; step:string; title:string; description:string; time:string; outcome:string; lesson:string; exercise:string; failures:string[]; notebook:string; refs:string[]; code:string; goals?:string[]; quiz:{q:string; options:string[]; answer:number | number[]; explanation?:string}[] };
 
 export const guidePaths:Record<string,string> = {
   "b1": "curriculum/beginner/01-ai-agent-foundations/README.md",
@@ -72,6 +72,7 @@ export const curriculumData:Subject[] = [
       "curriculum/beginner/01-ai-agent-foundations/01_agent_foundations.ipynb"
     ],
     "code": "",
+    "goals": ["After this lesson you can distinguish an LLM, chatbot, assistant, agent, and\nagentic system","Select deterministic automation, a workflow, RAG, or an agent\nfor a problem","Identify the control boundary","Explain why reliability is a\nsystem property rather than a prompt property"],
     "quiz": [
       {
         "q": "Which are core components of a practical AI agent?",
@@ -181,6 +182,7 @@ export const curriculumData:Subject[] = [
       "curriculum/beginner/02-agent-loop/02_agent_loop.ipynb"
     ],
     "code": "",
+    "goals": ["You will be able to model the agent execution loop, distinguish observations\nfrom instructions, select ReAct, Plan-and-Execute, reflection, and event-driven\npatterns, specify termination and recovery rules, and design an agent harness\nthat cannot run forever"],
     "quiz": []
   },
   {
@@ -205,6 +207,7 @@ export const curriculumData:Subject[] = [
       "curriculum/beginner/03-workflow-or-agent/03_workflow_or_agent.ipynb"
     ],
     "code": "",
+    "goals": ["Run the lab and trace Tasks A, B, and C.","Identify every deterministic transition in Task B.","For Task C, list the allowed tools, prohibited actions, and stop criteria.","Change the service status to healthy; verify the workflow avoids needless","Inject conflicting deployment evidence; write the agent’s replan rule.","Compare a single-agent and multi-agent proposal on success, latency, cost,","Create a release gate: correct outcome, no forbidden action, supported"],
     "quiz": [
       {
         "q": "Which statements correctly distinguish workflows from agents?",
@@ -298,6 +301,7 @@ export const curriculumData:Subject[] = [
       "curriculum/beginner/04-agent-development-frameworks/04_agent_development_frameworks.ipynb"
     ],
     "code": "",
+    "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
     "quiz": []
   },
   {
@@ -322,6 +326,7 @@ export const curriculumData:Subject[] = [
       "curriculum/beginner/05-computer-using-agents/05_computer_using_agents.ipynb"
     ],
     "code": "",
+    "goals": ["After completing the notebook and lab, you can:\n\n1","Explain the computer-use loop: **observe → ground → propose → validate → act → verify → recover or stop**","Distinguish browser automation (DOM/accessibility selectors) from screenshot-grounded visual computer use and native computer-use models","Define safe mouse, keyboard, navigation, and submission contracts with domain, action, risk, and confirmation boundaries","Recognize how web, desktop/OS, and mobile agents differ in their action surfaces and failure modes","Build a controller that survives a UI label change without trusting stale selectors or arbitrary coordinates","Evaluate completion, grounding accuracy, confirmation behavior, recovery quality, and action cost—not only final text"],
     "quiz": [
       {
         "q": "Which controls should intervene between a computer-use model's proposed click and a consequential UI action?",
@@ -398,6 +403,7 @@ export const curriculumData:Subject[] = [
       "curriculum/intermediate/01-tool-engineering/01_tool_engineering.ipynb"
     ],
     "code": "",
+    "goals": ["Design function/tool schemas, route a small capability catalog, compose sequential and parallel reads, constrain browser/code/database/API capabilities, and enforce least privilege, result validation, retry, idempotency, and approval"],
     "quiz": []
   },
   {
@@ -422,6 +428,7 @@ export const curriculumData:Subject[] = [
       "curriculum/intermediate/02-context-engineering/02_context_engineering.ipynb"
     ],
     "code": "",
+    "goals": ["You will be able to:\n\n1","Design a context contract around the smallest high-signal information set for one decision","Separate system instructions, dynamic context, tool context, environment state, conversation state, and external memory","Route context just in time by task phase, tenant, source trust, relevance, freshness, and token budget","Compress and prune context without losing decisions, evidence provenance, constraints, or unresolved questions","Cache safe context artifacts with keys that include identity, task, policy, and source version","Defend against context poisoning, stale state, cross-tenant leakage, and long-window distraction"],
     "quiz": []
   },
   {
@@ -446,6 +453,7 @@ export const curriculumData:Subject[] = [
       "curriculum/intermediate/03-human-approval-permissions/03_human_approval_permissions.ipynb"
     ],
     "code": "",
+    "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
     "quiz": []
   },
   {
@@ -470,6 +478,7 @@ export const curriculumData:Subject[] = [
       "curriculum/intermediate/04-guardrails-untrusted-content/04_guardrails_untrusted_content.ipynb"
     ],
     "code": "",
+    "goals": ["You will distinguish direct from indirect injection","Model behavior from\nenforceable application controls","Input, context, output, tool, and execution\nguardrails","Detection from containment","You will also build a deterministic\nadversarial suite for poison, cross-tenant, unknown-tool, and high-risk-tool\ncases"],
     "quiz": []
   },
   {
@@ -494,6 +503,7 @@ export const curriculumData:Subject[] = [
       "curriculum/intermediate/05-agent-evaluation/05_agent_evaluation.ipynb"
     ],
     "code": "",
+    "goals": ["Build a representative dataset","Score outcome, evidence/trajectory, safety, and operations","Distinguish deterministic checks from LLM/human judgment","Compare baseline and hardened agents","Define a release gate with non-negotiable safety constraints"],
     "quiz": [
       {
         "q": "Which controls belong between a model-proposed action and tool execution?",
@@ -588,6 +598,7 @@ export const curriculumData:Subject[] = [
       "curriculum/intermediate/06-trajectory-optimization/06_trajectory_optimization.ipynb"
     ],
     "code": "",
+    "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
     "quiz": [
       {
         "q": "Which are good practices for a routing workflow?",
@@ -681,6 +692,7 @@ export const curriculumData:Subject[] = [
       "curriculum/intermediate/08-planning-task-decomposition/08_planning_task_decomposition.ipynb"
     ],
     "code": "",
+    "goals": ["By the end, you can:\n\n1","Turn a vague objective into a goal contract and a hierarchy of verifiable deliverables","Represent independent and dependent work as a directed acyclic graph (DAG), identify parallel work, and reject cycles","Separate a planner that **proposes** typed tasks from an executor that enforces policy and runs them","Use milestones, quality checkpoints, constraints, budgets, and state snapshots for long-horizon work","Replan only from explicit evidence—missing coverage, a failed task, a conflict, or a changed constraint—not from an unbounded “try harder” instruction","Explain when a deterministic workflow is safer than an agentic plan, and when hierarchical or dynamic planning earns its complexity"],
     "quiz": []
   },
   {
@@ -705,6 +717,7 @@ export const curriculumData:Subject[] = [
       "curriculum/intermediate/09-agentic-rag/09_agentic_rag.ipynb"
     ],
     "code": "",
+    "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
     "quiz": []
   },
   {
@@ -729,6 +742,7 @@ export const curriculumData:Subject[] = [
       "curriculum/intermediate/10-langgraph-state-memory/10_langgraph_state.ipynb"
     ],
     "code": "",
+    "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
     "quiz": []
   },
   {
@@ -748,6 +762,7 @@ export const curriculumData:Subject[] = [
       "curriculum/advanced/01-single-vs-multi-agent/01_single_vs_multi_agent.ipynb"
     ],
     "code": "",
+    "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
     "quiz": []
   },
   {
@@ -767,6 +782,7 @@ export const curriculumData:Subject[] = [
       "curriculum/advanced/02-autogen-selector-teams/02_autogen_selector_teams.ipynb"
     ],
     "code": "",
+    "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
     "quiz": []
   },
   {
@@ -786,6 +802,7 @@ export const curriculumData:Subject[] = [
       "curriculum/advanced/03-crewai-teams/03_crewai_teams.ipynb"
     ],
     "code": "",
+    "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
     "quiz": []
   },
   {
@@ -805,6 +822,7 @@ export const curriculumData:Subject[] = [
       "curriculum/advanced/04-hybrid-production-architecture/04_hybrid_production_architecture.ipynb"
     ],
     "code": "",
+    "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
     "quiz": []
   },
   {
@@ -824,6 +842,7 @@ export const curriculumData:Subject[] = [
       "curriculum/advanced/05-incident-response/05_incident_response_capstone.ipynb"
     ],
     "code": "",
+    "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
     "quiz": [
       {
         "q": "In the AgentOps checkout scenario, what evidence should the assistant collect before claiming there is an active incident?",
@@ -1348,6 +1367,7 @@ export const curriculumData:Subject[] = [
       "curriculum/advanced/06-agent-memory/agent_memory.ipynb"
     ],
     "code": "",
+    "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
     "quiz": []
   },
   {
@@ -1367,6 +1387,7 @@ export const curriculumData:Subject[] = [
       "curriculum/advanced/07-world-models-environment-modeling/world_models_environment_modeling.ipynb"
     ],
     "code": "",
+    "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
     "quiz": []
   },
   {
@@ -1386,6 +1407,7 @@ export const curriculumData:Subject[] = [
       "curriculum/advanced/08-proactive-agents/proactive_agents.ipynb"
     ],
     "code": "",
+    "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
     "quiz": []
   },
   {
@@ -1405,6 +1427,7 @@ export const curriculumData:Subject[] = [
       "curriculum/advanced/09-model-routing/model_routing.ipynb"
     ],
     "code": "",
+    "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
     "quiz": []
   },
   {
@@ -1424,6 +1447,7 @@ export const curriculumData:Subject[] = [
       "curriculum/advanced/10-long-running-asynchronous-agents/long_running_asynchronous_agents.ipynb"
     ],
     "code": "",
+    "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
     "quiz": []
   },
   {
@@ -1443,6 +1467,7 @@ export const curriculumData:Subject[] = [
       "curriculum/advanced/11-llm-as-judge-agent-judges/llm_as_judge_agent_judges.ipynb"
     ],
     "code": "",
+    "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
     "quiz": []
   },
   {
@@ -1462,6 +1487,7 @@ export const curriculumData:Subject[] = [
       "curriculum/advanced/12-agent-benchmarks/agent_benchmarks.ipynb"
     ],
     "code": "",
+    "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
     "quiz": []
   },
   {
@@ -1481,6 +1507,7 @@ export const curriculumData:Subject[] = [
       "curriculum/advanced/13-mcp-model-context-protocol/mcp_model_context_protocol.ipynb"
     ],
     "code": "",
+    "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
     "quiz": [
       {
         "q": "Which statements correctly describe MCP's boundary?",
@@ -1534,6 +1561,7 @@ export const curriculumData:Subject[] = [
       "curriculum/advanced/14-agent-skills/agent_skills.ipynb"
     ],
     "code": "",
+    "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
     "quiz": [
       {
         "q": "Which statements distinguish an agent skill from a tool?",
@@ -1587,6 +1615,7 @@ export const curriculumData:Subject[] = [
       "curriculum/advanced/15-designing-reliable-agentic-systems/designing_reliable_agentic_systems.ipynb"
     ],
     "code": "",
+    "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
     "quiz": []
   },
   {
@@ -1606,6 +1635,7 @@ export const curriculumData:Subject[] = [
       "curriculum/advanced/16-human-multi-agent-organizations/human_multi_agent_organizations.ipynb"
     ],
     "code": "",
+    "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
     "quiz": []
   },
   {
@@ -1625,6 +1655,7 @@ export const curriculumData:Subject[] = [
       "curriculum/advanced/17-agentic-enterprise-architecture/agentic_enterprise_architecture.ipynb"
     ],
     "code": "",
+    "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
     "quiz": []
   },
   {
@@ -1644,6 +1675,7 @@ export const curriculumData:Subject[] = [
       "curriculum/advanced/18-agentic-software-engineering/agentic_software_engineering.ipynb"
     ],
     "code": "",
+    "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
     "quiz": []
   },
   {
@@ -1667,6 +1699,7 @@ export const curriculumData:Subject[] = [
       "curriculum/advanced/19-embodied-agents-robotics/embodied_agents_robotics.ipynb"
     ],
     "code": "",
+    "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
     "quiz": []
   },
   {
@@ -1690,6 +1723,7 @@ export const curriculumData:Subject[] = [
       "curriculum/advanced/20-multimodal-agents/multimodal_agents.ipynb"
     ],
     "code": "",
+    "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
     "quiz": []
   },
   {
@@ -1713,6 +1747,7 @@ export const curriculumData:Subject[] = [
       "curriculum/advanced/21-cost-latency-agent-economics/agent_economics.ipynb"
     ],
     "code": "",
+    "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
     "quiz": []
   },
   {
@@ -1736,6 +1771,7 @@ export const curriculumData:Subject[] = [
       "curriculum/advanced/22-production-agent-architecture/production_agent_architecture.ipynb"
     ],
     "code": "",
+    "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
     "quiz": []
   },
   {
@@ -1759,6 +1795,7 @@ export const curriculumData:Subject[] = [
       "curriculum/advanced/23-agent-governance-responsible-ai/agent_governance_responsible_ai.ipynb"
     ],
     "code": "",
+    "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
     "quiz": []
   },
   {
@@ -1782,6 +1819,7 @@ export const curriculumData:Subject[] = [
       "curriculum/advanced/24-guardrails-policy-enforcement/guardrails_policy_enforcement.ipynb"
     ],
     "code": "",
+    "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
     "quiz": []
   },
   {
@@ -1805,6 +1843,7 @@ export const curriculumData:Subject[] = [
       "curriculum/advanced/25-agent-identity-authorization/agent_identity_authorization.ipynb"
     ],
     "code": "",
+    "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
     "quiz": []
   },
   {
@@ -1828,6 +1867,7 @@ export const curriculumData:Subject[] = [
       "curriculum/advanced/26-agent-security/agent_security.ipynb"
     ],
     "code": "",
+    "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
     "quiz": []
   },
   {
@@ -1847,6 +1887,7 @@ export const curriculumData:Subject[] = [
       "curriculum/advanced/27-agent-observability/agent_observability.ipynb"
     ],
     "code": "",
+    "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
     "quiz": []
   },
   {
@@ -1870,6 +1911,7 @@ export const curriculumData:Subject[] = [
       "curriculum/advanced/28-human-agent-collaboration/human_agent_collaboration.ipynb"
     ],
     "code": "",
+    "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
     "quiz": []
   },
   {
@@ -1893,6 +1935,7 @@ export const curriculumData:Subject[] = [
       "curriculum/advanced/29-agent-orchestration/agent_orchestration.ipynb"
     ],
     "code": "",
+    "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
     "quiz": [
       {
         "q": "Which responsibilities belong to deterministic agent orchestration rather than a model's free-form reasoning?",
@@ -1930,6 +1973,7 @@ export const curriculumData:Subject[] = [
       "curriculum/advanced/30-agent-communication-coordination/agent_communication_coordination.ipynb"
     ],
     "code": "",
+    "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
     "quiz": [
       {
         "q": "When is a multi-agent team justified over one well-designed agent?",
@@ -1989,6 +2033,7 @@ export const curriculumData:Subject[] = [
       "curriculum/advanced/31-agent-protocol-stack/agent_protocol_stack.ipynb"
     ],
     "code": "",
+    "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
     "quiz": [
       {
         "q": "Which protocol-layer pairings are correctly described?",
