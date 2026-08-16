@@ -24,7 +24,13 @@ learner = [
     "chromadb",
     "opentelemetry-api",
     "opentelemetry-sdk",
-    "temporalio"
+    "temporalio",
+    "dspy-ai",
+    "semantic-router==0.1.16",
+    "matplotlib",
+    "numpy",
+    "tqdm",
+    "umap-learn"
 ]
 contributor = [
     "awsome-ai-agents[learner]",
