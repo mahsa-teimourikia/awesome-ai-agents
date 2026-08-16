@@ -75,7 +75,7 @@ In the Northstar Incident scenario, we can apply different collaboration levels:
 
 **1. What is the primary architectural requirement before you can implement a long-running Human-in-the-Loop pause?**
 - A) A faster LLM (e.g., GPT-4o).
-- B) A persistent State Checkpointer (e.g., SqliteSaver, Postgres).
+- B) A persistent State Checkpointer (e.g., MemorySaver, Postgres).
 - C) A custom user interface.
 - D) A Webhook.
 

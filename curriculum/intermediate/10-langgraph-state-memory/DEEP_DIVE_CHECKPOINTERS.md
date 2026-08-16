@@ -52,8 +52,12 @@ Below is a conceptual example of how a checkpointer wraps around a state graph, 
 
 ```python
 from langgraph.graph import StateGraph, END
-from langgraph.checkpoint.sqlite import SqliteSaver
-import sqlite3
+from langgraph.checkpoint.memory import MemorySaver
+
+# In a real app, you would pass a db connection pool here
+# conn = sqlite3.connect("my_database.db")
+# memory = SqliteSaver(conn)
+memory = MemorySaver()
 
 # 1. Define the State
 from typing import TypedDict, Annotated
@@ -86,8 +90,8 @@ workflow.add_edge("agent", "approval")
 workflow.add_edge("approval", END)
 
 # 4. Attach the Checkpointer
-conn = sqlite3.connect("agent_memory.db", check_same_thread=False)
-memory = SqliteSaver(conn)
+# In a real app, you would use PostgresSaver or a production db.
+memory = MemorySaver()
 
 # Compile the graph with the checkpointer
 app = workflow.compile(checkpointer=memory)

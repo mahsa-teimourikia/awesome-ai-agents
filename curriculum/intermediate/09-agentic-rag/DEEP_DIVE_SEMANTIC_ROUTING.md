@@ -50,27 +50,12 @@ The open-source library [`semantic-router`](https://github.com/aurelio-labs/sema
 
 ```python
 from semantic_router import Route
-from semantic_router.layer import RouteLayer
+from semantic_router import SemanticRouter
 from semantic_router.encoders import OpenAIEncoder
 
-# 1. Define the Routes with training utterances
+# 1. Define Routes
 sql_route = Route(
     name="sql_analytics",
-    utterances=[
-        "what is the total revenue",
-        "how many users do we have",
-        "calculate the average order value"
-    ],
-)
-
-vector_route = Route(
-    name="vector_knowledge",
-    utterances=[
-        "what is the company policy on PTO",
-        "how do I install the software",
-        "explain the architecture"
-    ],
-)
 
 # 2. Compile the highly-optimized routing layer
 encoder = OpenAIEncoder()

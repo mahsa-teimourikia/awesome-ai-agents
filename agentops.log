@@ -1,0 +1,5 @@
+2026-08-15 21:40:30,850 - WARNING - start_session() is deprecated and will be removed in v4 in the future. Use agentops.start_trace() instead.
+2026-08-15 21:40:30,956 - INFO - Session Replay for session trace: https://app.agentops.ai/sessions?trace_id=699aafaed644e56a742314876c5c3936
+2026-08-15 21:40:30,957 - WARNING - end_session() is deprecated and will be removed in v4 in the future. Use agentops.end_trace() instead.
+2026-08-15 21:40:31,289 - ERROR - [agentops.InternalSpanProcessor] Error uploading logfile: Upload failed: 401
+2026-08-15 21:40:31,595 - INFO - Session Replay for session.session trace: https://app.agentops.ai/sessions?trace_id=699aafaed644e56a742314876c5c3936
