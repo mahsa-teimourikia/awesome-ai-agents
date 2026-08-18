@@ -1,6 +1,6 @@
 # Learning Guide
 
-Welcome to the **awsome-ai-agents** curriculum! This guide explains how to get the most out of the repository, from the study loop to navigating the SOTA deep dives.
+Welcome to the **awesome-ai-agents** curriculum! This guide explains how to get the most out of the repository, from the study loop to navigating the SOTA deep dives.
 
 ## 1. The Study Loop
 
@@ -56,4 +56,4 @@ Navigate to `http://localhost:3000` to start your guided journey.
 
 After completing a module, use the built-in quizzes in the Learning Hub to verify your knowledge. The quizzes rigorously test your understanding of the SOTA deep dives, ensuring you actually absorbed the trade-offs before moving to the next track. 
 
-If you prefer to take the entire quiz at once, visit the `/awsome-ai-agents/quiz/` route in the Learning Hub.
+If you prefer to take the entire quiz at once, visit the `/awesome-ai-agents/quiz/` route in the Learning Hub.

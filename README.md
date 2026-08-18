@@ -6,14 +6,14 @@
 
 ## Start here: AI Agents Learning Hub
 
-**[Open the AI Agents Learning Hub →](https://mahsa-teimourikia.github.io/awsome-ai-agents/)**
+**[Open the AI Agents Learning Hub →](https://mahsa-teimourikia.github.io/awesome-ai-agents/)**
 
 The Hub is the main learning experience. Choose a level, select a topic, read
 the explanation, run the linked notebook, then complete its
 checkpoint. It keeps progress in the browser and links every lesson to its
 source material.
 
-**[Take the full Knowledge Check →](https://mahsa-teimourikia.github.io/awsome-ai-agents/quiz/)**
+**[Take the full Knowledge Check →](https://mahsa-teimourikia.github.io/awesome-ai-agents/quiz/)**
 
 ## What is an AI agent?
 
