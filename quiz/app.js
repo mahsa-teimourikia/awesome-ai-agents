@@ -3,7 +3,7 @@ import { questions } from "./questions.js";
 
 const storageKey = "awesome-ai-agents-quiz-selections-v1";
 const repositoryContentBase =
-  "https://github.com/mahsa-teimourikia/awsome-ai-agents/blob/main/";
+  "https://github.com/mahsa-teimourikia/awesome-ai-agents/blob/main/";
 
 const elements = {
   answeredCount: document.querySelector("#answered-count"),
