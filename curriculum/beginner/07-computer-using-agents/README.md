@@ -1,6 +1,6 @@
 # 05 — Computer-Using Agents
 
-**Level:** Beginner · **Primary notebook:** **Notebook:** [`05_computer_using_agents.ipynb`](05_computer_using_agents.ipynb) 
+**Level:** Beginner · **Primary notebook:** **Notebook:** [`07_computer_using_agents.ipynb`](07_computer_using_agents.ipynb) 
 
 **Scenario:** Northstar, a SaaS support team, is integrating this concept into their agentic workflow.
 
@@ -126,7 +126,7 @@ Computer use needs a stronger sandbox than a pure read-only API call. At minimum
 
 ## Guided lab
 
-1. Open `05_computer_using_agents.ipynb` from this directory. It executes the support flow in a simulated portal with a renamed UI label.
+1. Open `07_computer_using_agents.ipynb` from this directory. It executes the support flow in a simulated portal with a renamed UI label.
 2. In the notebook, inspect `screenshot_summary` and explain why the agent has enough grounding to choose the Acme case.
 3. Try `dom_click(session, '#escalate-button')` after the UI rename and observe the controlled failure.
 4. Run the semantic visual-grounding path. Confirm that a point outside the verified bounds is rejected.

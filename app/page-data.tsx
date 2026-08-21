@@ -5,8 +5,8 @@ export const guidePaths:Record<string,string> = {
   "b1": "curriculum/beginner/01-ai-agent-foundations/README.md",
   "b2": "curriculum/beginner/02-agent-loop/README.md",
   "b3": "curriculum/beginner/03-workflow-or-agent/README.md",
-  "b4": "curriculum/beginner/04-agent-development-frameworks/README.md",
-  "b5": "curriculum/beginner/05-computer-using-agents/README.md",
+  "b5": "curriculum/beginner/05-agent-development-frameworks/README.md",
+  "b7": "curriculum/beginner/07-computer-using-agents/README.md",
   "i1": "curriculum/intermediate/01-tool-engineering/README.md",
   "i2": "curriculum/intermediate/02-context-engineering/README.md",
   "i3": "curriculum/intermediate/03-human-approval-permissions/README.md",
@@ -295,10 +295,10 @@ export const curriculumData:Subject[] = [
       "Timeout:: The tool takes too long and the agent loops.",
       "Auth bypass:: The agent attempts an action it shouldn't."
     ],
-    "notebook": "curriculum/beginner/04-agent-development-frameworks/04_agent_development_frameworks.ipynb",
+    "notebook": "curriculum/beginner/05-agent-development-frameworks/05_agent_development_frameworks.ipynb",
     "refs": [
-      "curriculum/beginner/04-agent-development-frameworks/README.md",
-      "curriculum/beginner/04-agent-development-frameworks/04_agent_development_frameworks.ipynb"
+      "curriculum/beginner/05-agent-development-frameworks/README.md",
+      "curriculum/beginner/05-agent-development-frameworks/05_agent_development_frameworks.ipynb"
     ],
     "code": "",
     "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
@@ -320,10 +320,10 @@ export const curriculumData:Subject[] = [
       "Timeout:: The tool takes too long and the agent loops.",
       "Auth bypass:: The agent attempts an action it shouldn't."
     ],
-    "notebook": "curriculum/beginner/05-computer-using-agents/05_computer_using_agents.ipynb",
+    "notebook": "curriculum/beginner/07-computer-using-agents/07_computer_using_agents.ipynb",
     "refs": [
-      "curriculum/beginner/05-computer-using-agents/README.md",
-      "curriculum/beginner/05-computer-using-agents/05_computer_using_agents.ipynb"
+      "curriculum/beginner/07-computer-using-agents/README.md",
+      "curriculum/beginner/07-computer-using-agents/07_computer_using_agents.ipynb"
     ],
     "code": "",
     "goals": ["After completing the notebook and lab, you can:\n\n1","Explain the computer-use loop: **observe → ground → propose → validate → act → verify → recover or stop**","Distinguish browser automation (DOM/accessibility selectors) from screenshot-grounded visual computer use and native computer-use models","Define safe mouse, keyboard, navigation, and submission contracts with domain, action, risk, and confirmation boundaries","Recognize how web, desktop/OS, and mobile agents differ in their action surfaces and failure modes","Build a controller that survives a UI label change without trusting stale selectors or arbitrary coordinates","Evaluate completion, grounding accuracy, confirmation behavior, recovery quality, and action cost—not only final text"],

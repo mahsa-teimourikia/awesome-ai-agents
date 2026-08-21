@@ -64,7 +64,7 @@ This is a practical comparison, not a benchmark. Version, model provider, deploy
 
 ### Suggested order
 
-1. Open `04_agent_development_frameworks.ipynb` to see the same deterministic evidence and policy boundary used by every notebook.
+1. Open `05_agent_development_frameworks.ipynb` to see the same deterministic evidence and policy boundary used by every notebook.
 2. Complete **04a** first. It is the closest continuation of the manual loop.
 3. Complete **04b** when typed, machine-consumed outputs are the central risk.
 4. Complete **04c** when a run needs stateful branching or an approval pause.
