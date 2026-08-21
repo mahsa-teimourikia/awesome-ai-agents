@@ -6,13 +6,13 @@
 <rect x="340" y="160" width="210" height="86" rx="14" class="box"/><text x="382" y="197" class="t">Visual grounding</text><text x="363" y="222" class="s">role · label · bounds</text>
 <rect x="620" y="160" width="210" height="86" rx="14" class="box"/><text x="661" y="197" class="t">Proposed action</text><text x="647" y="222" class="s">click · type · navigate</text>
 <rect x="900" y="160" width="220" height="86" rx="14" class="gate"/><text x="934" y="197" class="t">Policy gate</text><text x="924" y="222" class="s">origin · target · budget</text>
-<path d="M270 203H340M550 203H620M830 203H900" class="line"/>
+<path d="M270 203H340" class="line"/><path d="M550 203H620" class="line"/><path d="M830 203H900" class="line"/>
 <rect x="740" y="340" width="240" height="86" rx="14" class="human"/><text x="781" y="377" class="t">Human confirmation</text><text x="770" y="402" class="s">exact commit action digest</text>
 <rect x="365" y="340" width="235" height="86" rx="14" class="safe"/><text x="412" y="377" class="t">Sandboxed UI</text><text x="395" y="402" class="s">ephemeral profile / VM</text>
 <rect x="70" y="340" width="225" height="86" rx="14" class="safe"/><text x="106" y="377" class="t">Postcondition</text><text x="97" y="402" class="s">new snapshot + assertion</text>
-<path d="M1010 246V290H480V340M1010 246V290H860V340M365 383H295" class="line"/><path d="M740 383H600" class="line"/>
+<path d="M1010 246V290H480V340" class="line"/><path d="M1010 246V290H860V340" class="line"/><path d="M365 383H295" class="line"/><path d="M740 383H600" class="line"/>
 <polygon points="205,500 330,540 205,580 80,540" class="gate"/><text x="143" y="538" class="t">Safe terminal?</text><text x="130" y="560" class="s">complete · pause · block</text>
-<path d="M182 426V500" class="line"/><path d="M80 540H45V115H165" class="line"/>
+<path d="M182 426V500" class="line"/><path d="M80 540H45V115H165V160" class="line"/>
 <rect x="710" y="505" width="365" height="72" rx="14" class="box"/><text x="748" y="537" class="t">Trace: snapshots, proposals, decisions</text><text x="782" y="560" class="s">confirmation, recovery, terminal reason</text><path d="M330 540H710" class="line"/>
 <text x="58" y="625" class="s">Never treat webpage text as authority. UI drift triggers re-observation and a bounded recovery—not blind clicking.</text>
 </svg>
