@@ -129,17 +129,32 @@ Work through the notebook, then apply this checklist to a proposed AI feature:
    instruction case.
 8. Measure success and trajectory quality before increasing autonomy.
 
-## Technology map
+## Technology map & State of the Art (2026)
 
 - **Direct model APIs:** use to understand the loop before abstractions.
-- **OpenAI Agents SDK:** managed tools, handoffs, sessions, guardrails, and
-  tracing; use when its runtime model fits your control needs.
-- **LangGraph:** explicit state, conditional edges, persistence, and
-  human-in-the-loop; useful when durable workflow control matters.
-- **MCP:** a protocol for exposing tools/context; it does not replace
-  authorization or tool policy.
-- **AutoGen and CrewAI:** team-oriented abstractions; adopt after a single-agent
-  baseline proves coordination is needed.
+- **OpenAI Agents SDK:** managed tools, handoffs, sessions, guardrails, and tracing; use when its runtime model fits your control needs.
+- **LangGraph:** explicit state, conditional edges, persistence, and human-in-the-loop; useful when durable workflow control matters.
+- **PydanticAI:** highly typed framework built on Pydantic to enforce schema validation for routing and execution.
+- **Google ADK (Agent Development Kit):** abstractions heavily focused on orchestration, evaluation, and observability.
+- **MCP (Model Context Protocol):** a protocol for exposing tools/context; it does not replace authorization or tool policy.
+- **AutoGen and CrewAI:** team-oriented abstractions; adopt after a single-agent baseline proves coordination is needed.
+
+### Framework Comparison
+
+| Dimension | Raw Python | LangGraph | OpenAI Agents SDK |
+| :--- | :--- | :--- | :--- |
+| **Explicit state** | High | High | Medium |
+| **Tool abstraction** | Manual | Built in | Built in |
+| **Durable execution** | Manual | Strong | Runtime dependent |
+| **Handoffs** | Manual | Graph | Built in |
+| **Observability** | Manual | Integrations | Built in |
+
+## Hands-on Exercises
+
+After completing the notebook, challenge yourself with:
+1. **Bounded Contexts:** Convert a standard chatbot into a bounded agent by enforcing explicit state tracking.
+2. **Approval Workflows:** Add a dangerous write tool (e.g., `restart_database`) and gate it behind a human-in-the-loop approval mechanism.
+3. **Metrics:** Measure task success before and after adding a tool that retrieves real-time data.
 
 ## Watch For
 

@@ -21,6 +21,7 @@ learner = [
     "agentops",
     "pandas",
     "mcp",
+    "openai-agents",
     "chromadb",
     "opentelemetry-api",
     "opentelemetry-sdk",
