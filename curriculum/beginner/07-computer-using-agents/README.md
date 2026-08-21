@@ -27,7 +27,7 @@ After completing the notebook and lab, you can:
 
 **Non-goals:** scraping the open web, solving CAPTCHAs, bypassing login/MFA, entering secrets, making purchases, or controlling a real operating system. Those tasks require a separate risk assessment and usually a human takeover flow.
 
-![Diagram](diagram.svg)
+![Diagram](assets/diagram.svg)
 
 ## 1. What counts as computer use?
 
