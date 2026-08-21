@@ -1,4 +1,4 @@
-# 04 — Agent development frameworks
+# 05 — Agent development frameworks
 
 **Level:** Beginner · **Prerequisites:** [the agent loop](../02-agent-loop/README.md) and [workflow or agent?](../03-workflow-or-agent/README.md)
 
@@ -11,7 +11,7 @@ An agent framework is not an agent architecture. A framework packages recurring 
 
 This course takes one bounded business domain—investigating checkout and support issues—and implements different slices with frameworks chosen for their natural strengths. The deterministic lab stays runnable without credentials. Each notebook also includes an optional real-framework implementation that you can enable locally with the framework and provider credentials named in that lesson.
 
-![Diagram](diagram.svg)
+![Diagram](assets/diagram.svg)
 
 ## Learning outcomes
 
