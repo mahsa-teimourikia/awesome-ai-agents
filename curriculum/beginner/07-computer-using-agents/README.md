@@ -124,6 +124,111 @@ Computer use needs a stronger sandbox than a pure read-only API call. At minimum
 | Trace with screenshots | supports debugging, user review, and incident response |
 | Action/time budgets | prevents runaway loops and expensive UI thrashing |
 
+## 8. Tool Comparisons and Code Examples
+
+When building a computer-using agent, you must decide what layer of abstraction to use. Here is a comparison of the dominant paradigms with code examples.
+
+### A. Raw Model API (e.g., Anthropic Computer Use)
+The lowest level of abstraction. You give the model raw screen access and it responds with precise coordinate clicks and keypresses.
+
+**Best for:** Highly custom desktop applications, non-web interfaces, or building your own agentic framework.
+**Limitations:** You must manage the loop, take screenshots, and handle safety boundaries yourself.
+
+```python
+# Example: Calling Anthropic's Computer Use Tool directly
+import anthropic
+
+client = anthropic.Anthropic()
+response = client.messages.create(
+    model="claude-3-5-sonnet-20241022",
+    max_tokens=1024,
+    tools=[{
+        "type": "computer_20241022",
+        "name": "computer",
+        "display_width_px": 1024,
+        "display_height_px": 768,
+        "display_number": 1
+    }],
+    messages=[{
+        "role": "user",
+        "content": "Click the 'Submit' button on the screen."
+    }]
+)
+
+# The model responds with tool_calls like:
+# {"action": "mouse_move", "coordinate": [512, 384]}
+# {"action": "left_click"}
+```
+
+### B. Agentic Browser Libraries (e.g., Browser-Use, Stagehand)
+These libraries wrap traditional browser automation (like Playwright) with LLM reasoning. You provide a high-level goal, and the library manages the observation-action loop, DOM parsing, and error recovery.
+
+**Best for:** Rapidly building web-based agents that need to navigate dynamic pages.
+**Limitations:** Limited to web browsers; relies heavily on the library's internal safety and parsing logic.
+
+```python
+# Example: Using Browser-Use (Python)
+from browser_use import Agent
+from langchain_openai import ChatOpenAI
+import asyncio
+
+async def main():
+    agent = Agent(
+        task="Go to example.com and find the support email address.",
+        llm=ChatOpenAI(model="gpt-4o")
+    )
+    result = await agent.run()
+    print(result)
+
+asyncio.run(main())
+```
+
+```typescript
+// Example: Using Stagehand (TypeScript)
+import { Stagehand } from "@browserbasehq/stagehand";
+
+async function main() {
+  const stagehand = new Stagehand({ env: "LOCAL" });
+  await stagehand.init();
+
+  await stagehand.page.goto("https://example.com");
+  
+  // High-level agentic command instead of strict DOM selectors
+  await stagehand.page.act({ action: "Click on the login button" });
+  const data = await stagehand.page.extract({ instruction: "Extract the support email" });
+  
+  console.log(data);
+}
+```
+
+### C. Traditional DOM Automation (e.g., Playwright)
+Strict, deterministic automation. You write exact selectors. If the UI changes, the script breaks.
+
+**Best for:** Known, owned, and highly stable internal applications where predictability is paramount.
+**Limitations:** Brittle to UI drift; cannot reason about unexpected modals or visual changes.
+
+```python
+# Example: Playwright (Deterministic, Non-Agentic)
+from playwright.sync_api import sync_playwright
+
+with sync_playwright() as p:
+    browser = p.chromium.launch()
+    page = browser.new_page()
+    page.goto("https://example.com")
+    
+    # Breaks immediately if the selector changes
+    page.click("button#login-submit")
+    browser.close()
+```
+
+### Summary Comparison
+
+| Tool/Paradigm | Interface Target | Agentic Loop | Resilience to UI Drift | Safety / Blast Radius |
+| :--- | :--- | :--- | :--- | :--- |
+| **Playwright/Selenium** | Web (DOM) | None (Deterministic) | Low (Breaks on change) | High Safety (Does exactly what it's told) |
+| **Browser-Use/Stagehand** | Web (DOM + Visual) | Managed internally | High (Reasons about page) | Medium (Can hallucinate actions, limited to web) |
+| **Anthropic Computer Use** | Desktop/OS (Visual) | You build it | High (Pure visual) | Low Safety (Full OS access requires extreme sandboxing) |
+
 ## Guided lab
 
 1. Open `07_computer_using_agents.ipynb` from this directory. It executes the support flow in a simulated portal with a renamed UI label.
