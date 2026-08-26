@@ -175,7 +175,7 @@ Because the core lab uses local visual mocking, the notebook concludes with an *
 
 ## 20. References
 
-- [OpenAI Computer-Use Guides](https://platform.openai.com/docs/guides/function-calling)
+- [OpenAI Computer-Use & Vision Guides](https://platform.openai.com/docs/guides/vision)
 - [Anthropic Computer-Use Documentation](https://docs.anthropic.com/en/docs/build-with-claude/computer-use)
 - [Playwright Locators & Accessibility](https://playwright.dev/python/docs/locators)
 - [OSWorld Benchmark](https://arxiv.org/abs/2404.07972)
