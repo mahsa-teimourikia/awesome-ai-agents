@@ -1,4 +1,4 @@
-# 06 — Building Your First Complete Agent: The Capstone
+# 06 — Building Your First Complete Agent
 
 **Level:** Beginner · **Primary notebook:** [`06_building_your_first_agent.ipynb`](06_building_your_first_agent.ipynb) 
 
@@ -6,7 +6,7 @@
 
 ## The Objective
 
-This module is **not** another comparison of framework syntaxes. Instead, it is the Beginner Capstone. Our goal is to build **one complete, bounded, testable agent correctly**.
+This module is **not** another comparison of framework syntaxes. Our goal is to build **one complete, bounded, testable agent correctly**.
 
 You will learn how to build the hybrid architecture that powers real enterprise systems:
 - A non-deterministic reasoning model...
@@ -49,8 +49,8 @@ When the agent decides a refund is necessary, it produces a **RefundProposal**. 
 
 ## The Notebook Lab
 
-The Jupyter notebook is broken down into a massive 20-part capstone.
-To ensure every learner can complete this capstone regardless of API keys or budgets, the core lab uses a **Deterministic Model Stub** (`MockDecisionModel`). This allows you to rapidly test validation failures, authorization denials, and human approval flows locally.
+The Jupyter notebook is broken down into a massive 20-part lab.
+To ensure every learner can complete this course regardless of API keys or budgets, the core lab uses a **Deterministic Model Stub** (`MockDecisionModel`). This allows you to rapidly test validation failures, authorization denials, and human approval flows locally.
 
 **Optional Real OpenAI Section:** At the very end of the notebook, you can optionally supply an `OPENAI_API_KEY`. The lab will swap out the Mock Model for the official OpenAI Responses API, plugging the real GPT-4o model into the *exact same* secure application runtime.
 
