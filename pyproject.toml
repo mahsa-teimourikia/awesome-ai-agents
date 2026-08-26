@@ -17,6 +17,7 @@ learner = [
     "langgraph",
     "langchain-openai",
     "pyautogen",
+    "autogen",
     "crewai",
     "agentops",
     "pandas",
@@ -31,13 +32,16 @@ learner = [
     "matplotlib",
     "numpy",
     "tqdm",
-    "umap-learn"
+    "umap-learn",
+    "playwright>=1.40.0",
+    "nest-asyncio>=1.5.0"
 ]
 contributor = [
     "awsome-ai-agents[learner]",
     "pytest",
     "nbclient",
     "nbformat",
+    "nbconvert",
 ]
 
 [tool.setuptools]
