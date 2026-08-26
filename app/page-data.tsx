@@ -387,6 +387,28 @@ export const curriculumData:Subject[] = [
         ],
         "answer": 1,
         "explanation": "Frameworks (like LangGraph or CrewAI) package runtime mechanics like state management and tool execution. Architecture is the design choice of how control, boundaries, and evaluation are structured."
+      },
+      {
+        "q": "How do durable execution checkpointers (like LangGraph MemorySaver) enhance long-running agent reliability?",
+        "options": [
+          "They automatically fix any model hallucination",
+          "They allow workflows to safely pause at human-in-the-loop breakpoints and resume without losing state",
+          "They remove the need for writing unit tests",
+          "They eliminate the need for API keys"
+        ],
+        "answer": 1,
+        "explanation": "Durable checkpointers persist the execution state at each graph transition, enabling safe interrupts, human confirmation gates, and resumption across process restarts."
+      },
+      {
+        "q": "Why is dependency injection (such as PydanticAI RunContext) preferable to global variables in agent tool functions?",
+        "options": [
+          "It makes the tools faster to execute",
+          "It securely injects trusted execution context (user ID, tenant ID, permissions) into tools without letting the model fabricate credentials",
+          "It allows the model to alter user roles dynamically",
+          "It avoids defining Pydantic schemas"
+        ],
+        "answer": 1,
+        "explanation": "Dependency injection guarantees that tools execute with application-verified user context, database handles, and tenant boundaries rather than untrusted model arguments."
       }
     ]
   },
@@ -424,8 +446,31 @@ export const curriculumData:Subject[] = [
         ],
         "answer": 1,
         "explanation": "Local fixtures and mocks ensure that agent trajectories can be tested deterministically without risking side effects or dealing with network flakiness."
+      },
+      {
+        "q": "Why must all tool executions route through a centralized dispatcher rather than direct function calls?",
+        "options": [
+          "To enforce schema validation, authorization, business rules, and idempotency checks before invoking side effects",
+          "To convert all tool returns into unvalidated strings",
+          "Because Python does not allow calling functions directly",
+          "To allow the model to bypass permission checks"
+        ],
+        "answer": 0,
+        "explanation": "A centralized dispatcher acts as the application's security boundary, ensuring that every proposed action is strictly validated against schemas, permissions, business invariants, and idempotency guarantees before execution."
+      },
+      {
+        "q": "What parameters should a human approval token bind to for high-risk write actions?",
+        "options": [
+          "Only the current date",
+          "Proposal digest, target resource, action payload, approver identity, and expiration timestamp",
+          "Any future action the model decides to take",
+          "Only the model's confidence score"
+        ],
+        "answer": 1,
+        "explanation": "Cryptographically bound approvals guarantee that an approval token is valid only for the exact proposed action, target, payload digest, and time window, preventing replay attacks or action drift."
       }
     ]
+
   },
   {
     "id": "b7",

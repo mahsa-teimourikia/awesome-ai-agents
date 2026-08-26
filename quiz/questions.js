@@ -2345,6 +2345,40 @@ export const questions = [
     }
   },
   {
+    "id": "frameworks-durable-execution",
+    "category": "Agent Development Frameworks",
+    "prompt": "How do durable execution checkpointers (like LangGraph MemorySaver) enhance long-running agent reliability?",
+    "options": [
+      "They automatically fix any model hallucination",
+      "They allow workflows to safely pause at human-in-the-loop breakpoints and resume without losing state",
+      "They remove the need for writing unit tests",
+      "They eliminate the need for API keys"
+    ],
+    "correct": [1],
+    "explanation": "Durable checkpointers persist the execution state at each graph transition, enabling safe interrupts, human confirmation gates, and resumption across process restarts.",
+    "source": {
+      "label": "Agent Development Frameworks",
+      "url": "curriculum/beginner/05-agent-development-frameworks/README.md"
+    }
+  },
+  {
+    "id": "frameworks-dependency-injection",
+    "category": "Agent Development Frameworks",
+    "prompt": "Why is dependency injection (such as PydanticAI RunContext) preferable to global variables in agent tool functions?",
+    "options": [
+      "It makes the tools faster to execute",
+      "It securely injects trusted execution context (user ID, tenant ID, permissions) into tools without letting the model fabricate credentials",
+      "It allows the model to alter user roles dynamically",
+      "It avoids defining Pydantic schemas"
+    ],
+    "correct": [1],
+    "explanation": "Dependency injection guarantees that tools execute with application-verified user context, database handles, and tenant boundaries rather than untrusted model arguments.",
+    "source": {
+      "label": "Agent Development Frameworks",
+      "url": "curriculum/beginner/05-agent-development-frameworks/README.md"
+    }
+  },
+  {
     "id": "capstone-agent-testing",
     "category": "Building Your First Complete Agent",
     "prompt": "When building a complete, testable agent, what is the most robust way to handle external dependencies?",
@@ -2360,5 +2394,40 @@ export const questions = [
       "label": "Building Your First Complete Agent",
       "url": "curriculum/beginner/06-building-your-first-agent/README.md"
     }
+  },
+  {
+    "id": "capstone-dispatcher-boundary",
+    "category": "Building Your First Complete Agent",
+    "prompt": "Why must all tool executions route through a centralized dispatcher rather than direct function calls?",
+    "options": [
+      "To enforce schema validation, authorization, business rules, and idempotency checks before invoking side effects",
+      "To convert all tool returns into unvalidated strings",
+      "Because Python does not allow calling functions directly",
+      "To allow the model to bypass permission checks"
+    ],
+    "correct": [0],
+    "explanation": "A centralized dispatcher acts as the application's security boundary, ensuring that every proposed action is strictly validated against schemas, permissions, business invariants, and idempotency guarantees before execution.",
+    "source": {
+      "label": "Building Your First Complete Agent",
+      "url": "curriculum/beginner/06-building-your-first-agent/README.md"
+    }
+  },
+  {
+    "id": "capstone-approval-binding",
+    "category": "Building Your First Complete Agent",
+    "prompt": "What parameters should a human approval token bind to for high-risk write actions?",
+    "options": [
+      "Only the current date",
+      "Proposal digest, target resource, action payload, approver identity, and expiration timestamp",
+      "Any future action the model decides to take",
+      "Only the model's confidence score"
+    ],
+    "correct": [1],
+    "explanation": "Cryptographically bound approvals guarantee that an approval token is valid only for the exact proposed action, target, payload digest, and time window, preventing replay attacks or action drift.",
+    "source": {
+      "label": "Building Your First Complete Agent",
+      "url": "curriculum/beginner/06-building-your-first-agent/README.md"
+    }
   }
 ];
+
