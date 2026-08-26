@@ -1,0 +1,24 @@
+graph TD
+    classDef level0 fill:#E2E8F0,stroke:#94A3B8,stroke-width:2px,color:#1E293B
+    classDef level1 fill:#CBD5E1,stroke:#64748B,stroke-width:2px,color:#0F172A
+    classDef level2 fill:#93C5FD,stroke:#3B82F6,stroke-width:2px,color:#1E3A8A
+    classDef level3 fill:#60A5FA,stroke:#2563EB,stroke-width:2px,color:#1E3A8A
+    classDef level4 fill:#3B82F6,stroke:#1D4ED8,stroke-width:2px,color:#EFF6FF
+    classDef level5 fill:#1D4ED8,stroke:#1E3A8A,stroke-width:2px,color:#EFF6FF
+    classDef attr fill:#F8FAFC,stroke:#CBD5E1,stroke-width:1px,color:#475569
+
+    subgraph Spectrum[Architecture Spectrum]
+        L0[Level 0: Deterministic Code]:::level0 --> L1[Level 1: Deterministic Workflow]:::level1
+        L1 --> L2[Level 2: Workflow + LLM Node]:::level2
+        L2 --> L3[Level 3: Agentic Workflow]:::level3
+        L3 --> L4[Level 4: Bounded Agent]:::level4
+        L4 --> L5[Level 5: Multi-Agent System]:::level5
+    end
+
+    subgraph Attributes[Trade-offs]
+        A[Increasing Flexibility & Path Uncertainty]:::attr
+        B[Increasing Evaluation Burden & Observability Cost]:::attr
+        C[Increasing Latency & Operational Complexity]:::attr
+    end
+    
+    Spectrum -.- Attributes
