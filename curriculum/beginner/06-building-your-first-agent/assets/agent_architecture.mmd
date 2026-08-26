@@ -1,0 +1,24 @@
+graph TD
+    classDef sys fill:#1E293B,stroke:#64748B,stroke-width:2px,color:#F8FAFC
+    classDef agent fill:#0369A1,stroke:#38BDF8,stroke-width:2px,color:#F0F9FF
+    classDef valid fill:#854D0E,stroke:#FACC15,stroke-width:2px,color:#FEFCE8
+    classDef execute fill:#166534,stroke:#4ADE80,stroke-width:2px,color:#F0FDF4
+
+    U[User Request]:::sys --> C[Trusted Execution Context]:::sys
+    C --> AS[Agent State]:::sys
+    
+    subgraph Agent Runtime [Agent Runtime / Framework]
+        AS --> M[Model Decision Policy]:::agent
+        M --> P[Tool/Action Proposal]:::agent
+        P --> Schema[1. Schema Validation]:::valid
+        Schema --> Sem[2. Semantic Validation]:::valid
+        Sem --> Biz[3. Business Validation]:::valid
+        Biz --> Auth[4. Authorization]:::valid
+        Auth --> App[5. Human Approval]:::valid
+        App --> Exec[6. Tool Execution]:::execute
+        Exec --> Obs[7. Observation & Trace]:::sys
+        Obs --> AS
+    end
+    
+    AS -.-> Term[Terminal Condition Reached]:::sys
+    Term --> Result[Structured Final Result]:::execute

@@ -1,78 +1,106 @@
-# 06 — Building Your First Complete Agent
+# 06 — Building Your First Complete Agent: The Capstone
 
 **Level:** Beginner · **Primary notebook:** [`06_building_your_first_agent.ipynb`](06_building_your_first_agent.ipynb) 
 
-**Scenario:** We need to synthesize everything learned so far into a single, cohesive, and robust bounded agent. Northstar, our fictional SaaS support team, needs an agent that can safely review escalated tickets, query the customer's billing status, and propose a resolution.
+**Scenario:** We are bringing together everything learned in Modules 01–05. Northstar, our fictional SaaS company, needs an agent to handle a complex customer support escalation: a customer was charged twice for their subscription and requires a refund.
 
-## Outcomes
+## The Objective
 
-After completing the notebook and lab, you can:
+This module is **not** another comparison of framework syntaxes. Instead, it is the Beginner Capstone. Our goal is to build **one complete, bounded, testable agent correctly**.
 
-1. Synthesize concepts from previous modules (Agent Loop, Workflows, Tools, and Frameworks).
-2. Write a raw, un-abstracted Agent Loop using only the OpenAI API.
-3. Rewrite the same agent using **LangGraph** to understand state machines and cyclic graphs.
-4. Rewrite the same agent using **PydanticAI** to understand type-safe, developer-friendly orchestration.
-5. Contrast the Developer Experience (DX) of manual loops, graphs, and structured frameworks.
+You will learn how to build the hybrid architecture that powers real enterprise systems:
+- A non-deterministic reasoning model...
+- ...operating within a strict, deterministic application boundary.
 
-## 1. The Goal: The Northstar Escalation Agent
+## The Hybrid Architecture
 
-Our agent needs to solve a specific problem: "Handle an escalated ticket from a frustrated customer whose billing failed."
+In a production system, the LLM does not own the agent's identity, authorization, or budgets. The Application does. The execution loop looks like this:
 
-To do this, the agent must be provided with tools:
-1. `get_ticket_details(ticket_id)`: Fetches the text of the complaint.
-2. `get_billing_status(customer_id)`: Checks if the customer's credit card is valid.
-3. `issue_refund(customer_id, amount)`: A sensitive action that refunds the customer.
+![Agent Architecture](assets/agent_architecture.svg)
 
-## 2. Approach 1: The Raw Agent Loop
+1. **Trusted Execution Context:** The application defines who is running the agent (User ID, Tenant ID, Roles).
+2. **Agent State:** The application maintains the agent's memory, accumulated evidence, and remaining budgets (tool calls, steps).
+3. **Model Proposal:** The LLM receives the State and proposes a Tool Call.
+4. **Validation:** The application validates the LLM's proposal against strict JSON Schemas and semantic business rules.
+5. **Authorization:** The application checks if the Execution Context has permission to run the requested tool.
+6. **Approval:** For sensitive actions, the application pauses execution and requests Human Approval.
+7. **Execution & Trace:** The tool executes, and the application logs an observable trace before updating the State.
 
-Before relying on magic frameworks, you must understand the underlying loop. A raw agent is simply a `while` loop that calls the LLM, checks if the LLM wants to use a tool, executes the tool, and feeds the result back into the LLM.
+## Autonomous vs. Approval-Gated Tools
 
-**Pros:** Total control, zero magic, explicit dependencies.
-**Cons:** You must write all the routing, JSON parsing, error handling, message history management, and retry logic yourself.
+A core principle of bounded autonomy is distinguishing between read-only actions and consequential writes.
 
-## 3. Approach 2: LangGraph
+![Tool Authority](assets/tool_authority.svg)
 
-LangGraph forces you to think of your agent as a State Machine. You define nodes (e.g., "Call Model", "Execute Tool") and edges (e.g., "If model requests tool, go to Execute Tool"). 
+Our agent is initially granted autonomous access *only* to read-only tools:
+- `get_ticket_details`
+- `get_billing_status`
+- `get_recent_transactions`
+- `get_refund_policy`
 
-**Pros:** Extremely explicit control flow, built-in persistence (memory), and easy human-in-the-loop pausing. Perfect for enterprise applications that need auditability.
-**Cons:** High boilerplate. You are writing graph orchestration code, not just agent logic.
+When the agent decides a refund is necessary, it produces a **RefundProposal**. The runtime intercepts this proposal, halts autonomous execution, and demands human approval before executing the consequential `issue_refund` tool.
 
-## 4. Approach 3: PydanticAI
+## The Role of Evidence and Idempotency
 
-PydanticAI represents the modern, Pythonic wave of agent frameworks. Instead of graphs, it relies on strict Python types (`Pydantic`) and simple decorators.
+![Trace and State](assets/trace_state.svg)
 
-**Pros:** Extremely lightweight, type-safe, zero boilerplate. It feels like writing normal Python code.
-**Cons:** Hides the underlying loop. Less suitable for complex, multi-agent orchestrations where you need strict, graph-based routing between different AI personas.
+- **Evidence Provenance:** Agent conclusions must be traceable to facts fetched from tools, not hidden in the LLM's Chain of Thought.
+- **Idempotency:** When the `issue_refund` tool is executed, it uses an Idempotency Key. If the agent (or a retrying worker) accidentally calls the tool twice for the same logical refund, the system ensures only one actual refund occurs.
 
-## Guided Lab
+## The Notebook Lab
 
-1. Open `06_building_your_first_agent.ipynb` from this directory.
-2. Run the **Raw Agent Loop** cell. Watch how we manually append `tool_calls` and `tool_responses` to the message array.
-3. Run the **LangGraph** cell. Notice how the agent's behavior is identical, but the code structure uses `StateGraph` and compiles into a runnable app.
-4. Run the **PydanticAI** cell. Observe how the same tools are simply decorated with `@agent.tool` and executed in a single line: `agent.run_sync()`.
+The Jupyter notebook is broken down into a massive 20-part capstone.
+To ensure every learner can complete this capstone regardless of API keys or budgets, the core lab uses a **Deterministic Model Stub** (`MockDecisionModel`). This allows you to rapidly test validation failures, authorization denials, and human approval flows locally.
 
-## Evaluation and production checklist
+**Optional Real OpenAI Section:** At the very end of the notebook, you can optionally supply an `OPENAI_API_KEY`. The lab will swap out the Mock Model for the official OpenAI Responses API, plugging the real GPT-4o model into the *exact same* secure application runtime.
 
-- [ ] Does your agent have a strict system prompt defining its persona and boundaries?
-- [ ] Are sensitive tools (like `issue_refund`) protected by a human-in-the-loop confirmation before execution?
-- [ ] Have you chosen the right framework for the job? (e.g., Don't use LangGraph for a simple CLI tool, don't use Raw Loops for a complex enterprise workflow).
-- [ ] Does your agent handle tool failures gracefully? (e.g., What happens if `get_billing_status` times out?)
+## Production Checklist
+
+Before deploying an agent to production, verify:
+- [ ] Is the goal explicit and tracked in a structured state?
+- [ ] Is trusted identity separate from model arguments?
+- [ ] Are tools narrow and strictly validated (e.g. using Pydantic)?
+- [ ] Are read and write tools clearly distinguished?
+- [ ] Are consequential actions approval-gated?
+- [ ] Is human approval cryptographically/logically bound to the exact action?
+- [ ] Are write actions idempotent?
+- [ ] Are execution budgets (max steps, max tool calls) enforced by the runtime?
+- [ ] Is "no-progress" (repeated identical tool calls) detected and terminated?
+- [ ] Are terminal conditions explicit (e.g., SUCCESS, POLICY_BLOCK)?
+- [ ] Can the core system logic be tested deterministically without a live model?
+- [ ] Can a real model plug into the exact same runtime controls as the test suite?
 
 ## Checkpoint
 
-**1. Which framework relies on defining Nodes and Edges to orchestrate the agent loop?**
-- A) PydanticAI
-- B) OpenAI Raw API
-- C) LangGraph
-- D) Browser-Use
+**1. The model asks to refund $500 on a $100 duplicate charge. Which layer rejects it?**
+- Business Validation. The application's semantic rules enforce that the refund amount cannot exceed the eligible transaction amount, regardless of what the LLM generates.
 
-**2. Why might you choose a Raw Agent Loop over a framework?**
-- A) Because it has built-in memory management.
-- B) Because it provides type-safe schemas out of the box.
-- C) To have total control with zero abstraction magic and explicit dependencies.
-- D) To easily orchestrate multiple agents.
+**2. The model proposes `issue_refund` but the caller lacks refund permission. Should the model be asked to try again?**
+- No. Authorization failures are terminal or require escalation. The LLM cannot "reason" its way into gaining permissions.
+
+**3. Why is message history insufficient as the full agent state?**
+- Message history is just the conversation context. Real state includes execution budgets, structured evidence, idempotency keys, and explicit terminal reasons.
+
+**4. Why should `issue_refund` use an idempotency key?**
+- If a network request times out but the payment provider processes it, a naive retry would issue a second refund. Idempotency guarantees exactly-once execution.
+
+**5. The model calls `get_billing_status(C-55)` repeatedly with the same result. Which runtime control should activate?**
+- No-Progress Detection. The application should terminate the agent loop (Terminal Reason: `NO_PROGRESS`) rather than wasting tokens infinitely.
+
+**6. What is the difference between a `RefundProposal` and actually issuing a refund?**
+- A Proposal is a structured intent generated by the LLM. It has no side effects. Issuing a refund requires the application to authorize and execute that intent via a Tool.
+
+**7. Why does human approval need to bind to the exact proposal?**
+- If approval is generic ("approved"), a confused agent might apply it to a different customer or a modified amount. Approval must authorize a specific cryptographic/logical digest.
 
 ## Watch For
 
-- **Framework Lock-in:** Don't let a framework dictate your architecture. The LLM is the engine; the framework is just the chassis.
-- **Over-engineering:** Don't use a massive graph framework if a simple script will do.
+- **Assuming "System Prompts" are security boundaries.** Telling an LLM "do not issue refunds over $100" is an instruction, not a boundary. The application runtime must physically block refunds over $100.
+- **Testing in Production.** If your agent loop cannot be tested with a mock deterministic model, your business logic is too tightly coupled to the LLM provider.
+
+## Exercises
+
+1. Modify `get_refund_policy` to return a rule that refunds require approval only if over $50.00.
+2. Trigger an Authorization Failure by changing the `ExecutionContext`.
+3. Lower the `max_steps` budget and observe the agent terminating early.
+4. Supply an OpenAI API Key and run the optional final section. Compare the real LLM's trajectory to the mock's trajectory.
