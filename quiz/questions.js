@@ -2257,5 +2257,108 @@ export const questions = [
       "label": "Deep Dive: Semantic Routing",
       "url": "curriculum/intermediate/09-agentic-rag/DEEP_DIVE_SEMANTIC_ROUTING.md"
     }
+  },
+  {
+    "id": "agent-loop-state-machine",
+    "category": "The Agent Loop",
+    "prompt": "What is the primary advantage of a state machine loop (like LangGraph) over a basic ReAct while-loop?",
+    "options": [
+      "It uses fewer tokens",
+      "It forces the model to generate correct JSON",
+      "It makes state transitions explicit, inspectable, and controllable",
+      "It eliminates the need for tool schemas",
+      "It runs significantly faster"
+    ],
+    "correct": [2],
+    "explanation": "State machines separate the control flow from the model generation, making every step inspectable, testable, and capable of supporting human-in-the-loop checkpoints.",
+    "source": {
+      "label": "The Agent Loop",
+      "url": "curriculum/beginner/02-agent-loop/README.md"
+    }
+  },
+  {
+    "id": "agent-loop-runaway",
+    "category": "The Agent Loop",
+    "prompt": "Which of the following is an effective way to prevent a runaway agent loop?",
+    "options": [
+      "Asking the model politely to stop after 5 steps",
+      "Implementing hard budgets on turns, time, and spend",
+      "Using a more advanced model",
+      "Relying on system prompts to define terminal states"
+    ],
+    "correct": [1],
+    "explanation": "Agent loops must be bounded by deterministic application code (max steps, timeouts, budgets), not by prompt engineering or model capability.",
+    "source": {
+      "label": "The Agent Loop",
+      "url": "curriculum/beginner/02-agent-loop/README.md"
+    }
+  },
+  {
+    "id": "tools-structured-outputs",
+    "category": "Tools & Structured Outputs Fundamentals",
+    "prompt": "Why is it important to use Structured Outputs (e.g., JSON Schema/Pydantic) for agent tools?",
+    "options": [
+      "It makes the API response look cleaner",
+      "It guarantees the model will never hallucinate",
+      "It provides strict type enforcement and reduces parsing errors",
+      "It allows the model to run faster"
+    ],
+    "correct": [2],
+    "explanation": "Structured Outputs enforce type constraints at the API level, drastically reducing the chances of a model providing improperly formatted arguments.",
+    "source": {
+      "label": "Tools & Structured Outputs Fundamentals",
+      "url": "curriculum/beginner/04-tools-and-structured-outputs/README.md"
+    }
+  },
+  {
+    "id": "tools-authorization",
+    "category": "Tools & Structured Outputs Fundamentals",
+    "prompt": "What is the relationship between exposing a tool to a model and authorization?",
+    "options": [
+      "Exposing a tool automatically authorizes the model to use it safely",
+      "Exposing a tool is merely a capability; authorization must be enforced by the application layer",
+      "Models inherently understand access control from the tool description",
+      "Only read-only tools need authorization checks"
+    ],
+    "correct": [1],
+    "explanation": "A model proposes a tool call; the application layer must always validate if the current session or user actually has the permissions to execute it.",
+    "source": {
+      "label": "Tools & Structured Outputs Fundamentals",
+      "url": "curriculum/beginner/04-tools-and-structured-outputs/README.md"
+    }
+  },
+  {
+    "id": "agent-frameworks-architecture",
+    "category": "Agent Development Frameworks",
+    "prompt": "What is the key difference between an agent framework and an agent architecture?",
+    "options": [
+      "They are the exact same thing",
+      "A framework provides the runtime mechanics, while the architecture defines the control flow and boundaries",
+      "An architecture is written in Python, while a framework is the API",
+      "Frameworks dictate that you must use multi-agent systems"
+    ],
+    "correct": [1],
+    "explanation": "Frameworks (like LangGraph or CrewAI) package runtime mechanics like state management and tool execution. Architecture is the design choice of how control, boundaries, and evaluation are structured.",
+    "source": {
+      "label": "Agent Development Frameworks",
+      "url": "curriculum/beginner/05-agent-development-frameworks/README.md"
+    }
+  },
+  {
+    "id": "capstone-agent-testing",
+    "category": "Building Your First Complete Agent",
+    "prompt": "When building a complete, testable agent, what is the most robust way to handle external dependencies?",
+    "options": [
+      "Call production APIs directly to ensure realism",
+      "Use mocks or local fixtures for deterministic, repeatable testing",
+      "Disable all tests until the agent is in production",
+      "Write prompts that tell the model to imagine the API response"
+    ],
+    "correct": [1],
+    "explanation": "Local fixtures and mocks ensure that agent trajectories can be tested deterministically without risking side effects or dealing with network flakiness.",
+    "source": {
+      "label": "Building Your First Complete Agent",
+      "url": "curriculum/beginner/06-building-your-first-agent/README.md"
+    }
   }
 ];
