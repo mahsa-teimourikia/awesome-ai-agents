@@ -1,0 +1,17 @@
+graph TD
+    classDef start fill:#0369A1,stroke:#38BDF8,stroke-width:2px,color:#F0F9FF
+    classDef filter fill:#1E293B,stroke:#64748B,stroke-width:2px,color:#F8FAFC
+    classDef success fill:#166534,stroke:#4ADE80,stroke-width:2px,color:#F0FDF4
+
+    Start[Model Generated Arguments]:::start --> JSON[JSON / Structure]:::filter
+    JSON --> Pydantic[Pydantic / Schema]:::filter
+    Pydantic --> Semantic[Semantic Rules]:::filter
+    Semantic --> Business[Business Rules]:::filter
+    Business --> Auth[Authorization]:::filter
+    Auth --> Exec[Execution]:::success
+
+    JSON -. "Invalid syntax" .-> Reject[Reject]
+    Pydantic -. "Wrong type/Missing field" .-> Reject
+    Semantic -. "Negative price" .-> Reject
+    Business -. "Refund > Order Total" .-> Reject
+    Auth -. "Permission Denied" .-> Reject

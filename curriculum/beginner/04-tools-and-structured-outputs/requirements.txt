@@ -1,0 +1,5 @@
+pydantic>=2.5.0,<3
+jupyter
+pytest
+openai>=1.40.0
+pydantic-ai
