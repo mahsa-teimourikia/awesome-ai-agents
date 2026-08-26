@@ -1,0 +1,8 @@
+flowchart TD
+    Start[User Request] --> Goal
+    Goal --> Observe
+    Observe --> Reason[Reason & Plan]
+    Reason -->|Select Action| Act[Call Tool]
+    Act --> Observe
+    Reason -->|Goal Met| Complete
+    Reason -->|Safety Stop / Escalate| Escalate

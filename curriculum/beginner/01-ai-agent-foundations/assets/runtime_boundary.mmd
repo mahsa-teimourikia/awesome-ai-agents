@@ -1,0 +1,14 @@
+flowchart TD
+    subgraph Agent Runtime Harness
+        Policy[Policy & Authorization]
+        State[State & Memory]
+        Budget[Budget & Controls]
+        Tools[Tool Definitions]
+    end
+    
+    Model[LLM / Reasoning Model] <-->|Proposes Actions| Policy
+    Policy <-->|Validates & Dispatches| Tools
+    Tools <-->|Interacts with| Env[External Environment]
+    
+    style Policy fill:#f9f,stroke:#333,stroke-width:2px
+    style Model fill:#bbf,stroke:#333,stroke-width:2px

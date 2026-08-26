@@ -1,0 +1,25 @@
+flowchart LR
+    A[LLM] --> B[Chatbot]
+    B --> C[Assistant]
+    C --> D[Agent]
+    D --> E[Agentic System]
+    
+    subgraph Model
+        A
+    end
+    
+    subgraph Conversation
+        B
+    end
+    
+    subgraph Tool Use
+        C
+    end
+    
+    subgraph Bounded Loop
+        D
+    end
+    
+    subgraph Controls
+        E
+    end

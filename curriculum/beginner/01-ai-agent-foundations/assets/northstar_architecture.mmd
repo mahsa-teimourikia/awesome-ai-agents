@@ -1,0 +1,17 @@
+flowchart LR
+    User[User: Checkout is down] --> Agent
+    
+    subgraph Bounded Agent Loop
+        Agent
+        State[Incident State]
+    end
+    
+    Agent -->|Read Only| Orders[get_order]
+    Agent -->|Read Only| Logs[search_logs]
+    Agent -->|Read Only| Runbooks[get_runbook]
+    
+    Agent -.-x|Blocked| Prod[Change Prod Config]
+    
+    Orders -->|Observations| Agent
+    Logs -->|Observations| Agent
+    Runbooks -->|Observations| Agent
