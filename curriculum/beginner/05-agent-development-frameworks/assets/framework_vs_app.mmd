@@ -1,0 +1,22 @@
+graph TD
+    subgraph Framework [Framework Owns]
+        direction TB
+        F1[Model Turns & Parsing]
+        F2[Tool Adapters & Schemas]
+        F3[State & Sessions]
+        F4[Tracing & Telemetry]
+        F5[Graph Execution & Routing]
+    end
+
+    subgraph Application [Application Owns]
+        direction TB
+        A1[Identity & Authentication]
+        A2[Authorization & Permissions]
+        A3[Business Logic & Budgets]
+        A4[Effect Safety & Idempotency]
+        A5[Production Evaluation & SLOs]
+    end
+
+    Framework ~~~ Application
+    style Framework fill:#1E293B,stroke:#64748B,color:#F8FAFC
+    style Application fill:#0369A1,stroke:#38BDF8,color:#F0F9FF

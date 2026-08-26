@@ -1,138 +1,110 @@
-# 05 — Agent development frameworks
+# 05 — Agent Development Frameworks
 
-**Level:** Beginner · **Prerequisites:** [the agent loop](../02-agent-loop/README.md) and [workflow or agent?](../03-workflow-or-agent/README.md)
+**Level:** Beginner · **Time:** 60 min · **Prerequisites:** [The Agent Loop](../02-agent-loop/README.md) and [Tools & Structured Outputs](../04-tools-and-structured-outputs/README.md)
 
-**Scenario:** Northstar, a SaaS support team, is integrating this concept into their agentic workflow.
-**Primary scenario:** an operations assistant for the fictional Northstar Commerce SaaS platform
+**Scenario:** Northstar Commerce needs a support incident investigator. The user request: "Checkout failures increased in Europe after today's release. Investigate what happened and recommend the next safe action." You must choose how to implement the agent that orchestrates this task.
+**Notebook:** [`05_agent_development_frameworks.ipynb`](05_agent_development_frameworks.ipynb)
 
 ## Why this course exists
 
-An agent framework is not an agent architecture. A framework packages recurring engineering work—model turns, tool schemas, state, tracing, streaming, routing, or approvals—so a team can spend more time on product policy and evaluation. It does **not** decide which tools are safe, whether a task needs autonomy, how much a run may cost, or when a human must approve an action.
+An agent framework is **not** an agent architecture. 
 
-This course takes one bounded business domain—investigating checkout and support issues—and implements different slices with frameworks chosen for their natural strengths. The deterministic lab stays runnable without credentials. Each notebook also includes an optional real-framework implementation that you can enable locally with the framework and provider credentials named in that lesson.
+A framework packages recurring engineering work—such as managing model turns, defining tool schemas, managing state, or setting up tracing—so your team can spend more time on product policy. A framework does **not** decide which tools are safe, whether a task needs autonomy, how much a run may cost, or when a human must approve an action.
 
-![Diagram](assets/diagram.svg)
+![Architecture vs Framework](assets/architecture_vs_framework.svg)
 
-## Learning outcomes
+## 1. What a Framework Does (and Doesn't) Do
 
-After completing the notebooks, you should be able to:
+One of the most important lessons in AI engineering is understanding the boundary between the framework and your application.
 
-1. distinguish framework-owned runtime mechanics from application-owned safety and product policy;
-2. choose a framework based on a concrete architecture requirement, not popularity or a provider preference;
-3. implement an agent-facing tool contract and a typed result without granting unbounded external authority;
-4. compare a managed loop, typed agent, state graph, and compositional agent runtime using the same evidence-first scenario; and
-5. design an evaluation that compares success, policy compliance, tool path, latency, and cost across implementations.
+![Framework vs App](assets/framework_vs_app.svg)
 
-## Before choosing a framework
+Your application **must** continue to own authentication, authorization, business rules, and budgets. If you choose a framework because it "has a human-in-the-loop feature", you must still verify that the feature securely blocks unauthorized API calls in your backend.
 
-Start from the system boundary, then select the smallest useful runtime:
+## 2. The Runtime Abstraction Spectrum
 
-| Question | If yes | Design implication |
-| --- | --- | --- |
-| Is the path fully known? | A normal function or workflow is enough. | Do not introduce an agent framework. |
-| Must the model choose among narrow tools? | You need a managed agent loop. | Keep tool schemas and budgets explicit. |
-| Must output become a validated business object? | A typed-output-first library helps. | Validate again at the action boundary. |
-| Does work pause, branch, retry, or resume? | A state graph/durable runtime helps. | Model state and idempotency before coding nodes. |
-| Do specialists collaborate through explicit roles? | A composition/team runtime may help. | Compare against one bounded agent first. |
-| Does an action affect customers or production? | Human approval is required. | Enforce it in code, regardless of framework. |
+Frameworks are best categorized by how much of the runtime they abstract away, rather than subjective terms like "magic" or "industry standard."
 
-## Technology comparison
+![Runtime Spectrum](assets/runtime_spectrum.svg)
 
-This is a practical comparison, not a benchmark. Version, model provider, deployment environment, and team skill all change the answer. Follow the linked official documentation before shipping a design.
+1. **Raw Model API:** You own the loop, state, and execution.
+2. **Managed Agent Runtime:** The framework owns the loop and tool execution.
+3. **Graph / Workflow Runtime:** The framework owns state transitions and branching.
+4. **Team / Composition Runtime:** The framework owns delegation and specialist routing.
+5. **Durable Workflow Infrastructure:** The framework guarantees crash survival and long-running timers.
 
-| Technology | Core strength | Best-fit scenario in this course | Advantages | Trade-offs / avoid when | Official documentation |
-| --- | --- | --- | --- | --- | --- |
-| **OpenAI Agents SDK** | Managed tools, handoffs, guardrails, sessions, HITL, and tracing. | A bounded support-triage agent that selects read-only incident tools and produces a trace. | Few core primitives; Python function tools; built-in tracing; natural fit for OpenAI models. | Avoid if you need a wholly provider-neutral stack or a highly explicit long-lived state graph. It still requires application-owned auth, budgets, and policy. | [Overview](https://openai.github.io/openai-agents-python/), [tools](https://openai.github.io/openai-agents-python/tools/), [tracing](https://openai.github.io/openai-agents-python/tracing/) |
-| **Pydantic AI** | Python typing, validated structured output, dependency injection, and model/provider choice. | A compliance caseworker that returns a schema-valid review decision with evidence IDs. | Strong fit for Pydantic/FastAPI-shaped domains; typed dependencies and outputs; broad provider support. | Validation is not factual correctness. You still need evidence checks, authorization, and tests. | [Overview](https://ai.pydantic.dev/), [agents](https://ai.pydantic.dev/agents/), [output](https://ai.pydantic.dev/output/) |
-| **LangGraph** | Explicit state, conditional edges, persistence, interrupts, and replayable long-running workflows. | A remediation planner that pauses for a human before a high-impact action. | Makes graph state and routing reviewable; useful for recovery and approval flows; model-provider flexible. | More orchestration surface than a short single-agent assistant; do not use a graph to hide a simple function. | [Overview](https://docs.langchain.com/oss/python/langgraph/overview), [persistence](https://docs.langchain.com/oss/python/langgraph/persistence), [interrupts](https://docs.langchain.com/oss/python/langgraph/interrupts) |
-| **Google ADK** | Agent composition, tools, sessions, evaluation, and Google ecosystem integration. | A customer-impact coordinator that composes specialist findings into a constrained action plan. | Designed for composable agents; supports tools, sessions, evaluation, and deployment paths in the Google ecosystem. | Do not choose it only for multi-agent novelty; coordination must outperform a simpler baseline. | [ADK documentation](https://adk.dev/), [agents](https://adk.dev/agents/), [tools](https://adk.dev/tools/) |
-| **Microsoft Agent Framework** | Microsoft agent/workflow runtime for Python and .NET. | A support escalation that mixes deterministic stages, function tools, and an agent-created draft. | Agents, tools, workflow builder/execution, state, hosting, and Microsoft ecosystem integration. | Verify current API maturity; it never replaces application identity, approvals, or workflow tests. | [Microsoft Learn](https://learn.microsoft.com/en-gb/agent-framework/), [Python guide](https://github.com/microsoft/agent-framework/tree/main/python) |
-| **CrewAI** | Agents + Tasks + Crews, with Flows around controlled collaboration. | An incident crew that produces bounded specialist artifacts for a commander. | Clear role/task model; processes, flows, tools, knowledge/memory, guardrails, and observability. | A crew adds coordination cost; constrain delegation, memory, tools, and terminal conditions. | [Docs](https://docs.crewai.com/), [agents](https://docs.crewai.com/concepts/agents), [flows](https://docs.crewai.com/concepts/flows) |
-| **AutoGen** | Conversational multi-agent patterns and team coordination. | Advanced-course selector-team comparison. | Clear group-chat/team abstractions and flexible coordination patterns. | Coordination increases cost and can create loops; use after a single-agent baseline. | [AgentChat](https://microsoft.github.io/autogen/stable/user-guide/agentchat-user-guide/index.html) |
-| **CrewAI** | Role/task/crew model with deterministic flows around collaboration. | Advanced-course incident specialist crew. | Approachable mapping from role to task to deliverable. | Keep process ownership, tool permissions, and recovery explicit. | [Documentation](https://docs.crewai.com/) |
+*Note: Sometimes the correct framework choice is **no framework** (Raw API).*
 
-## Notebook track
+## 3. Technology Comparison
 
-| Notebook | Scenario and framework fit | What to learn | Optional installation |
-| --- | --- | --- | --- |
-| [04a OpenAI Agents SDK — incident triage](04_openai_agents_sdk_incident_triage.ipynb) | A support request needs read-only tools, a managed turn loop, and trace review. | Function tools, managed turns, trace events, guardrail boundaries, handoff decision. | `pip install openai-agents` |
-| [04b Pydantic AI — compliance caseworker](04_pydanticai_compliance_caseworker.ipynb) | A decision must become a schema-valid object before it can be routed. | Typed dependencies, output contracts, retries, evidence validation, model portability. | `pip install pydantic-ai` |
-| [04c LangGraph — remediation approval](04_langgraph_remediation_approval.ipynb) | A proposal must branch, pause for approval, and resume safely. | State schemas, conditional routing, interrupts, idempotency, durable-workflow design. | `pip install langgraph` |
-| [04d Google ADK — customer-impact coordination](04_google_adk_customer_impact.ipynb) | Specialists contribute bounded findings to a customer-impact plan. | Agent composition, tool boundaries, session context, evaluation criteria, coordination costs. | `pip install google-adk` |
-| [04e Microsoft Agent Framework — support escalation](04_microsoft_agent_framework_support_escalation.ipynb) | A deterministic escalation workflow needs narrow tools and an agent-created draft. | Agents, function tools, workflow builder/execution, state, middleware/observability, hosting considerations. | Follow [Microsoft Learn](https://learn.microsoft.com/en-gb/agent-framework/) for current API setup. |
-| [04f CrewAI — incident response crew](04_crewai_incident_response_crew.ipynb) | Specialists produce bounded artifacts for an incident commander in a flow. | Agents, tasks, crews, processes, flows, tools, memory/knowledge boundaries, guardrails, observability. | `pip install crewai` |
+This is a neutral, capability-based comparison based on current official documentation. It is not a benchmark. Choose the smallest framework that meets your runtime requirements.
 
-### Suggested order
+| Framework/Runtime | Primary Abstraction | Owns Agent Loop? | State/Session | Best Fit For... |
+| --- | --- | --- | --- | --- |
+| **Raw Responses API** | The API Call | No | Application | Single bounded turns; maximum transparency. |
+| **OpenAI Agents SDK** | Agent, Runner | Yes | Yes (Sessions) | Managed turns, built-in tracing, native OpenAI fit. |
+| **PydanticAI** | Typed Agent | Yes | Yes | Typed dependency injection, guaranteed schema compliance. |
+| **LangGraph** | State Graph | Yes | Checkpointers | Explicit branching, pause/resume, inspectable paths. |
+| **Google ADK** | Composable Agents | Yes | Sessions | Specialist composition inside the Google Cloud ecosystem. |
+| **Microsoft Agent** | Agents / Workflows | Yes | Memory / State | Escaping simple turns into managed multi-stage workflows. |
+| **AutoGen** | Conversational Agents | Yes | Event-driven | Team coordination patterns, debugging interactions. |
+| **CrewAI** | Crew / Role / Task | Yes | Memory | Content generation pipelines using structured roles. |
+| **Temporal** | Durable Execution | No | Durable | Multi-day human wait states and crash recovery. |
+| **DSPy** | Signatures / Optimizer | N/A | N/A | Optimizing LM programs programmatically (not an orchestrator). |
 
-1. Open `05_agent_development_frameworks.ipynb` to see the same deterministic evidence and policy boundary used by every notebook.
-2. Complete **04a** first. It is the closest continuation of the manual loop.
-3. Complete **04b** when typed, machine-consumed outputs are the central risk.
-4. Complete **04c** when a run needs stateful branching or an approval pause.
-5. Complete **04d** when separate bounded perspectives might improve a customer-impact decision; compare the cost against the single-agent baseline.
-6. Complete **04e** for a Microsoft agent/workflow architecture, then **04f** to compare CrewAI’s role/task/crew model with the same baseline.
+*(Note: Always check official docs for preview/experimental API tags before shipping.)*
 
-## Step-by-step framework selection exercise
+## 4. Framework Lock-in and Portability
 
-**Step 1 — Name the irreversible action.** In the Northstar scenario, a restart, rollback, notification, or account change is irreversible enough to require explicit policy and approval.
+Every framework introduces some lock-in. If you build your entire business model into a framework's proprietary `State` object, migrating will be painful.
 
-**Step 2 — State the evidence contract.** A recommendation must cite service status, incident history, deployment evidence, or customer-impact data. A framework trace is not proof of correctness.
+**Portability Principle:** Keep your domain models and business authorization logic outside of framework-specific classes wherever possible. The framework should route the request; your code should authorize and execute it.
 
-**Step 3 — Select the control-flow shape.** A single read-only investigation fits a managed loop. A compliant decision object fits typed output. A pause-and-resume remediation flow fits a state graph. Specialist coordination needs an explicit comparison against a simpler baseline.
+## 5. Notebook Track
 
-**Step 4 — Add deterministic gates.** Validate identity, tenant scope, tool arguments, estimated spend, retries, and approval tokens outside the prompt.
+Open **[`05_agent_development_frameworks.ipynb`](05_agent_development_frameworks.ipynb)**.
 
-**Step 5 — Evaluate the trajectory.** Record outcome quality, citations, tool calls, forbidden actions, time, tokens, cost, and recovery behavior.
+Rather than providing six unrelated tutorials, the single comprehensive notebook builds the Northstar Incident scenario using a **Raw Framework-Neutral Baseline** first. Then, it maps the exact same scenario to:
+1. **OpenAI Agents SDK** (Managed Runtime)
+2. **PydanticAI** (Typed Runtime)
+3. **LangGraph** (Graph Runtime)
 
-## Cross-framework production checklist
-
-- Give the agent only narrow, typed, authorized tools. Never expose an `admin_api(command: str)` escape hatch.
-- Treat tool output, retrieved documents, and user content as untrusted data.
-- Put tenant checks, permission checks, budgets, and approval rules in deterministic application code.
-- Attach source IDs to evidence; do not allow a model to invent authority.
-- Set limits for turns, tool calls, retries, time, tokens, and estimated spend.
-- Record traces with redaction and retention controls; evaluate trajectories as well as final answers.
-- Make side-effecting operations idempotent and require an approval token bound to the exact proposed action.
-- Start with the least autonomous architecture that reliably solves the task.
-
-## Watch For
-
-- **Assumption failure:** The model hallucinates an unsupported parameter.
-- **State leak:** Context is incorrectly preserved across runs.
-- **Timeout:** The tool takes too long and the agent loops.
-- **Auth bypass:** The agent attempts an action it shouldn't.
+The notebook concludes with a real, executable **OpenAI Agents SDK** implementation.
 
 ## Checkpoint
 
-**1. What is the primary purpose of this module?**
-- A) To understand the core concept.
-- B) To write complex boilerplate.
-- C) To ignore system errors.
-- D) To bypass security.
+**1. You need one model call and two read-only tools. Do you need a graph runtime?**
+*Answer: No. A raw SDK or a simple managed runtime is sufficient. A graph adds unnecessary orchestration surface.*
 
-**2. How do we mitigate the primary failure mode?**
-- A) Retries.
-- B) Human approval.
-- C) Logging.
-- D) Idempotency keys.
+**2. A workflow must pause for human approval and resume tomorrow. Which framework capability matters most?**
+*Answer: Durable persistence/checkpoints.*
 
-## References
+**3. You require strongly typed application outputs but simple control flow. Which framework characteristic matters?**
+*Answer: Typed output enforcement (e.g., PydanticAI).*
 
-- [OpenAI Agents SDK documentation](https://openai.github.io/openai-agents-python/)
-- [Pydantic AI documentation](https://ai.pydantic.dev/)
-- [LangGraph documentation](https://docs.langchain.com/oss/python/langgraph/overview)
-- [Google Agent Development Kit documentation](https://adk.dev/)
-- [Anthropic: Building effective agents](https://www.anthropic.com/engineering/building-effective-agents)
-- [ReAct: Synergizing reasoning and acting in language models](https://arxiv.org/abs/2210.03629)
-- [OWASP Top 10 for LLM Applications](https://genai.owasp.org/)
+**4. A framework provides HITL (Human-in-the-Loop). Does that mean your authorization policy is solved?**
+*Answer: No. The application must still enforce tenant isolation and permissions during tool execution.*
 
-## Deep Dives & State of the Art
+**5. A multi-agent framework makes specialist teams easy. When should you still choose one agent?**
+*Answer: Always compare against a single-agent baseline first. Multi-agent coordination increases latency, token cost, and failure modes.*
 
-To understand the rapidly evolving landscape of agent frameworks, review these expanded topics:
+## Production Checklist
+
+- [ ] Did we choose architecture before framework?
+- [ ] Can raw SDK/simple code solve this?
+- [ ] Are tool contracts framework-independent?
+- [ ] Is authorization outside the framework/model?
+- [ ] Is state explicit?
+- [ ] Is HITL actually durable enough for the use case?
+- [ ] Are framework persistence semantics understood?
+- [ ] Is provider lock-in acceptable?
+- [ ] Are preview APIs identified?
+- [ ] Is tracing available?
+- [ ] Can behavior be evaluated?
+- [ ] Can the system be migrated if the framework changes?
+- [ ] Is multi-agent complexity justified?
+- [ ] Are domain objects independent from framework types where practical?
+
+## Further Deep Dive
 
 - **[The Framework Landscape Deep Dive](DEEP_DIVE_FRAMEWORK_LANDSCAPE.md)**
-
-
-## SOTA Deep Dives
-Explore industry-standard architectural patterns and enterprise implementation details:
-
-- [Framework Landscape](DEEP_DIVE_FRAMEWORK_LANDSCAPE.md)

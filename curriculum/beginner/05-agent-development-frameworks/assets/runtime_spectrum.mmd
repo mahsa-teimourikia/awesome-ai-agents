@@ -1,0 +1,7 @@
+graph LR
+    classDef base fill:#1E293B,stroke:#64748B,stroke-width:2px,color:#F8FAFC
+    
+    A[Raw Model API]:::base --> B[Managed Agent Runtime]:::base
+    B --> C[Graph / Workflow Runtime]:::base
+    C --> D[Team / Composition Runtime]:::base
+    D --> E[Durable Workflow Infrastructure]:::base

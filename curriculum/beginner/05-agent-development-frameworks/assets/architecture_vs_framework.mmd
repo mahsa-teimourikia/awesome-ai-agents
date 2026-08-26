@@ -1,0 +1,12 @@
+graph TD
+    classDef biz fill:#1E293B,stroke:#64748B,stroke-width:2px,color:#F8FAFC
+    classDef arch fill:#0369A1,stroke:#38BDF8,stroke-width:2px,color:#F0F9FF
+    classDef run fill:#166534,stroke:#4ADE80,stroke-width:2px,color:#F0FDF4
+    classDef frame fill:#854D0E,stroke:#FACC15,stroke-width:2px,color:#FEFCE8
+
+    Biz[1. Business Requirements]:::biz --> Arch[2. Agent Architecture]:::arch
+    Arch --> Run[3. Runtime Requirements]:::run
+    Run --> Frame[4. Framework Selection]:::frame
+    Frame --> Impl[5. Implementation]:::biz
+
+    style Frame stroke-dasharray: 5 5
