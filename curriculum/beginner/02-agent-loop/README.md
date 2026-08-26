@@ -2,289 +2,152 @@
 
 **Level:** Beginner · **Time:** 60 min · **Prerequisites:** None
 
-**Scenario:** Northstar, a SaaS support team, is integrating this concept into their agentic workflow.
+**Scenario:** Northstar, a SaaS support team, wants to automate incident diagnosis. Specifically, "European customers cannot complete checkout." They need a system that can look up orders, search logs, and read runbooks to diagnose the issue, without giving an untrusted system permission to change production data.
 
 **Notebook:** [`02_agent_loop.ipynb`](02_agent_loop.ipynb)
 
-An agent is not a magical prompt. It is a bounded execution loop in which a
-model proposes a next step, the application validates and performs permitted
-work, the environment returns an observation, and the system either adapts or
-stops. This lesson uses a fictional checkout incident to evolve from a tiny
-state machine to a traceable tool-using investigator.
+An agent is not a magical prompt. It is a bounded execution loop in which a model proposes a next step, the application validates and performs permitted work, the environment returns an observation, and the system either adapts or stops. This lesson uses the Northstar checkout incident to evolve from a naive while-loop to a traceable, typed, tool-using execution loop.
 
 ## Outcomes
 
-You will be able to model the agent execution loop, distinguish observations
-from instructions, select ReAct, Plan-and-Execute, reflection, and event-driven
-patterns, specify termination and recovery rules, and design an agent harness
-that cannot run forever.
+You will be able to model the agent execution loop, distinguish observations from instructions, select the right execution pattern (ReAct, Plan-and-Execute, reflection, event-driven, or graph execution), specify termination and recovery rules, and design an agent harness that prevents infinite runaway loops.
 
-![Diagram](diagram.svg)
+![Bounded Agent Loop](assets/bounded_agent_loop.svg)
 
-## 1. The execution contract
+## 1. The Execution Contract
 
-The model may choose *among* approved next steps. Application code owns tool
-schema validation, authorization, state updates, retries, budgets, idempotency,
-tracing, and termination. Treat tool output, retrieved text, and user input as
-observations—not privileged instructions.
+**HOW DOES AN AGENT ACTUALLY EXECUTE?**
 
-| Element | Question | Example |
-| --- | --- | --- |
-| Goal | What counts as success? | Identify supported checkout response |
-| State | What must persist? | Evidence, attempts, costs, pending approval |
-| Action | What may happen? | Read service health; never restart directly |
-| Observation | What changed? | Timeout spike, tool failure, new customer reply |
-| Policy | What is blocked? | Production restart without human approval |
-| Terminal rule | When do we stop? | Evidence supports answer, budget reached, or escalation |
+The central mental model you must adopt is:
 
-## 2. Thought/action/observation cycles
+`Goal` → `State` → `Model proposes next action` → `Runtime validates + authorizes` → `Tool/environment executes` → `Observation` → `State update` → `Continue / replan / retry / stop / escalate`
 
-The **ReAct** pattern interleaves a visible decision/action record with an
-environmental observation. The key engineering lesson is feedback: an action
-without an observation cannot correct a mistaken plan. Record a concise trace
-such as `hypothesis → allowed tool → arguments → result → next decision`; do
-not depend on hidden reasoning as an audit log.
+The model may choose *among* approved next steps. **Application code (the runtime)** owns tool schema validation, authorization, state updates, retries, budgets, idempotency, tracing, and termination. Treat tool output, retrieved text, and user input as *observations*—not privileged instructions.
 
-![Diagram](diagram_2.svg)
+## 2. Typed Agent State and Transitions
 
-The original [ReAct paper](https://arxiv.org/abs/2210.03629) showed that
-interleaving reasoning and actions can improve interactive task behavior and
-make trajectories easier to inspect. In production, that insight becomes a
-bounded state transition system, not an invitation to expose private reasoning.
-
-## 3. Pattern selection
-
-| Pattern | Use it when | Guardrail |
-| --- | --- | --- |
-| ReAct | The next evidence/tool depends on the previous observation | Step/tool/cost budgets |
-| Plan-and-Execute | A coarse plan improves coordination for a longer task | Replan only when evidence invalidates a plan step |
-| Reflection loop | There is a concrete rubric or test to improve output | Cap revisions; evaluator does not authorize actions |
-| Event-driven agent | Work resumes on a ticket, callback, or approval event | Idempotency key and durable state |
-| Deterministic state machine | States and transitions are known | Keep model decisions out of critical routing |
-
-Plan-and-Execute is not always better than ReAct: a fixed plan can become stale.
-Use it when planning reduces uncertainty, then make replanning an explicit state
-transition triggered by evidence—not an endless “think again” loop.
-
-## 4. Termination, recovery, and runaway prevention
-
-Every run needs multiple terminal paths: success, evidence-insufficient
-abstention, policy block, human escalation, timeout, step limit, tool-call
-limit, cost limit, and unrecoverable tool error. Retrying is appropriate only
-for defined transient failures. Invalid arguments require correction;
-permission denials require escalation; repeated observations or actions should
-terminate rather than accumulate cost.
-
-![Diagram](diagram_3.svg)
-
-Practical runaway controls: monotonic budget counters, duplicate-action
-detection, no-progress threshold, deadline, idempotency keys for events,
-bounded retries with backoff, a kill switch, and traces that make the stop
-reason observable.
-
-## 5. The agent harness
-
-The **harness** is the application runtime around a model: state store, tool
-registry/dispatcher, input-output validation, policy enforcement, event queue,
-trace collector, evaluator hooks, and human handoff. Frameworks such as the
-[OpenAI Agents SDK](https://openai.github.io/openai-agents-python/),
-[LangGraph](https://docs.langchain.com/oss/python/langgraph/overview), and
-[Temporal](https://temporal.io/) can help, but none removes the need to define
-authority and termination in your application.
-
-## 6. Worked examples: every loop pattern
-
-All examples use the same support request: “European customers cannot complete
-checkout.” They are deliberately small; production implementations add typed
-schemas, authorization, tracing, and tests around the same transitions.
-
-### Agent execution loop
+An agent's state is not just a raw list of chat messages. A professional agent requires a typed state using `Pydantic` or `TypedDict` to track progression, evidence, and bounds.
 
 ```python
-state = {"goal": "diagnose checkout", "evidence": [], "steps_left": 4}
-while state["steps_left"] and not state.get("done"):
-    action = decide_next_step(state)       # model-assisted, bounded choice
-    observation = dispatch_if_allowed(action)
-    state["evidence"].append(observation)
-    state["done"] = evidence_is_sufficient(state["evidence"])
-    state["steps_left"] -= 1
+class AgentState(BaseModel):
+    goal: str
+    evidence: list[Evidence]
+    steps: int
+    tool_calls: int
+    retries: int
+    cost_usd: float
+    seen_actions: set[str]
+    current_hypothesis: str | None
+    terminal_reason: str | None
 ```
 
-### Thought/action/observation (ReAct)
+### Explicit State Transitions
+Instead of letting the LLM output whatever it wants, we enforce transition guards. For an incident flow like `TRIAGE → INVESTIGATE → RECOMMEND → COMPLETE`, the transitions are explicitly checked:
 
+- `TRIAGE → INVESTIGATE`: Only if evidence is insufficient.
+- `INVESTIGATE → RECOMMEND`: Only if the evidence threshold is met.
+- `INVESTIGATE → ESCALATE`: If permission is required or no progress is made.
+
+## 3. Pattern Selection Taxonomy
+
+Agents can execute using different architectural patterns depending on the task. These patterns can also be combined.
+
+| Pattern | Who chooses next step? | Best for | Main risk | Key control |
+| --- | --- | --- | --- | --- |
+| **Fixed workflow** | Code | Known process | Brittleness | Explicit transitions/tests |
+| **ReAct-style loop** | Model | Evidence gathering | Loops/wrong tool | Step/tool/cost budgets |
+| **Plan-and-Execute** | Planner + executor | Longer tasks | Stale plan | Evidence-triggered replan |
+| **Reflection** | Model/evaluator | Revisable outputs | Endless revision | Rubric + revision cap |
+| **Event-driven** | Event + state | Long-running work | Duplicates/stale events | Durable state + idempotency |
+| **Graph/state machine**| Graph + bounded model | Controlled orchestration | Complexity | Explicit state + transitions |
+
+## 4. Termination Conditions
+
+A loop must terminate safely. "The model emitted a final answer" is not always sufficient. For enterprise systems, success may also require output validation and policy checks. 
+
+Define explicit terminal states:
+- `SUCCESS`: Goal met and validated.
+- `INSUFFICIENT_EVIDENCE`: Exhausted all avenues but cannot conclude.
+- `POLICY_BLOCK`: An action violated business rules.
+- `HUMAN_ESCALATION`: Required permission or edge case detected.
+- `TOOL_FAILURE`: An external system is unrecoverably down.
+- `STEP_BUDGET_EXHAUSTED` / `COST_BUDGET_EXHAUSTED`: Hard limit hit.
+- `NO_PROGRESS`: The agent is stuck in a loop.
+
+![Termination Paths](assets/termination_paths.svg)
+
+## 5. No-Progress Detection & Runaway Prevention
+
+An unbounded `while` loop is dangerous. To prevent an agent from repeatedly issuing the same bad arguments:
 ```text
-Decision: “Health is degraded; inspect active checkout incidents.”
-Action:   search_incidents("active checkout")
-Observation: INC-1042 reports payment gateway timeouts.
-Next decision: retrieve the checkout runbook, then prepare a support response.
+search logs → same result → search logs → same result → search logs
 ```
+We track a fingerprint of `(tool_name, normalized_arguments)`. If this is seen multiple times without the state significantly changing, we hit the `NO_PROGRESS` terminal condition and escalate.
 
-The trace records the decision and evidence, not hidden private reasoning.
+## 6. Error Classification, Retry, and Idempotency
 
-### Termination conditions
+Retry is a policy decision, not a universal error handler.
 
-```python
-if supported_answer_ready(state): stop("success")
-elif state.tool_calls >= 10: stop("tool_budget_exhausted")
-elif state.cost_usd >= 0.05: stop("cost_budget_exhausted")
-elif state.repeated_actions >= 2: stop("no_progress_escalate")
-```
+- **Timeout**: Backoff + retry if budget allows.
+- **HTTP 429**: Backoff + retry.
+- **Temporary 5xx**: Bounded retry.
+- **Malformed arguments**: Correct once or replan.
+- **Permission denied**: Do NOT retry. Escalate immediately.
+- **Resource not found**: Obtain new evidence or stop.
+- **Deterministic 400**: Do not blindly retry.
 
-### State machine
+### Idempotency
+Retrying `get_service_health()` is safe (read-only). Retrying `charge_credit_card()` or `restart_server()` is not. Use idempotency keys and distinguish read-only operations from non-idempotent writes.
 
-```python
-TRANSITIONS = {
-    "triage": {"need_evidence": "investigate", "safe": "complete"},
-    "investigate": {"evidence_found": "recommend", "blocked": "escalate"},
-    "recommend": {"approved": "complete"},
-}
-```
+## 7. The Agent Harness (Frameworks)
 
-Unlike an unstructured while-loop, a state machine makes permitted transitions
-reviewable and testable.
+The **harness** is the application runtime around a model. Frameworks such as the [OpenAI Agents SDK](https://openai.github.io/openai-agents-python/), [LangGraph](https://docs.langchain.com/oss/python/langgraph/overview), [PydanticAI](https://pydantic.ai/), or [Google ADK](https://github.com/google/agent-development-kit) can help manage this state, but none removes the need to define authority and termination in your application.
 
-### Event-driven agent
+**LangGraph** is one implementation of the state-machine/graph execution pattern. It helps provide explicit state and conditional transitions, but it is not automatically "production ready" without authorization, idempotency, and security.
 
-```python
-def on_customer_reply(event):
-    if event.id in processed_event_ids:  # idempotency prevents duplicate work
-        return "already processed"
-    processed_event_ids.add(event.id)
-    return resume_case(event.case_id, new_observation=event.message)
-```
-
-Use this for a ticket reply, approval callback, or deployment event—not a
-polling loop that wakes indefinitely.
-
-### Plan-and-Execute
-
-```python
-plan = ["check health", "inspect deployment", "query regional logs", "recommend"]
-for step in plan:
-    result = execute(step)
-    if contradicts_plan(result):
-        plan = replan_from(result)  # record why this plan changed
-```
-
-This is useful when the work has a coherent outline. A small incident usually
-does not need a costly planner before every tool call.
-
-### Reflection loop
-
-```python
-draft = recommend(evidence)
-for _ in range(2):
-    critique = check(draft, rubric="claims must cite evidence; no production action")
-    if critique.passed: break
-    draft = revise(draft, critique)
-```
-
-Reflection needs a rubric and a revision limit. “Reflect until perfect” is a
-runaway-loop instruction, not a control.
-
-### Retry and recovery
-
-```python
-try:
-    logs = query_logs()
-except ToolTimeout:
-    logs = retry_once_with_backoff(query_logs)
-except PermissionDenied:
-    return escalate("on-call approval required")
-except InvalidArguments:
-    return correct_or_stop("tool schema error")
-```
-
-Retry only failures that are plausibly transient. Never retry an unauthorized
-write in the hope that it will become authorized.
-
-### Dynamic replanning
-
-```python
-if observation["latest_deploy"] != assumed_deploy:
-    state["hypothesis"] = "release regression possible"
-    state["replan_reason"] = "new deployment evidence"
-    next_action = "inspect_deployment_diff"
-```
-
-Replanning is a response to a changed world state, not a synonym for asking the
-model to think longer.
-
-### Harness boundary
-
-```python
-proposal = model.choose_action(state, ALLOWED_TOOL_SCHEMAS)
-validated = validate_schema(proposal)
-authorize(current_user, validated.tool, validated.arguments)
-trace.append(validated.redacted())
-result = execute(validated)  # only this layer touches an external system
-```
-
-### Preventing runaway/infinite loops
-
-```python
-fingerprint = (action.name, freeze(action.arguments))
-if fingerprint in state.seen_actions:
-    return escalate("repeated action without new evidence")
-state.seen_actions.add(fingerprint)
-```
-
-Combine this duplicate-action guard with step/time/cost limits, a no-progress
-counter, deadlines, kill switches, and human escalation.
-
-## Step-by-step lab
-
-1. Run `python curriculum/beginner/02-agent-loop/lab.py` and inspect the tiny
-   `FoundationState` trace.
-2. Run the checkout investigator and identify the model, tool, observation, and
-   application-policy boundary.
-3. Lower a step, tool, or cost budget; explain the safe terminal outcome.
-4. Trigger the “keep investigating” case and verify that it terminates.
-5. Add a transient tool failure with one retry, then compare it with a
-   permission denial that must escalate.
-6. Write a no-progress rule for repeated tool calls.
-7. Decide whether your own use case needs ReAct, a state graph, or a fixed
-   workflow, and justify the choice with a measurable success criterion.
-
-## Watch For
-
-- **Assumption failure:** The model hallucinates an unsupported parameter.
-- **State leak:** Context is incorrectly preserved across runs.
-- **Timeout:** The tool takes too long and the agent loops.
-- **Auth bypass:** The agent attempts an action it shouldn't.
+**Temporal** is primarily a durable workflow orchestration system, not an agent framework. It is useful when tasks run for a long time, workers may restart, or humans/events interrupt execution.
 
 ## Checkpoint
 
-**1. What is the primary purpose of this module?**
-- A) To understand the core concept.
-- B) To write complex boilerplate.
-- C) To ignore system errors.
-- D) To bypass security.
+1. **A tool returns `PermissionDenied`. What should the loop do?**
+   - *Answer: Escalate or Stop. Retrying a hard permission denial is a waste of budget.*
+2. **The same tool and arguments are executed three times with the same result. What control should activate?**
+   - *Answer: No-Progress detection should terminate the run or force a replan to prevent an infinite loop.*
+3. **A new deployment invalidates the original diagnosis plan. Retry or replan?**
+   - *Answer: Replan. The evidence has changed the world state.*
+4. **Does structured tool calling (JSON) guarantee correct tool choice?**
+   - *Answer: No. It reduces parsing errors, but the model can still choose the wrong tool or hallucinate semantically invalid arguments.*
+5. **When should Plan-and-Execute be preferred over ReAct?**
+   - *Answer: When a coarse plan improves coordination for a longer task, reducing the uncertainty of immediate next steps.*
+6. **Why is an event ID useful in event-driven agents?**
+   - *Answer: It provides an idempotency key to prevent duplicate work if an event is redelivered.*
 
-**2. How do we mitigate the primary failure mode?**
-- A) Retries.
-- B) Human approval.
-- C) Logging.
-- D) Idempotency keys.
+## Practical Design Checklist
+
+- [ ] Is the goal explicit?
+- [ ] Is state typed (e.g., Pydantic/TypedDict)?
+- [ ] Are actions constrained to a registry?
+- [ ] Are tool inputs validated with a schema?
+- [ ] Is authorization outside the model?
+- [ ] Are terminal conditions explicit (Success, Escalate, Budget)?
+- [ ] Are step, tool, and cost budgets defined?
+- [ ] Are retries classified (transient vs deterministic)?
+- [ ] Is no-progress detected?
+- [ ] Are side effects idempotent where needed?
+- [ ] Is an observable trace produced?
+- [ ] Can the run safely abstain or escalate?
+
+## Further Deep Dives
+
+To truly master the agent loop in an enterprise context, review the following expanded topics:
+
+- [The ReAct Pattern Deep Dive](DEEP_DIVE_REACT_PATTERN.md)
+- [Modern Agent Execution Patterns](DEEP_DIVE_SOTA_LOOPS.md)
 
 ## References
 
 - [ReAct: Synergizing Reasoning and Acting in Language Models](https://arxiv.org/abs/2210.03629)
-- [OpenAI: A practical guide to building agents](https://openai.com/business/guides-and-resources/a-practical-guide-to-building-ai-agents/)
 - [Anthropic: Building effective agents](https://www.anthropic.com/engineering/building-effective-agents)
+- [OpenAI: A practical guide to building agents](https://openai.com/business/guides-and-resources/a-practical-guide-to-building-ai-agents/)
 - [LangGraph overview](https://docs.langchain.com/oss/python/langgraph/overview)
-- [Agent survey: the landscape of LLM agents](https://arxiv.org/abs/2309.07864)
-
-## Deep Dives & State of the Art
-
-To truly master the agent loop in an enterprise context, review the following expanded topics:
-
-- **[The ReAct Pattern Deep Dive](DEEP_DIVE_REACT_PATTERN.md)**
-- **[State of the Art (SOTA) Agent Loops (Reflexion, Plan-and-Solve)](DEEP_DIVE_SOTA_LOOPS.md)**
-
-
-## SOTA Deep Dives
-Explore industry-standard architectural patterns and enterprise implementation details:
-
-- [React Pattern](DEEP_DIVE_REACT_PATTERN.md)
-- [Sota Loops](DEEP_DIVE_SOTA_LOOPS.md)
+- [Temporal](https://temporal.io/)

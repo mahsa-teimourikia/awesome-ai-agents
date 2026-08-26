@@ -1,0 +1,16 @@
+graph TD
+    classDef default fill:#1E293B,stroke:#64748B,stroke-width:2px,color:#F8FAFC
+    classDef model fill:#0369A1,stroke:#38BDF8,stroke-width:2px,color:#F0F9FF
+    classDef runtime fill:#4338CA,stroke:#818CF8,stroke-width:2px,color:#EEF2FF
+    classDef env fill:#0F766E,stroke:#5EEAD4,stroke-width:2px,color:#F0FDFA
+
+    Goal[User Goal]:::default --> State[Agent State]:::default
+    State --> Model[Model Proposes Next Action]:::model
+    Model --> Runtime[Runtime Validates & Authorizes]:::runtime
+    Runtime -- "Blocked" --> State
+    Runtime -- "Approved" --> Env[Tool / Environment Executes]:::env
+    Env --> Obs[Observation]:::env
+    Obs --> StateUpdate[State Update]:::runtime
+    StateUpdate --> Eval{Check Terminal?}:::runtime
+    Eval -- "Yes" --> End[Stop / Escalate]:::default
+    Eval -- "No" --> State
