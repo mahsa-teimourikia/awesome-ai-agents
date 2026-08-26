@@ -1,0 +1,15 @@
+graph TD
+    classDef data fill:#eff6ff,stroke:#3b82f6,stroke-width:2px,color:#1e3a8a
+    classDef merge fill:#f5f3ff,stroke:#8b5cf6,stroke-width:2px,color:#4c1d95
+    classDef result fill:#f0fdf4,stroke:#22c55e,stroke-width:2px,color:#14532d
+    
+    A[Browser Page]:::data --> B[Extract Accessibility Tree]:::data
+    A --> C[Capture Screenshot]:::data
+    
+    B --> D[Semantic Locator]:::merge
+    C --> E[Visual Verification]:::merge
+    
+    D --> F{Hybrid Grounding}:::merge
+    E --> F
+    
+    F --> G[Target Confirmed & Visible]:::result

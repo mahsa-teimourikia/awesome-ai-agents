@@ -1,0 +1,6 @@
+jupyter
+pydantic>=2.5.0,<3
+playwright
+pytest
+pandas
+openai>=1.40.0

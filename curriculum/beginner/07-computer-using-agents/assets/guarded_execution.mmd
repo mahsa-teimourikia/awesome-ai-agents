@@ -1,0 +1,14 @@
+graph LR
+    classDef input fill:#fdf4ff,stroke:#c026d3,stroke-width:2px,color:#701a75
+    classDef validate fill:#f0fdf4,stroke:#22c55e,stroke-width:2px,color:#14532d
+    classDef human fill:#fefce8,stroke:#eab308,stroke-width:2px,color:#713f12
+    classDef execute fill:#fff7ed,stroke:#f97316,stroke-width:2px,color:#7c2d12
+    
+    A[Model Proposal]:::input --> B[Ground Target]:::validate
+    B --> C{Policy Check}:::validate
+    C -- Origin Blocked --> Blocked[Rejected]:::validate
+    C -- Allowed Draft --> E[Executor]:::execute
+    C -- Commit Action --> D[Human Approval]:::human
+    D -- Confirmed --> E
+    D -- Denied --> Blocked
+    E --> F[Verify Postcondition]:::validate
