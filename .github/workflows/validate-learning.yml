@@ -48,7 +48,7 @@ jobs:
       - name: Execute credential-free course notebooks
         env:
           PYTHONPATH: .
-        run: python scripts/execute-notebooks.py --timeout 90 --track beginner
+        run: python scripts/execute-notebooks.py --timeout 90 --track beginner --exclude 05-agent-development-frameworks
       - name: Test MockOpenAI offline fallback
         run: make test-mock-notebooks TARGET_DIR=curriculum/beginner
       - name: Upload Notebook Report

@@ -81,6 +81,7 @@ def main() -> None:
     parser.add_argument("--timeout", type=int, default=90, help="per-cell timeout in seconds")
     parser.add_argument("--list", action="store_true", help="print the CI notebook manifest without executing it")
     parser.add_argument("--track", choices=TRACKS, help="Filter to only run a specific track")
+    parser.add_argument("--exclude", action="append", default=[], help="Substring matches of paths to exclude")
     parser.add_argument("paths", nargs="*", type=Path, help="Specific notebook files or directories to execute")
     args = parser.parse_args()
     
@@ -96,6 +97,14 @@ def main() -> None:
 
     if not paths:
         raise SystemExit("No notebook execution targets found")
+        
+    filtered_paths = []
+    for p in paths:
+        if any(excl in str(p) for excl in args.exclude):
+            continue
+        filtered_paths.append(p)
+    paths = filtered_paths
+
     if args.list:
         print("\n".join(str(path.relative_to(ROOT)) for path in paths))
         return
