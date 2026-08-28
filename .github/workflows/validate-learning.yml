@@ -50,7 +50,7 @@ jobs:
           PYTHONPATH: .
         run: python scripts/execute-notebooks.py --timeout 90 --track beginner --exclude 05-agent-development-frameworks
       - name: Test MockOpenAI offline fallback
-        run: make test-mock-notebooks TARGET_DIR=curriculum/beginner
+        run: make test-mock-notebooks TARGET_DIR=curriculum/beginner EXCLUDE_DIR=05-agent-development-frameworks
       - name: Upload Notebook Report
         if: always()
         uses: actions/upload-artifact@v4

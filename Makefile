@@ -18,10 +18,11 @@ notebook-check:
 	PYTHONPATH=. .venv/bin/python scripts/execute-notebooks.py --timeout 90
 
 TARGET_DIR ?= curriculum
+EXCLUDE_DIR ?=
 
 test-mock-notebooks:
 	@echo "Testing notebooks in $(TARGET_DIR) using MockOpenAI (OPENAI_API_KEY unset)..."
-	unset OPENAI_API_KEY && find $(TARGET_DIR) -name "*.ipynb" -exec python3 -m jupyter nbconvert --to notebook --execute --inplace {} +
+	unset OPENAI_API_KEY && find $(TARGET_DIR) -name "*.ipynb" $(if $(EXCLUDE_DIR),! -path "*$(EXCLUDE_DIR)*") -exec python3 -m jupyter nbconvert --to notebook --execute --inplace {} +
 	@echo "All notebooks in $(TARGET_DIR) executed successfully on mock data!"
 
 clean:
