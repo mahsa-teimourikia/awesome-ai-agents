@@ -12,35 +12,44 @@ frameworks = [
     "langgraph>=0.2.0",
     "openai-agents>=0.1.0"
 ]
-learner = [
+core = [
     "jupyter",
     "ipykernel",
-    "pydantic",
+    "pydantic>=2.0.0",
+    "pandas",
     "openai",
-    "anthropic",
+    "nest-asyncio>=1.5.0"
+]
+beginner = [
+    "awsome-ai-agents[core]"
+]
+browser = [
+    "playwright>=1.40.0"
+]
+intermediate = [
+    "awsome-ai-agents[core]",
     "langchain",
     "langchain-openai",
+    "dspy-ai"
+]
+advanced = [
+    "awsome-ai-agents[intermediate]",
     "pyautogen",
-    "autogen",
     "crewai",
     "agentops",
-    "pandas",
     "mcp",
     "chromadb",
-    "opentelemetry-api",
-    "opentelemetry-sdk",
     "temporalio",
-    "dspy-ai",
-    "semantic-router==0.1.16",
+    "anthropic",
     "matplotlib",
     "numpy",
     "tqdm",
     "umap-learn",
-    "playwright>=1.40.0",
-    "nest-asyncio>=1.5.0"
+    "semantic-router==0.1.16",
+    "opentelemetry-api",
+    "opentelemetry-sdk"
 ]
 contributor = [
-    "awsome-ai-agents[learner,frameworks]",
     "pytest",
     "nbclient",
     "nbformat",

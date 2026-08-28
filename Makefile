@@ -2,10 +2,10 @@
 
 setup-learner:
 	uv venv .venv
-	uv sync --extra learner
+	uv sync --extra beginner
 
 setup-contributor: setup-learner
-	uv sync --extra contributor
+	uv sync --extra contributor --extra beginner --extra frameworks --extra browser
 	npm ci
 
 test:
@@ -17,10 +17,12 @@ test-ui:
 notebook-check:
 	PYTHONPATH=. .venv/bin/python scripts/execute-notebooks.py --timeout 90
 
+TARGET_DIR ?= curriculum
+
 test-mock-notebooks:
-	@echo "Testing all notebooks using MockOpenAI (OPENAI_API_KEY unset)..."
-	unset OPENAI_API_KEY && find curriculum -name "*.ipynb" -exec python3 -m jupyter nbconvert --to notebook --execute --inplace {} +
-	@echo "All notebooks executed successfully on mock data!"
+	@echo "Testing notebooks in $(TARGET_DIR) using MockOpenAI (OPENAI_API_KEY unset)..."
+	unset OPENAI_API_KEY && find $(TARGET_DIR) -name "*.ipynb" -exec python3 -m jupyter nbconvert --to notebook --execute --inplace {} +
+	@echo "All notebooks in $(TARGET_DIR) executed successfully on mock data!"
 
 clean:
 	rm -rf .venv node_modules build dist *.egg-info .pytest_cache .mypy_cache

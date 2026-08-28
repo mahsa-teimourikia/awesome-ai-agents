@@ -3,26 +3,19 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *'
 permissions:
   contents: read
 jobs:
-  validate:
+  validate-core:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Install contributor dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install -e '.[contributor]'
-          python -m playwright install --with-deps chromium
-          python -m ipykernel install --user --name python3 --display-name "Python 3"
-      - name: Run Python tests
-        env:
-          PYTHONPATH: .
-        run: pytest -q
       - name: Parse notebooks
         run: |
           python - <<'PY'
@@ -37,9 +30,85 @@ jobs:
           PY
       - name: Compile Python course modules
         run: python -m compileall -q curriculum tests
+
+  test-beginner:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e '.[contributor,beginner,browser]'
+          python -m playwright install --with-deps chromium
+          python -m ipykernel install --user --name python3 --display-name "Python 3"
       - name: Execute credential-free course notebooks
+        env:
+          PYTHONPATH: .
+        run: python scripts/execute-notebooks.py --timeout 90 --track beginner
+      - name: Test MockOpenAI offline fallback
+        run: make test-mock-notebooks TARGET_DIR=curriculum/beginner
+      - name: Upload Notebook Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: notebook-execution-summary-beginner
+          path: notebook_execution_summary.md
+
+  test-frameworks:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e '.[contributor,beginner,frameworks]'
+          python -m ipykernel install --user --name python3 --display-name "Python 3"
+      - name: Execute framework notebooks
+        env:
+          PYTHONPATH: .
+        run: python scripts/execute-notebooks.py --timeout 90 curriculum/beginner/05-agent-development-frameworks
+      - name: Upload Notebook Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: notebook-execution-summary-frameworks
+          path: notebook_execution_summary.md
+
+  full-regression:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e '.[contributor,beginner,frameworks,browser,intermediate,advanced]'
+          python -m playwright install --with-deps chromium
+          python -m ipykernel install --user --name python3 --display-name "Python 3"
+      - name: Run Python tests
+        env:
+          PYTHONPATH: .
+        run: pytest -q
+      - name: Execute ALL credential-free course notebooks
         env:
           PYTHONPATH: .
         run: python scripts/execute-notebooks.py --timeout 90
       - name: Test MockOpenAI offline fallback
         run: make test-mock-notebooks
+      - name: Upload Notebook Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: notebook-execution-summary-full
+          path: notebook_execution_summary.md
