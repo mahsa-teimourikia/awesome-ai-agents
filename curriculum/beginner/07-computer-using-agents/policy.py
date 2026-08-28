@@ -1,63 +1,179 @@
+import time
+import urllib.parse
 import hashlib
 import json
-from typing import Literal, List, Optional
-from pydantic import BaseModel, Field
+from typing import Literal, List, Optional, Any, Union, Tuple, Dict
+from pydantic import BaseModel, Field, ConfigDict
 
-class UIAction(BaseModel):
-    action_type: Literal['click', 'type', 'scroll', 'wait', 'navigate', 'submit_commit']
+# Centralized model configuration (Model/API capabilities evolve over time;
+# official documentation at https://platform.openai.com/docs is the source of truth).
+OPENAI_MODEL = "gpt-4o-mini"
+
+# Action Types & Risk Classification
+ActionType = Literal["navigate", "click", "type", "scroll", "submit", "stop"]
+RiskLevel = Literal["OBSERVE", "DRAFT", "COMMIT", "SENSITIVE"]
+
+class BaseAction(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    snapshot_id: str
+    action_type: ActionType
+    risk_level: RiskLevel = "OBSERVE"
+    decision_summary: Optional[str] = Field(None, description="Observable action rationale")
+
+class NavigateAction(BaseAction):
+    action_type: Literal["navigate"] = "navigate"
+    url: str
+
+class ClickAction(BaseAction):
+    action_type: Literal["click"] = "click"
+    target_role: str
+    target_name: str
     target_id: Optional[str] = None
-    value: Optional[str] = None
+    fallback_coordinates: Optional[Tuple[float, float]] = None
 
-class ControllerState(BaseModel):
-    allowed_origins: List[str]
-    current_origin: str = "https://internal-portal.example"
-    snapshot_id: str = "snap_1"
+class TypeAction(BaseAction):
+    action_type: Literal["type"] = "type"
+    target_role: str
+    target_name: str
+    text: str
+    target_id: Optional[str] = None
 
-def compute_action_digest(action: UIAction) -> str:
-    canon = json.dumps(action.model_dump(exclude_none=True), sort_keys=True)
-    return hashlib.sha256(canon.encode('utf-8')).hexdigest()
+class SubmitAction(BaseAction):
+    action_type: Literal["submit"] = "submit"
+    target_role: str = "button"
+    target_name: str = "Submit Escalation"
+    case_id: str
+    escalation_note: str = Field(..., description="The exact payload content of the escalation note being submitted")
+    risk_level: Literal["COMMIT"] = "COMMIT"
+
+UIAction = Union[NavigateAction, ClickAction, TypeAction, SubmitAction]
 
 class Approval(BaseModel):
-    action_digest: str
+    proposal_digest: str
+    snapshot_id: str
+    case_id: str
+    action_type: str
+    target_name: str
     approver_id: str
-    expires_at_unix: float
+    expires_at: float
+    decision: Literal["approve", "reject"]
 
-def grant_human_approval(action: UIAction, approver_id: str = "sec-lead-1", duration_sec: float = 60.0, decision: Literal["approve", "reject"] = "approve") -> Approval:
-    import time
-    if decision == "reject":
-        raise ValueError("Human rejected the action.")
-    return Approval(
-        action_digest=compute_action_digest(action),
-        approver_id=approver_id,
-        expires_at_unix=time.time() + duration_sec
-    )
+def compute_action_digest(action: UIAction) -> str:
+    """Produces a deterministic SHA-256 digest of the proposed action payload."""
+    note = getattr(action, "escalation_note", "") or getattr(action, "text", "")
+    payload_repr = f"{action.snapshot_id}|{action.action_type}|{getattr(action, 'target_name', '')}|{getattr(action, 'case_id', '')}|{note}"
+    return hashlib.sha256(payload_repr.encode('utf-8')).hexdigest()
+
+class ControllerState:
+    def __init__(self, allowed_origins: List[str]):
+        self.allowed_origins = allowed_origins
+        self.snapshot_counter = 0
+        self.latest_snapshot_id: Optional[str] = None
+        self.action_history: List[Dict[str, Any]] = []
+        self.action_count = 0
+        self.max_actions = 10
+        self.recovery_count = 0
+        self.max_recoveries = 3
+
+    def new_snapshot_id(self) -> str:
+        self.snapshot_counter += 1
+        self.latest_snapshot_id = f"snap-{self.snapshot_counter:03d}"
+        return self.latest_snapshot_id
+
+class ValidationResult(BaseModel):
+    allowed: bool
+    status: Literal["ALLOWED", "ORIGIN_DISALLOWED", "STALE_SNAPSHOT", "APPROVAL_REQUIRED", "APPROVAL_INVALID", "APPROVAL_EXPIRED", "BUDGET_EXHAUSTED"]
+    reason: str
 
 def validate_policy(
     action: UIAction, 
-    agent_snapshot_id: str,
+    current_url: str, 
     controller: ControllerState
-) -> None:
-    """Phase 1: Zero-Trust Runtime Validation."""
-    # 1. Origin Allowlist Validation
-    if controller.current_origin not in controller.allowed_origins:
-        raise PermissionError(f"Action blocked: Origin '{controller.current_origin}' is not in the allowlist.")
-    
-    # 2. Synchronous State Validation (Snapshot matching)
-    if agent_snapshot_id != controller.snapshot_id:
-        raise ValueError(f"Action blocked: Stale state. Agent used snapshot {agent_snapshot_id}, but current DOM is {controller.snapshot_id}. The page has mutated.")
+) -> ValidationResult:
+    # 1. Action Budget Check
+    if controller.action_count >= controller.max_actions:
+        return ValidationResult(allowed=False, status="BUDGET_EXHAUSTED", reason=f"Max action budget of {controller.max_actions} exhausted.")
+    # 2. Strict Origin Allowlist Verification (Parsed URL comparison)
+    if action.action_type == "navigate":
+        target_url = getattr(action, 'url', current_url)
+    else:
+        target_url = current_url
+        
+    parsed = urllib.parse.urlparse(target_url)
+    origin = f"{parsed.scheme}://{parsed.netloc}"
+    if origin not in controller.allowed_origins:
+        return ValidationResult(
+            allowed=False, 
+            status="ORIGIN_DISALLOWED", 
+            reason=f"Security Policy Violation: Target origin '{origin}' is not in allowed origins {controller.allowed_origins}."
+        )
+    # 3. Observation Freshness Check
+    if action.snapshot_id != controller.latest_snapshot_id:
+        return ValidationResult(
+            allowed=False, 
+            status="STALE_SNAPSHOT", 
+            reason=f"Stale Observation: Action snapshot '{action.snapshot_id}' does not match latest snapshot '{controller.latest_snapshot_id}'."
+        )
+    return ValidationResult(allowed=True, status="ALLOWED", reason="Action passed policy and envelope checks.")
 
 def validate_approval(
-    action: UIAction,
-    approval_token: Optional[Approval]
-) -> None:
-    """Phase 2: Cryptographic Human Approval Check."""
-    import time
-    if not approval_token:
-        raise PermissionError(f"ACTION INTERCEPTED: '{action.action_type}' requires an explicit human approval token.")
+    action: UIAction, 
+    controller: ControllerState, 
+    approval: Optional[Approval] = None
+) -> ValidationResult:
+    if action.risk_level == "COMMIT":
+        if approval is None:
+            return ValidationResult(
+                allowed=False, 
+                status="APPROVAL_REQUIRED", 
+                reason="High-risk COMMIT action requires explicit human approval."
+            )
         
-    if time.time() > approval_token.expires_at_unix:
-        raise PermissionError("Human approval token has expired.")
-        
-    current_digest = compute_action_digest(action)
-    if current_digest != approval_token.action_digest:
-        raise PermissionError(f"Approval digest mismatch! The payload was mutated.\nExpected: {approval_token.action_digest}\nActual: {current_digest}")
+        expected_digest = compute_action_digest(action)
+        if approval.proposal_digest != expected_digest:
+            return ValidationResult(
+                allowed=False, 
+                status="APPROVAL_INVALID", 
+                reason="Approval digest mismatch: approval does not match proposed action payload (mutated payload or target)."
+            )
+        if approval.snapshot_id != controller.latest_snapshot_id:
+            return ValidationResult(
+                allowed=False, 
+                status="APPROVAL_INVALID", 
+                reason="Approval bound to stale snapshot."
+            )
+        if time.time() > approval.expires_at:
+            return ValidationResult(
+                allowed=False, 
+                status="APPROVAL_EXPIRED", 
+                reason="Digest-bound approval has expired."
+            )
+        if approval.decision != "approve":
+            return ValidationResult(
+                allowed=False, 
+                status="APPROVAL_INVALID", 
+                reason="Human approver rejected the action."
+            )
+            
+    return ValidationResult(allowed=True, status="ALLOWED", reason="Approval verified.")
+
+def grant_human_approval(action: UIAction, approver_id: str = "sec-lead-1", duration_sec: float = 60.0, decision: Literal["approve", "reject"] = "approve") -> Approval:
+    """Simulates the out-of-band human confirmation step producing a digest-bound Approval token."""
+    digest = compute_action_digest(action)
+    return Approval(
+        proposal_digest=digest,
+        snapshot_id=action.snapshot_id,
+        case_id=getattr(action, "case_id", "CASE-123"),
+        action_type=action.action_type,
+        target_name=getattr(action, "target_name", ""),
+        approver_id=approver_id,
+        expires_at=time.time() + duration_sec,
+        decision=decision
+    )
+
+class GroundingResult(BaseModel):
+    success: bool
+    status: Literal["GROUNDED", "TARGET_NOT_FOUND", "AMBIGUOUS_TARGET", "DISABLED", "OUT_OF_BOUNDS"]
+    locator: Optional[Any] = None
+    bounding_box: Optional[Dict[str, float]] = None
+    error_message: Optional[str] = None

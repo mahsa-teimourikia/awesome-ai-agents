@@ -18,32 +18,47 @@ class ToolCall(BaseModel):
     name: str
     arguments_json: str
 
+class IncidentRecommendation(BaseModel):
+    summary: str
+    cited_evidence_ids: list[str]
+    suspected_deployment_id: str | None
+    attribution_strength: Literal["unknown", "correlated", "strong_evidence", "verified"]
+    recommended_action: Literal["observe", "investigate", "consider_rollback", "escalate"]
+
 class ModelDecision(BaseModel):
     decision_summary: str
     tool_calls: List[ToolCall] = Field(default_factory=list)
-    final_answer: str | None = None
+    final_answer: IncidentRecommendation | None = None
 
 class AgentRunResult(BaseModel):
-    final_answer: str
+    recommendation: IncidentRecommendation
     evidence_retrieved: List[Any]
     evidence_ids: List[str]
     steps: int
     tool_calls: int
 
 def verify_grounding(result: AgentRunResult):
-    """Enforce: No recommendation may rely on evidence the implementation did not retrieve."""
-    if 'dep_eu_114' in result.final_answer:
-        assert any(isinstance(ev, DeploymentResult) and ev.latest_deployment_id == 'dep_eu_114' for ev in result.evidence_retrieved), \
-            'GROUNDING VIOLATION: Final answer cited deployment dep_eu_114, but deployment tool was never executed!'
-    if 'DEGRADED' in result.final_answer or '15%' in result.final_answer:
-        assert any(isinstance(ev, HealthResult) and ev.status == 'DEGRADED' for ev in result.evidence_retrieved), \
-            'GROUNDING VIOLATION: Final answer cited health degradation without checking health tool!'
+    """Enforce structured grounding invariants on the final recommendation."""
+    rec = result.recommendation
+    retrieved_ev_ids = [getattr(ev, 'evidence_id', None) for ev in result.evidence_retrieved]
     
-    # Teach professionals: grounded facts != proven causal attribution
-    if 'caused' in result.final_answer.lower():
-        raise AssertionError(
-            "GROUNDING VIOLATION: Final answer asserted proven causality ('caused') "
-            "but only gathered temporal correlation evidence (HealthResult, DeploymentResult)."
-        )
+    # 1. Every cited_evidence_id exists in evidence_retrieved
+    for cite_id in rec.cited_evidence_ids:
+        assert cite_id in retrieved_ev_ids, f'GROUNDING VIOLATION: Cited evidence {cite_id} was never retrieved.'
         
-    print('\nGrounding Invariant Verified: All cited facts match retrieved evidence, and conclusion strength is consistent with the evidence.')
+    # 2. Suspected deployment was actually retrieved
+    if rec.suspected_deployment_id:
+        has_deployment = any(isinstance(ev, DeploymentResult) and ev.latest_deployment_id == rec.suspected_deployment_id for ev in result.evidence_retrieved)
+        assert has_deployment, f'GROUNDING VIOLATION: Suspected deployment {rec.suspected_deployment_id} was not retrieved.'
+        
+    # 3 & 4. attribution_strength="verified" requires verification evidence (temporal correlation alone cannot become "verified")
+    if rec.attribution_strength == "verified":
+        raise AssertionError("GROUNDING VIOLATION: Temporal correlation (health & deployment) cannot establish 'verified' causality.")
+        
+    # 5. rollback recommendation requires the expected prerequisite evidence
+    if rec.recommended_action == "consider_rollback":
+        assert rec.suspected_deployment_id is not None, "GROUNDING VIOLATION: Rollback recommended without a suspected deployment."
+        has_health_degradation = any(isinstance(ev, HealthResult) and ev.status in ['DEGRADED', 'DOWN'] for ev in result.evidence_retrieved)
+        assert has_health_degradation, "GROUNDING VIOLATION: Rollback recommended but no health degradation evidence retrieved."
+
+    print('\nGrounding Invariant Verified: Recommendation uses structured evidence constraints correctly.')

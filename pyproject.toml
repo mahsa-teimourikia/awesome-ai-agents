@@ -7,10 +7,13 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# NOTE: The version ranges below define broad compatibility for users.
+# For a strictly reproducible and tested environment, always use `uv.lock`.
+
 frameworks = [
-    "pydantic-ai>=0.0.14",
-    "langgraph>=0.2.0",
-    "openai-agents>=0.1.0"
+    "pydantic-ai>=2.30.0,<3.0.0",
+    "langgraph>=1.2.0,<2.0.0",
+    "openai-agents>=0.20.0,<0.21.0"
 ]
 core = [
     "jupyter",
@@ -24,7 +27,7 @@ beginner = [
     "awsome-ai-agents[core]"
 ]
 browser = [
-    "playwright>=1.40.0"
+    "playwright>=1.40.0,<2.0.0"
 ]
 intermediate = [
     "awsome-ai-agents[core]",
