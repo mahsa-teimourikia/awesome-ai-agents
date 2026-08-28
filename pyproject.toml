@@ -11,6 +11,7 @@ learner = [
     "jupyter",
     "ipykernel",
     "pydantic",
+    "pydantic-ai",
     "openai",
     "anthropic",
     "langchain",
