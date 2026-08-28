@@ -68,6 +68,15 @@ def test_c5_grounding_invariant_enforcement():
     # Should pass without assertion error
     c5.verify_grounding(res)
 
+def test_c5_model_decision_no_shared_state():
+    # Verify mutable default fix: Instances should not share the tool_calls list
+    decision1 = c5.ModelDecision(decision_summary="First decision")
+    decision2 = c5.ModelDecision(decision_summary="Second decision")
+    
+    decision1.tool_calls.append(c5.ToolCall(name="mock", arguments_json="{}"))
+    assert len(decision1.tool_calls) == 1
+    assert len(decision2.tool_calls) == 0
+
 # =======================
 # COURSE 06 TESTS
 # =======================

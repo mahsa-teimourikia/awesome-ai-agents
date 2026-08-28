@@ -1,5 +1,5 @@
 from typing import List, Literal, Any
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 class HealthResult(BaseModel):
     evidence_id: str
@@ -20,7 +20,7 @@ class ToolCall(BaseModel):
 
 class ModelDecision(BaseModel):
     decision_summary: str
-    tool_calls: List[ToolCall] = []
+    tool_calls: List[ToolCall] = Field(default_factory=list)
     final_answer: str | None = None
 
 class AgentRunResult(BaseModel):
