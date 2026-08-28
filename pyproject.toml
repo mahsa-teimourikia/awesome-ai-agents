@@ -30,7 +30,8 @@ intermediate = [
     "awsome-ai-agents[core]",
     "langchain",
     "langchain-openai",
-    "dspy-ai"
+    "dspy-ai",
+    "semantic-router==0.1.16"
 ]
 advanced = [
     "awsome-ai-agents[intermediate]",
@@ -45,7 +46,6 @@ advanced = [
     "numpy",
     "tqdm",
     "umap-learn",
-    "semantic-router==0.1.16",
     "opentelemetry-api",
     "opentelemetry-sdk"
 ]
