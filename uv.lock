@@ -495,6 +495,11 @@ contributor = [
     { name = "tqdm" },
     { name = "umap-learn" },
 ]
+frameworks = [
+    { name = "langgraph" },
+    { name = "openai-agents" },
+    { name = "pydantic-ai" },
+]
 learner = [
     { name = "agentops" },
     { name = "anthropic" },
@@ -506,21 +511,18 @@ learner = [
     { name = "jupyter" },
     { name = "langchain" },
     { name = "langchain-openai" },
-    { name = "langgraph" },
     { name = "matplotlib" },
     { name = "mcp" },
     { name = "nest-asyncio" },
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "numpy", version = "2.5.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "openai" },
-    { name = "openai-agents" },
     { name = "opentelemetry-api" },
     { name = "opentelemetry-sdk" },
     { name = "pandas" },
     { name = "playwright" },
     { name = "pyautogen" },
     { name = "pydantic" },
-    { name = "pydantic-ai" },
     { name = "semantic-router" },
     { name = "temporalio" },
     { name = "tqdm" },
@@ -532,7 +534,7 @@ requires-dist = [
     { name = "agentops", marker = "extra == 'learner'" },
     { name = "anthropic", marker = "extra == 'learner'" },
     { name = "autogen", marker = "extra == 'learner'" },
-    { name = "awsome-ai-agents", extras = ["learner"], marker = "extra == 'contributor'" },
+    { name = "awsome-ai-agents", extras = ["learner", "frameworks"], marker = "extra == 'contributor'" },
     { name = "chromadb", marker = "extra == 'learner'" },
     { name = "crewai", marker = "extra == 'learner'" },
     { name = "dspy-ai", marker = "extra == 'learner'" },
@@ -541,7 +543,7 @@ requires-dist = [
     { name = "jupyter", marker = "extra == 'learner'" },
     { name = "langchain", marker = "extra == 'learner'" },
     { name = "langchain-openai", marker = "extra == 'learner'" },
-    { name = "langgraph", marker = "extra == 'learner'" },
+    { name = "langgraph", marker = "extra == 'frameworks'", specifier = ">=0.2.0" },
     { name = "matplotlib", marker = "extra == 'learner'" },
     { name = "mcp", marker = "extra == 'learner'" },
     { name = "nbclient", marker = "extra == 'contributor'" },
@@ -550,21 +552,21 @@ requires-dist = [
     { name = "nest-asyncio", marker = "extra == 'learner'", specifier = ">=1.5.0" },
     { name = "numpy", marker = "extra == 'learner'" },
     { name = "openai", marker = "extra == 'learner'" },
-    { name = "openai-agents", marker = "extra == 'learner'" },
+    { name = "openai-agents", marker = "extra == 'frameworks'", specifier = ">=0.1.0" },
     { name = "opentelemetry-api", marker = "extra == 'learner'" },
     { name = "opentelemetry-sdk", marker = "extra == 'learner'" },
     { name = "pandas", marker = "extra == 'learner'" },
     { name = "playwright", marker = "extra == 'learner'", specifier = ">=1.40.0" },
     { name = "pyautogen", marker = "extra == 'learner'" },
     { name = "pydantic", marker = "extra == 'learner'" },
-    { name = "pydantic-ai", marker = "extra == 'learner'" },
+    { name = "pydantic-ai", marker = "extra == 'frameworks'", specifier = ">=0.0.14" },
     { name = "pytest", marker = "extra == 'contributor'" },
     { name = "semantic-router", marker = "extra == 'learner'", specifier = "==0.1.16" },
     { name = "temporalio", marker = "extra == 'learner'" },
     { name = "tqdm", marker = "extra == 'learner'" },
     { name = "umap-learn", marker = "extra == 'learner'" },
 ]
-provides-extras = ["learner", "contributor"]
+provides-extras = ["frameworks", "learner", "contributor"]
 
 [[package]]
 name = "babel"

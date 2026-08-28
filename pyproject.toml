@@ -7,15 +7,18 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+frameworks = [
+    "pydantic-ai>=0.0.14",
+    "langgraph>=0.2.0",
+    "openai-agents>=0.1.0"
+]
 learner = [
     "jupyter",
     "ipykernel",
     "pydantic",
-    "pydantic-ai",
     "openai",
     "anthropic",
     "langchain",
-    "langgraph",
     "langchain-openai",
     "pyautogen",
     "autogen",
@@ -23,7 +26,6 @@ learner = [
     "agentops",
     "pandas",
     "mcp",
-    "openai-agents",
     "chromadb",
     "opentelemetry-api",
     "opentelemetry-sdk",
@@ -38,7 +40,7 @@ learner = [
     "nest-asyncio>=1.5.0"
 ]
 contributor = [
-    "awsome-ai-agents[learner]",
+    "awsome-ai-agents[learner,frameworks]",
     "pytest",
     "nbclient",
     "nbformat",
