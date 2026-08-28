@@ -38,4 +38,12 @@ def verify_grounding(result: AgentRunResult):
     if 'DEGRADED' in result.final_answer or '15%' in result.final_answer:
         assert any(isinstance(ev, HealthResult) and ev.status == 'DEGRADED' for ev in result.evidence_retrieved), \
             'GROUNDING VIOLATION: Final answer cited health degradation without checking health tool!'
-    print('\nGrounding Invariant Verified: All cited facts match retrieved evidence.')
+    
+    # Teach professionals: grounded facts != proven causal attribution
+    if 'caused' in result.final_answer.lower():
+        raise AssertionError(
+            "GROUNDING VIOLATION: Final answer asserted proven causality ('caused') "
+            "but only gathered temporal correlation evidence (HealthResult, DeploymentResult)."
+        )
+        
+    print('\nGrounding Invariant Verified: All cited facts match retrieved evidence, and conclusion strength is consistent with the evidence.')

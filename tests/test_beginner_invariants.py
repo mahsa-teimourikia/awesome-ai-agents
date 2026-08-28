@@ -67,6 +67,12 @@ def test_c5_grounding_invariant_enforcement():
     ]
     # Should pass without assertion error
     c5.verify_grounding(res)
+    
+    # Verify that causal language is rejected
+    res.evidence_retrieved.append(c5.HealthResult(evidence_id='2', status='DEGRADED', error_rate_pct=15.0, symptom='None'))
+    res.final_answer = "Deployment dep_eu_114 caused the DEGRADED state."
+    with pytest.raises(AssertionError, match="proven causality"):
+        c5.verify_grounding(res)
 
 def test_c5_model_decision_no_shared_state():
     # Verify mutable default fix: Instances should not share the tool_calls list
