@@ -1,0 +1,15 @@
+sequenceDiagram
+    participant Model
+    participant Application
+    participant Tool
+    
+    Application->>Model: Current State
+    Note over Model: Internal Reasoning (CoT)
+    Model->>Application: Tool Proposal
+    
+    Note over Application: Validate & Authorize
+    Application->>Tool: Execute Read
+    Tool-->>Application: Observation (Evidence)
+    
+    Note over Application: Mutate State & Trace
+    Application->>Model: Updated State

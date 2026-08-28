@@ -45,8 +45,8 @@ export const learningPath = [
     "id": "b4",
     "title": "Agent Development Frameworks",
     "description": "Explore the vast framework landscape. Compare orchestration libraries (LangGraph, CrewAI) and determine which SOTA architecture matches your specific use case.",
-    "material": "../curriculum/beginner/04-agent-development-frameworks/README.md",
-    "notebook": "../curriculum/beginner/04-agent-development-frameworks/04_agent_development_frameworks.ipynb",
+    "material": "../curriculum/beginner/05-agent-development-frameworks/README.md",
+    "notebook": "../curriculum/beginner/05-agent-development-frameworks/05_agent_development_frameworks.ipynb",
     "category": "Beginner - Agent Development Frameworks",
     "minutes": 60,
     "technologies": [
@@ -59,8 +59,8 @@ export const learningPath = [
     "id": "b5",
     "title": "Computer-Using Agents",
     "description": "Bridge the gap between LLMs and UI. Learn how OmniParser prevents spatial hallucination using bounding boxes, and why Accessibility Trees (AXTrees) are vastly superior to raw DOM inputs.",
-    "material": "../curriculum/beginner/05-computer-using-agents/README.md",
-    "notebook": "../curriculum/beginner/05-computer-using-agents/05_computer_using_agents.ipynb",
+    "material": "../curriculum/beginner/07-computer-using-agents/README.md",
+    "notebook": "../curriculum/beginner/07-computer-using-agents/07_computer_using_agents.ipynb",
     "category": "Beginner - Computer-Using Agents",
     "minutes": 60,
     "technologies": [

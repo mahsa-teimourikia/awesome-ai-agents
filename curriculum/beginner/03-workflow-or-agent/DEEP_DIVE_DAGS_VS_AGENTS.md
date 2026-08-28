@@ -1,47 +1,51 @@
-# Deep Dive: DAGs vs Agents
+# Deep Dive: Workflows vs Agents: Architectural Trade-offs
 
-When automating a business process, engineering teams face a critical architectural decision: Should we build a deterministic Workflow (DAG) or a non-deterministic Agent?
+When automating a business process, engineering teams face a critical architectural decision: Should we build a Deterministic Workflow or an Agent?
 
-Choosing the wrong architecture leads to brittle systems or catastrophic, unpredictable errors.
+## 1. Deterministic Workflows
 
----
+A common misconception is that a workflow is strictly a DAG (Directed Acyclic Graph). In reality, a DAG is just one representation. Deterministic workflows may also be represented as:
+- Ordinary application code
+- Finite-state machines (FSM)
+- Statecharts
+- BPM/workflow systems
+- Event-driven workflows
+- Durable workflows
+- Graphs with bounded cycles and retries
 
-## 1. Deterministic Workflows (DAGs)
+A workflow can contain branching, retries, loops, waiting, events, human approvals, and parallel work. 
 
-A DAG (Directed Acyclic Graph) is a strict, hardcoded sequence of steps. If Step A succeeds, execute Step B. If Step A fails, execute Step C.
+### Clarifying Determinism
 
-Tools like Airflow, Prefect, or simple Python scripts represent this. 
+"Deterministic" refers to the **control flow**, not the external outcome. In a deterministic workflow, application code defines the valid execution paths. However, external systems and data may still produce variable outcomes (e.g., API timeouts, database changes, concurrent updates, network failures, human input). 
 
-### Characteristics:
-- **Predictable:** The code path is defined entirely by the engineer. 
-- **Reliable:** It does the exact same thing every time.
-- **Brittle:** If a user says "I want to refund this order, but actually send it to my new credit card instead of the old one", a standard refund workflow will crash or fail because it wasn't explicitly programmed for that edge case.
+*Deterministic control flow != deterministic external outcome.*
 
----
-
-## 2. Non-Deterministic Agents
-
-An Agent is an LLM with access to tools (like `refund_order`, `lookup_user`). The *sequence* of operations is not hardcoded. The LLM decides what tools to use, in what order, based on the user's prompt.
-
-### Characteristics:
-- **Flexible:** It can handle thousands of edge cases automatically. If a user changes their mind mid-sentence, the agent dynamically adjusts its tool calls.
-- **Unpredictable:** Because the LLM generates the path dynamically, it might take 3 steps today and 5 steps tomorrow to solve the exact same problem.
-- **Prone to Failure:** LLMs hallucinate. An agent might decide to execute `issue_refund` before executing `verify_identity`, causing a security breach.
+### Strengths and Weaknesses
+- **Strength:** Explicit known behavior. Predictable costs and latency. Easy to evaluate and audit.
+- **Weakness:** They must be explicitly programmed for known edge cases. If a highly unstructured, unpredictable scenario arises that was not modeled, the workflow will fail.
 
 ---
 
-## 3. The Enterprise SOTA: Agentic Workflows
+## 2. Agents
 
-State-of-the-Art enterprise systems do not choose one or the other. They combine them into **Agentic Workflows**.
+An agent dynamically directs its process and tool use based on evidence discovered at runtime.
 
-In an Agentic Workflow, the *macro-architecture* is a strict, hardcoded DAG, but specific nodes within the DAG are autonomous Agents.
+### Strengths and Weaknesses
+- **Strength:** Adaptive behavior where the correct path cannot be enumerated economically. Excellent for messy, uncertain environments (like diagnosing an incident).
+- **Weakness:** An agent can misunderstand the case, choose the wrong tool, miss an edge case, hallucinate, violate a business rule, or get stuck in a loop. It inherently increases latency, cost, and evaluation burden.
 
-### Scenario: Customer Support Triage
+Do not fall for the oversimplification that "workflows are brittle" while "agents handle all edge cases automatically." Both have distinct failure modes.
 
-1. **Node 1 (Agent):** The "Router Agent" reads an incoming email. It has two options: classify it as `Billing` or `Technical`. It handles the messy, unstructured language.
-2. **Edge (Deterministic):** If `Billing`, the system explicitly routes to the Billing Workflow. The agent *cannot* route anywhere else.
-3. **Node 2 (Deterministic):** The system automatically looks up the user's billing history in the SQL database. (No LLM required, 100% reliable).
-4. **Node 3 (Agent):** The "Billing Agent" reads the SQL output and drafts a polite email to the user explaining their invoice.
+---
 
-### Why this is SOTA
-You use Agents only where you absolutely need flexibility (understanding messy human language, drafting text). You use deterministic Workflows for everything else (fetching data, making API calls, enforcing security boundaries). This minimizes hallucinations and dramatically reduces API costs.
+## 3. The 6-Level Architecture Spectrum
+
+State-of-the-art enterprise systems do not choose "Agent OR Workflow". They use the least autonomous architecture that reliably solves the problem.
+
+- **Level 0 — Deterministic Code:** Application code controls everything.
+- **Level 1 — Deterministic Workflow:** Branches are explicitly coded.
+- **Level 2 — Workflow with LLM Nodes:** The model performs a bounded cognitive task (e.g., classification) but does not own the overall process.
+- **Level 3 — Agentic Workflow:** The macro process is controlled, but a model may decide locally which evidence source to inspect.
+- **Level 4 — Bounded Agent:** The model dynamically chooses the next approved action from state, constrained by authorization and terminal conditions.
+- **Level 5 — Multi-Agent System:** Multiple independent agents collaborate only where specialization, context isolation, or organizational boundaries justify it.

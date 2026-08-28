@@ -1,0 +1,14 @@
+graph TD
+    classDef default fill:#1E293B,stroke:#64748B,stroke-width:2px,color:#F8FAFC
+    classDef model fill:#0369A1,stroke:#38BDF8,stroke-width:2px,color:#F0F9FF
+    classDef env fill:#0F766E,stroke:#5EEAD4,stroke-width:2px,color:#F0FDFA
+
+    Start[Task: Check DB & Stock]:::default --> Decision1[Decision: Check DB first]:::model
+    Decision1 --> Action1[Action: execute_sql]:::model
+    Action1 --> Obs1[Observation: Count 1450]:::env
+    Obs1 -. "Feedback incorporates into prompt" .-> Decision2
+    Decision2[Decision: Check Stock next]:::model --> Action2[Action: get_stock_price]:::model
+    Action2 --> Obs2[Observation: $150.25]:::env
+    Obs2 -. "Feedback incorporates into prompt" .-> Decision3
+    Decision3[Decision: Answer User]:::model --> Action3[Action: final_answer]:::model
+    Action3 --> End[End]:::default

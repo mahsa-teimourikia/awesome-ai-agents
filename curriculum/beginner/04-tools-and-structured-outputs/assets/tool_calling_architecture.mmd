@@ -1,0 +1,22 @@
+graph TD
+    classDef model fill:#0369A1,stroke:#38BDF8,stroke-width:2px,color:#F0F9FF
+    classDef app fill:#1E293B,stroke:#64748B,stroke-width:2px,color:#F8FAFC
+    classDef ext fill:#854D0E,stroke:#FACC15,stroke-width:2px,color:#FEFCE8
+
+    User([User Request]) --> Model[LLM]:::model
+    Model -- "1. Tool Proposal (JSON)" --> App[Application Sandbox]:::app
+    
+    subgraph App [Application Sandbox]
+        Schema[Schema Validation]
+        Business[Business Validation]
+        Auth[Authorization]
+        Exec[Tool Execution]
+        
+        Schema --> Business --> Auth --> Exec
+    end
+    
+    Exec -- "2. API Call" --> External[External System]:::ext
+    External -- "3. Data" --> Exec
+    
+    Exec -- "4. Structured Tool Result" --> Model
+    Model -- "5. Final Response" --> User

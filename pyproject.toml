@@ -11,16 +11,19 @@ learner = [
     "jupyter",
     "ipykernel",
     "pydantic",
+    "pydantic-ai",
     "openai",
     "anthropic",
     "langchain",
     "langgraph",
     "langchain-openai",
     "pyautogen",
+    "autogen",
     "crewai",
     "agentops",
     "pandas",
     "mcp",
+    "openai-agents",
     "chromadb",
     "opentelemetry-api",
     "opentelemetry-sdk",
@@ -30,13 +33,16 @@ learner = [
     "matplotlib",
     "numpy",
     "tqdm",
-    "umap-learn"
+    "umap-learn",
+    "playwright>=1.40.0",
+    "nest-asyncio>=1.5.0"
 ]
 contributor = [
     "awsome-ai-agents[learner]",
     "pytest",
     "nbclient",
     "nbformat",
+    "nbconvert",
 ]
 
 [tool.setuptools]

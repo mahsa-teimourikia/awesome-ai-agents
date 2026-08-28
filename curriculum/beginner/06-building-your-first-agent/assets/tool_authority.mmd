@@ -1,0 +1,25 @@
+graph TD
+    classDef read fill:#0369A1,stroke:#38BDF8,stroke-width:2px,color:#F0F9FF
+    classDef write fill:#7F1D1D,stroke:#F87171,stroke-width:2px,color:#FEF2F2
+    classDef neutral fill:#1E293B,stroke:#64748B,stroke-width:2px,color:#F8FAFC
+
+    Agent[Agent / Model]:::neutral
+    
+    subgraph Autonomous
+        direction TB
+        R1[read_ticket]:::read
+        R2[read_billing]:::read
+        R3[read_transactions]:::read
+        R4[read_policy]:::read
+    end
+
+    subgraph Gated
+        direction TB
+        W1[issue_refund]:::write
+        W2[cancel_subscription]:::write
+    end
+    
+    Agent -->|Always Allowed| Autonomous
+    Agent -->|Blocked by Default| Gated
+    
+    Approval[Human/Policy Approval]:::neutral -->|Grants 1-time execution token| Gated

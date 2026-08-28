@@ -1,0 +1,16 @@
+graph LR
+    classDef model fill:#0369A1,stroke:#38BDF8,stroke-width:2px,color:#F0F9FF
+    classDef app fill:#1E293B,stroke:#64748B,stroke-width:2px,color:#F8FAFC
+
+    subgraph Structured_Output [Structured Output]
+        InputA[Input]:::app --> ModelA[LLM]:::model
+        ModelA --> DataA[Structured Application Data]:::app
+    end
+
+    subgraph Tool_Calling [Tool Calling]
+        InputB[Input]:::app --> ModelB[LLM]:::model
+        ModelB --> PropB[Tool Proposal]:::app
+        PropB --> ExecB[Tool Execution]:::app
+        ExecB --> ResB[Result]:::app
+        ResB --> ModelB
+    end

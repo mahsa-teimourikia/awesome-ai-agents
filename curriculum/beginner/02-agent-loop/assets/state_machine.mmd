@@ -1,0 +1,14 @@
+graph LR
+    classDef node fill:#1E293B,stroke:#64748B,stroke-width:2px,color:#F8FAFC
+    classDef edge fill:#4338CA,stroke:#818CF8,stroke-width:2px,color:#EEF2FF
+    
+    Start((Start)):::node --> Decide[Decide Node]:::node
+    
+    Decide -- "tool_call" --> Tool[Tool Node]:::node
+    Tool --> Decide
+    
+    Decide -- "text (success)" --> Recommend[Recommend Node]:::node
+    Decide -- "no_progress" --> Escalate[Escalate Node]:::node
+    
+    Recommend --> End((End)):::node
+    Escalate --> End

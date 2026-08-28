@@ -19,7 +19,7 @@ export const questions = [
     "explanation": "A model proposes an action; deterministic control code verifies the current target and permissions, pauses consequential commits, and checks the resulting state. Page content is untrusted data and cannot grant authority.",
     "source": {
       "label": "Computer-Using Agents",
-      "url": "curriculum/beginner/05-computer-using-agents/README.md"
+      "url": "curriculum/beginner/07-computer-using-agents/README.md"
     }
   },
   {
@@ -42,7 +42,7 @@ export const questions = [
     "explanation": "Interaction choice is a reliability and authorization decision. Visual capability broadens reach but does not make UI actions safe or deterministic.",
     "source": {
       "label": "Computer-Using Agents",
-      "url": "curriculum/beginner/05-computer-using-agents/README.md#3-browser-automation-versus-visual-computer-use"
+      "url": "curriculum/beginner/07-computer-using-agents/README.md#3-browser-automation-versus-visual-computer-use"
     }
   },
   {
@@ -65,7 +65,7 @@ export const questions = [
     "explanation": "UI drift is an observation problem, not permission to click broadly. A safe controller re-grounds the action in current state, bounds recovery, and pauses whenever it cannot establish a unique authorized target.",
     "source": {
       "label": "Computer-Using Agents",
-      "url": "curriculum/beginner/05-computer-using-agents/README.md#6-ui-changes-and-failure-recovery"
+      "url": "curriculum/beginner/07-computer-using-agents/README.md#6-ui-changes-and-failure-recovery"
     }
   },
   {
@@ -1775,7 +1775,7 @@ export const questions = [
     "explanation": "Refer to the notebook for the detailed explanation.",
     "source": {
       "label": "Notebook Checkpoint",
-      "url": "curriculum/beginner/04-agent-development-frameworks/04_agent_development_frameworks.ipynb"
+      "url": "curriculum/beginner/05-agent-development-frameworks/05_agent_development_frameworks.ipynb"
     }
   },
   {
@@ -1798,7 +1798,7 @@ export const questions = [
     "explanation": "Refer to the notebook for the detailed explanation.",
     "source": {
       "label": "Notebook Checkpoint",
-      "url": "curriculum/beginner/04-agent-development-frameworks/04_agent_development_frameworks.ipynb"
+      "url": "curriculum/beginner/05-agent-development-frameworks/05_agent_development_frameworks.ipynb"
     }
   },
   {
@@ -1817,7 +1817,7 @@ export const questions = [
     "explanation": "Refer to the notebook for the detailed explanation.",
     "source": {
       "label": "Notebook Checkpoint",
-      "url": "curriculum/beginner/04-agent-development-frameworks/04_agent_development_frameworks.ipynb"
+      "url": "curriculum/beginner/05-agent-development-frameworks/05_agent_development_frameworks.ipynb"
     }
   },
   {
@@ -1840,7 +1840,7 @@ export const questions = [
     "explanation": "Refer to the notebook for the detailed explanation.",
     "source": {
       "label": "Notebook Checkpoint",
-      "url": "curriculum/beginner/05-computer-using-agents/05_computer_using_agents.ipynb"
+      "url": "curriculum/beginner/07-computer-using-agents/07_computer_using_agents.ipynb"
     }
   },
   {
@@ -2157,7 +2157,7 @@ export const questions = [
     "explanation": "Vision-Language Models struggle to accurately calculate exact pixel coordinates (Spatial Hallucination). OmniParser mitigates this by drawing bounding boxes and assigning integer IDs, reducing the LLM's task from 'calculate pixels' to 'select ID'.",
     "source": {
       "label": "Deep Dive: SOTA Multimodal",
-      "url": "curriculum/beginner/05-computer-using-agents/DEEP_DIVE_SOTA_MULTIMODAL.md"
+      "url": "curriculum/beginner/07-computer-using-agents/DEEP_DIVE_SOTA_MULTIMODAL.md"
     }
   },
   {
@@ -2177,7 +2177,7 @@ export const questions = [
     "explanation": "Feeding raw DOMs into a prompt results in extreme token bloat. AXTrees strip away styling and metadata, leaving a lean, semantic representation of the interface.",
     "source": {
       "label": "Deep Dive: Accessibility Trees",
-      "url": "curriculum/beginner/05-computer-using-agents/DEEP_DIVE_ACCESSIBILITY_TREES.md"
+      "url": "curriculum/beginner/07-computer-using-agents/DEEP_DIVE_ACCESSIBILITY_TREES.md"
     }
   },
   {
@@ -2257,5 +2257,177 @@ export const questions = [
       "label": "Deep Dive: Semantic Routing",
       "url": "curriculum/intermediate/09-agentic-rag/DEEP_DIVE_SEMANTIC_ROUTING.md"
     }
+  },
+  {
+    "id": "agent-loop-state-machine",
+    "category": "The Agent Loop",
+    "prompt": "What is the primary advantage of a state machine loop (like LangGraph) over a basic ReAct while-loop?",
+    "options": [
+      "It uses fewer tokens",
+      "It forces the model to generate correct JSON",
+      "It makes state transitions explicit, inspectable, and controllable",
+      "It eliminates the need for tool schemas",
+      "It runs significantly faster"
+    ],
+    "correct": [2],
+    "explanation": "State machines separate the control flow from the model generation, making every step inspectable, testable, and capable of supporting human-in-the-loop checkpoints.",
+    "source": {
+      "label": "The Agent Loop",
+      "url": "curriculum/beginner/02-agent-loop/README.md"
+    }
+  },
+  {
+    "id": "agent-loop-runaway",
+    "category": "The Agent Loop",
+    "prompt": "Which of the following is an effective way to prevent a runaway agent loop?",
+    "options": [
+      "Asking the model politely to stop after 5 steps",
+      "Implementing hard budgets on turns, time, and spend",
+      "Using a more advanced model",
+      "Relying on system prompts to define terminal states"
+    ],
+    "correct": [1],
+    "explanation": "Agent loops must be bounded by deterministic application code (max steps, timeouts, budgets), not by prompt engineering or model capability.",
+    "source": {
+      "label": "The Agent Loop",
+      "url": "curriculum/beginner/02-agent-loop/README.md"
+    }
+  },
+  {
+    "id": "tools-structured-outputs",
+    "category": "Tools & Structured Outputs Fundamentals",
+    "prompt": "Why is it important to use Structured Outputs (e.g., JSON Schema/Pydantic) for agent tools?",
+    "options": [
+      "It makes the API response look cleaner",
+      "It guarantees the model will never hallucinate",
+      "It provides strict type enforcement and reduces parsing errors",
+      "It allows the model to run faster"
+    ],
+    "correct": [2],
+    "explanation": "Structured Outputs enforce type constraints at the API level, drastically reducing the chances of a model providing improperly formatted arguments.",
+    "source": {
+      "label": "Tools & Structured Outputs Fundamentals",
+      "url": "curriculum/beginner/04-tools-and-structured-outputs/README.md"
+    }
+  },
+  {
+    "id": "tools-authorization",
+    "category": "Tools & Structured Outputs Fundamentals",
+    "prompt": "What is the relationship between exposing a tool to a model and authorization?",
+    "options": [
+      "Exposing a tool automatically authorizes the model to use it safely",
+      "Exposing a tool is merely a capability; authorization must be enforced by the application layer",
+      "Models inherently understand access control from the tool description",
+      "Only read-only tools need authorization checks"
+    ],
+    "correct": [1],
+    "explanation": "A model proposes a tool call; the application layer must always validate if the current session or user actually has the permissions to execute it.",
+    "source": {
+      "label": "Tools & Structured Outputs Fundamentals",
+      "url": "curriculum/beginner/04-tools-and-structured-outputs/README.md"
+    }
+  },
+  {
+    "id": "agent-frameworks-architecture",
+    "category": "Agent Development Frameworks",
+    "prompt": "What is the key difference between an agent framework and an agent architecture?",
+    "options": [
+      "They are the exact same thing",
+      "A framework provides the runtime mechanics, while the architecture defines the control flow and boundaries",
+      "An architecture is written in Python, while a framework is the API",
+      "Frameworks dictate that you must use multi-agent systems"
+    ],
+    "correct": [1],
+    "explanation": "Frameworks (like LangGraph or CrewAI) package runtime mechanics like state management and tool execution. Architecture is the design choice of how control, boundaries, and evaluation are structured.",
+    "source": {
+      "label": "Agent Development Frameworks",
+      "url": "curriculum/beginner/05-agent-development-frameworks/README.md"
+    }
+  },
+  {
+    "id": "frameworks-durable-execution",
+    "category": "Agent Development Frameworks",
+    "prompt": "How do durable execution checkpointers (like LangGraph MemorySaver) enhance long-running agent reliability?",
+    "options": [
+      "They automatically fix any model hallucination",
+      "They allow workflows to safely pause at human-in-the-loop breakpoints and resume without losing state",
+      "They remove the need for writing unit tests",
+      "They eliminate the need for API keys"
+    ],
+    "correct": [1],
+    "explanation": "Durable checkpointers persist the execution state at each graph transition, enabling safe interrupts, human confirmation gates, and resumption across process restarts.",
+    "source": {
+      "label": "Agent Development Frameworks",
+      "url": "curriculum/beginner/05-agent-development-frameworks/README.md"
+    }
+  },
+  {
+    "id": "frameworks-dependency-injection",
+    "category": "Agent Development Frameworks",
+    "prompt": "Why is dependency injection (such as PydanticAI RunContext) preferable to global variables in agent tool functions?",
+    "options": [
+      "It makes the tools faster to execute",
+      "It securely injects trusted execution context (user ID, tenant ID, permissions) into tools without letting the model fabricate credentials",
+      "It allows the model to alter user roles dynamically",
+      "It avoids defining Pydantic schemas"
+    ],
+    "correct": [1],
+    "explanation": "Dependency injection guarantees that tools execute with application-verified user context, database handles, and tenant boundaries rather than untrusted model arguments.",
+    "source": {
+      "label": "Agent Development Frameworks",
+      "url": "curriculum/beginner/05-agent-development-frameworks/README.md"
+    }
+  },
+  {
+    "id": "capstone-agent-testing",
+    "category": "Building Your First Complete Agent",
+    "prompt": "When building a complete, testable agent, what is the most robust way to handle external dependencies?",
+    "options": [
+      "Call production APIs directly to ensure realism",
+      "Use mocks or local fixtures for deterministic, repeatable testing",
+      "Disable all tests until the agent is in production",
+      "Write prompts that tell the model to imagine the API response"
+    ],
+    "correct": [1],
+    "explanation": "Local fixtures and mocks ensure that agent trajectories can be tested deterministically without risking side effects or dealing with network flakiness.",
+    "source": {
+      "label": "Building Your First Complete Agent",
+      "url": "curriculum/beginner/06-building-your-first-agent/README.md"
+    }
+  },
+  {
+    "id": "capstone-dispatcher-boundary",
+    "category": "Building Your First Complete Agent",
+    "prompt": "Why must all tool executions route through a centralized dispatcher rather than direct function calls?",
+    "options": [
+      "To enforce schema validation, authorization, business rules, and idempotency checks before invoking side effects",
+      "To convert all tool returns into unvalidated strings",
+      "Because Python does not allow calling functions directly",
+      "To allow the model to bypass permission checks"
+    ],
+    "correct": [0],
+    "explanation": "A centralized dispatcher acts as the application's security boundary, ensuring that every proposed action is strictly validated against schemas, permissions, business invariants, and idempotency guarantees before execution.",
+    "source": {
+      "label": "Building Your First Complete Agent",
+      "url": "curriculum/beginner/06-building-your-first-agent/README.md"
+    }
+  },
+  {
+    "id": "capstone-approval-binding",
+    "category": "Building Your First Complete Agent",
+    "prompt": "What parameters should a human approval token bind to for high-risk write actions?",
+    "options": [
+      "Only the current date",
+      "Proposal digest, target resource, action payload, approver identity, and expiration timestamp",
+      "Any future action the model decides to take",
+      "Only the model's confidence score"
+    ],
+    "correct": [1],
+    "explanation": "Cryptographically bound approvals guarantee that an approval token is valid only for the exact proposed action, target, payload digest, and time window, preventing replay attacks or action drift.",
+    "source": {
+      "label": "Building Your First Complete Agent",
+      "url": "curriculum/beginner/06-building-your-first-agent/README.md"
+    }
   }
 ];
+

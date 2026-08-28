@@ -1,11 +1,11 @@
 .PHONY: setup-learner setup-contributor test test-ui notebook-check test-mock-notebooks clean
 
 setup-learner:
-	python3 -m venv .venv
-	.venv/bin/pip install -e '.[learner]'
+	uv venv .venv
+	uv sync --extra learner
 
 setup-contributor: setup-learner
-	.venv/bin/pip install -e '.[contributor]'
+	uv sync --extra contributor
 	npm ci
 
 test:

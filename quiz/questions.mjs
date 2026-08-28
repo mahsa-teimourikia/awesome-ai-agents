@@ -19,7 +19,7 @@ export const questions = [
     "explanation": "A model proposes an action; deterministic control code verifies the current target and permissions, pauses consequential commits, and checks the resulting state. Page content is untrusted data and cannot grant authority.",
     "source": {
       "label": "Computer-Using Agents",
-      "url": "curriculum/beginner/05-computer-using-agents/README.md"
+      "url": "curriculum/beginner/07-computer-using-agents/README.md"
     }
   },
   {
@@ -42,7 +42,7 @@ export const questions = [
     "explanation": "Interaction choice is a reliability and authorization decision. Visual capability broadens reach but does not make UI actions safe or deterministic.",
     "source": {
       "label": "Computer-Using Agents",
-      "url": "curriculum/beginner/05-computer-using-agents/README.md#3-browser-automation-versus-visual-computer-use"
+      "url": "curriculum/beginner/07-computer-using-agents/README.md#3-browser-automation-versus-visual-computer-use"
     }
   },
   {
@@ -65,7 +65,7 @@ export const questions = [
     "explanation": "UI drift is an observation problem, not permission to click broadly. A safe controller re-grounds the action in current state, bounds recovery, and pauses whenever it cannot establish a unique authorized target.",
     "source": {
       "label": "Computer-Using Agents",
-      "url": "curriculum/beginner/05-computer-using-agents/README.md#6-ui-changes-and-failure-recovery"
+      "url": "curriculum/beginner/07-computer-using-agents/README.md#6-ui-changes-and-failure-recovery"
     }
   },
   {
@@ -1775,7 +1775,7 @@ export const questions = [
     "explanation": "Refer to the notebook for the detailed explanation.",
     "source": {
       "label": "Notebook Checkpoint",
-      "url": "curriculum/beginner/04-agent-development-frameworks/04_agent_development_frameworks.ipynb"
+      "url": "curriculum/beginner/05-agent-development-frameworks/05_agent_development_frameworks.ipynb"
     }
   },
   {
@@ -1798,7 +1798,7 @@ export const questions = [
     "explanation": "Refer to the notebook for the detailed explanation.",
     "source": {
       "label": "Notebook Checkpoint",
-      "url": "curriculum/beginner/04-agent-development-frameworks/04_agent_development_frameworks.ipynb"
+      "url": "curriculum/beginner/05-agent-development-frameworks/05_agent_development_frameworks.ipynb"
     }
   },
   {
@@ -1817,7 +1817,7 @@ export const questions = [
     "explanation": "Refer to the notebook for the detailed explanation.",
     "source": {
       "label": "Notebook Checkpoint",
-      "url": "curriculum/beginner/04-agent-development-frameworks/04_agent_development_frameworks.ipynb"
+      "url": "curriculum/beginner/05-agent-development-frameworks/05_agent_development_frameworks.ipynb"
     }
   },
   {
@@ -1840,7 +1840,7 @@ export const questions = [
     "explanation": "Refer to the notebook for the detailed explanation.",
     "source": {
       "label": "Notebook Checkpoint",
-      "url": "curriculum/beginner/05-computer-using-agents/05_computer_using_agents.ipynb"
+      "url": "curriculum/beginner/07-computer-using-agents/07_computer_using_agents.ipynb"
     }
   },
   {
@@ -2157,7 +2157,7 @@ export const questions = [
     "explanation": "Vision-Language Models struggle to accurately calculate exact pixel coordinates (Spatial Hallucination). OmniParser mitigates this by drawing bounding boxes and assigning integer IDs, reducing the LLM's task from 'calculate pixels' to 'select ID'.",
     "source": {
       "label": "Deep Dive: SOTA Multimodal",
-      "url": "curriculum/beginner/05-computer-using-agents/DEEP_DIVE_SOTA_MULTIMODAL.md"
+      "url": "curriculum/beginner/07-computer-using-agents/DEEP_DIVE_SOTA_MULTIMODAL.md"
     }
   },
   {
@@ -2177,7 +2177,7 @@ export const questions = [
     "explanation": "Feeding raw DOMs into a prompt results in extreme token bloat. AXTrees strip away styling and metadata, leaving a lean, semantic representation of the interface.",
     "source": {
       "label": "Deep Dive: Accessibility Trees",
-      "url": "curriculum/beginner/05-computer-using-agents/DEEP_DIVE_ACCESSIBILITY_TREES.md"
+      "url": "curriculum/beginner/07-computer-using-agents/DEEP_DIVE_ACCESSIBILITY_TREES.md"
     }
   },
   {

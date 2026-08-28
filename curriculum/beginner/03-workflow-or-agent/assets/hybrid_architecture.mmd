@@ -1,0 +1,13 @@
+graph TD
+    classDef code fill:#1E293B,stroke:#64748B,stroke-width:2px,color:#F8FAFC
+    classDef llm fill:#0369A1,stroke:#38BDF8,stroke-width:2px,color:#F0F9FF
+    classDef human fill:#854D0E,stroke:#FACC15,stroke-width:2px,color:#FEFCE8
+
+    Start[Deterministic Ingestion]:::code --> Classify[Model Classification]:::llm
+    Classify --> Auth[Deterministic Authorization]:::code
+    Auth --> Agent[Bounded Diagnostic Agent]:::llm
+    Agent -. "Investigation Loop" .- Agent
+    Agent --> Approve{Human Approval Gate}:::human
+    Approve -- "Approved" --> Action[Deterministic Action]:::code
+    Approve -- "Rejected" --> End[Stop]:::code
+    Action --> Verify[Deterministic Verification]:::code

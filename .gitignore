@@ -39,3 +39,4 @@ scripts/inline_*.py
 scripts/update_*.py
 scripts/dump.mjs
 questions_dump.json
+**/generate_notebook.py

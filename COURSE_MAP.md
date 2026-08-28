@@ -4,8 +4,10 @@
 - 01-ai-agent-foundations
 - 02-agent-loop
 - 03-workflow-or-agent
-- 04-agent-development-frameworks
-- 05-computer-using-agents
+- 04-tools-and-structured-outputs
+- 05-agent-development-frameworks
+- 06-building-your-first-agent
+- 07-computer-using-agents
 
 ## Intermediate Track
 - 01-tool-engineering

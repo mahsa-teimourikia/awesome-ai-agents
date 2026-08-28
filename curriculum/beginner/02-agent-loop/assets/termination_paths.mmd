@@ -1,0 +1,22 @@
+graph TD
+    classDef default fill:#1E293B,stroke:#64748B,stroke-width:2px,color:#F8FAFC
+    classDef runtime fill:#4338CA,stroke:#818CF8,stroke-width:2px,color:#EEF2FF
+    classDef error fill:#991B1B,stroke:#F87171,stroke-width:2px,color:#FEF2F2
+    classDef success fill:#166534,stroke:#4ADE80,stroke-width:2px,color:#F0FDF4
+    classDef warn fill:#854D0E,stroke:#FACC15,stroke-width:2px,color:#FEFCE8
+
+    Action[Attempt Action]:::default --> Runtime{Runtime Checks}:::runtime
+    
+    Runtime -- "Valid & Authorized" --> Tool[Execute Tool]:::default
+    Runtime -- "Policy Denied" --> Pol[POLICY_BLOCK]:::error
+    Runtime -- "Unsafe Argument" --> Esc[HUMAN_ESCALATION]:::warn
+    
+    Tool -- "Success" --> Succ[Observation Returned]:::success
+    Tool -- "HTTP 429" --> Retry[Backoff & Retry]:::warn
+    Tool -- "Timeout" --> Retry
+    Tool -- "Permission Denied" --> Stop[TOOL_FAILURE]:::error
+    
+    Succ --> LoopCheck{Loop Controls}:::runtime
+    LoopCheck -- "Steps > Max" --> Budg[STEP_BUDGET_EXHAUSTED]:::error
+    LoopCheck -- "Same Action 3x" --> Prog[NO_PROGRESS]:::error
+    LoopCheck -- "Goal Met" --> Done[SUCCESS]:::success

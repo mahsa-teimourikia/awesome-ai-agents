@@ -46,8 +46,10 @@ Every topic has a co-located `README.md`, deep dive topics, and self-contained n
 | 01 | [AI Agents: Foundations](curriculum/beginner/01-ai-agent-foundations/README.md) | From LLM to agentic system, reliability, autonomy, architecture anatomy |
 | 02 | [The Agent Loop](curriculum/beginner/02-agent-loop/README.md) | Observe → reason → act → recover; ReAct, planning, termination, harnesses |
 | 03 | [Workflow or Agent?](curriculum/beginner/03-workflow-or-agent/README.md) | Choose deterministic workflows, bounded agents, or teams |
-| 04 | [Agent Development Frameworks](curriculum/beginner/04-agent-development-frameworks/README.md) | Compare OpenAI Agents SDK, LangGraph, Google ADK, PydanticAI, CrewAI, and Microsoft Agent Framework |
-| 05 | [Computer-Using Agents](curriculum/beginner/05-computer-using-agents/README.md) | Browser, GUI, OS, visual grounding, sandboxing, and recovery |
+| 04 | [Tools & Structured Outputs Fundamentals](curriculum/beginner/04-tools-and-structured-outputs/README.md) | JSON Schema, function calling, typed validation, multiple tools, and safety |
+| 05 | [Agent Development Frameworks](curriculum/beginner/05-agent-development-frameworks/README.md) | Compare OpenAI Agents SDK, LangGraph, Google ADK, PydanticAI, CrewAI, and Microsoft Agent Framework |
+| 06 | [Building Your First Complete Agent](curriculum/beginner/06-building-your-first-agent/README.md) | End-to-end implementation of an agent with tools and guardrails |
+| 07 | [Computer-Using Agents](curriculum/beginner/07-computer-using-agents/README.md) | Browser, GUI, OS, visual grounding, sandboxing, and recovery |
 
 ### Intermediate — make agents dependable
 

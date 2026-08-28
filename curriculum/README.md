@@ -169,7 +169,7 @@ structured compression, cache isolation, and poison quarantine.
 
 ## Beginner computer-use module
 
-[05 — Computer-Using Agents](beginner/05-computer-using-agents/README.md) teaches
+[05 — Computer-Using Agents](beginner/07-computer-using-agents/README.md) teaches
 browser, GUI, OS, and mobile interaction boundaries using a simulated support
 portal. Its notebook and lab cover visual grounding, screenshot understanding,
 typed UI actions, sandboxing, confirmations, and safe recovery from UI drift.

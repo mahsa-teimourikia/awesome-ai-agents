@@ -5,8 +5,10 @@ export const guidePaths:Record<string,string> = {
   "b1": "curriculum/beginner/01-ai-agent-foundations/README.md",
   "b2": "curriculum/beginner/02-agent-loop/README.md",
   "b3": "curriculum/beginner/03-workflow-or-agent/README.md",
-  "b4": "curriculum/beginner/04-agent-development-frameworks/README.md",
-  "b5": "curriculum/beginner/05-computer-using-agents/README.md",
+  "b4": "curriculum/beginner/04-tools-and-structured-outputs/README.md",
+  "b5": "curriculum/beginner/05-agent-development-frameworks/README.md",
+  "b6": "curriculum/beginner/06-building-your-first-agent/README.md",
+  "b7": "curriculum/beginner/07-computer-using-agents/README.md",
   "i1": "curriculum/intermediate/01-tool-engineering/README.md",
   "i2": "curriculum/intermediate/02-context-engineering/README.md",
   "i3": "curriculum/intermediate/03-human-approval-permissions/README.md",
@@ -183,7 +185,31 @@ export const curriculumData:Subject[] = [
     ],
     "code": "",
     "goals": ["You will be able to model the agent execution loop, distinguish observations\nfrom instructions, select ReAct, Plan-and-Execute, reflection, and event-driven\npatterns, specify termination and recovery rules, and design an agent harness\nthat cannot run forever"],
-    "quiz": []
+    "quiz": [
+      {
+        "q": "What is the primary advantage of a state machine loop (like LangGraph) over a basic ReAct while-loop?",
+        "options": [
+          "It uses fewer tokens",
+          "It forces the model to generate correct JSON",
+          "It makes state transitions explicit, inspectable, and controllable",
+          "It eliminates the need for tool schemas",
+          "It runs significantly faster"
+        ],
+        "answer": 2,
+        "explanation": "State machines separate the control flow from the model generation, making every step inspectable, testable, and capable of supporting human-in-the-loop checkpoints."
+      },
+      {
+        "q": "Which of the following is an effective way to prevent a runaway agent loop?",
+        "options": [
+          "Asking the model politely to stop after 5 steps",
+          "Implementing hard budgets on turns, time, and spend",
+          "Using a more advanced model",
+          "Relying on system prompts to define terminal states"
+        ],
+        "answer": 1,
+        "explanation": "Agent loops must be bounded by deterministic application code (max steps, timeouts, budgets), not by prompt engineering or model capability."
+      }
+    ]
   },
   {
     "id": "b3",
@@ -283,50 +309,192 @@ export const curriculumData:Subject[] = [
     "id": "b4",
     "level": "Beginner",
     "step": "04",
-    "title": "Agent Development Frameworks",
-    "description": "Explore the vast framework landscape. Compare orchestration libraries (LangGraph, CrewAI) and determine which SOTA architecture matches your specific use case.",
+    "title": "Tools & Structured Outputs Fundamentals",
+    "description": "Learn JSON Schema, function calling, typed validation, multiple tools, and safety.",
     "time": "45-60 min",
-    "outcome": "Determine when to use LangGraph versus alternative agent SDKs.",
-    "lesson": "Evaluate agentic ecosystems.",
-    "exercise": "Review SOTA orchestration architectures.",
+    "outcome": "Understand the tool-calling lifecycle and safely integrate multiple tools.",
+    "lesson": "Exposing a tool does not equal authorization. Validate inputs carefully.",
+    "exercise": "Build and validate structured outputs using Pydantic.",
     "failures": [
       "Assumption failure:: The model hallucinates an unsupported parameter.",
       "State leak:: Context is incorrectly preserved across runs.",
       "Timeout:: The tool takes too long and the agent loops.",
       "Auth bypass:: The agent attempts an action it shouldn't."
     ],
-    "notebook": "curriculum/beginner/04-agent-development-frameworks/04_agent_development_frameworks.ipynb",
+    "notebook": "curriculum/beginner/04-tools-and-structured-outputs/04_tools_and_structured_outputs.ipynb",
     "refs": [
-      "curriculum/beginner/04-agent-development-frameworks/README.md",
-      "curriculum/beginner/04-agent-development-frameworks/04_agent_development_frameworks.ipynb"
+      "curriculum/beginner/04-tools-and-structured-outputs/README.md",
+      "curriculum/beginner/04-tools-and-structured-outputs/04_tools_and_structured_outputs.ipynb"
     ],
     "code": "",
-    "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
-    "quiz": []
+    "goals": ["Understand the basic tool-calling lifecycle", "Use Pydantic for typed validation", "Implement and test multiple tools safely"],
+    "quiz": [
+      {
+        "q": "Why is it important to use Structured Outputs (e.g., JSON Schema/Pydantic) for agent tools?",
+        "options": [
+          "It makes the API response look cleaner",
+          "It guarantees the model will never hallucinate",
+          "It provides strict type enforcement and reduces parsing errors",
+          "It allows the model to run faster"
+        ],
+        "answer": 2,
+        "explanation": "Structured Outputs enforce type constraints at the API level, drastically reducing the chances of a model providing improperly formatted arguments."
+      },
+      {
+        "q": "What is the relationship between exposing a tool to a model and authorization?",
+        "options": [
+          "Exposing a tool automatically authorizes the model to use it safely",
+          "Exposing a tool is merely a capability; authorization must be enforced by the application layer",
+          "Models inherently understand access control from the tool description",
+          "Only read-only tools need authorization checks"
+        ],
+        "answer": 1,
+        "explanation": "A model proposes a tool call; the application layer must always validate if the current session or user actually has the permissions to execute it."
+      }
+    ]
   },
   {
     "id": "b5",
     "level": "Beginner",
     "step": "05",
-    "title": "Computer-Using Agents",
-    "description": "Bridge the gap between LLMs and UI. Learn how OmniParser prevents spatial hallucination using bounding boxes.",
+    "title": "Agent Development Frameworks",
+    "description": "Compare OpenAI Agents SDK, LangGraph, Google ADK, PydanticAI, CrewAI, and Microsoft Agent Framework.",
     "time": "45-60 min",
-    "outcome": "Implement visual web navigation agents safely.",
-    "lesson": "Understand Accessibility Trees (AXTrees) vs Raw DOM.",
-    "exercise": "Build an OmniParser integration.",
+    "outcome": "Determine when to use LangGraph versus alternative agent SDKs without confusing framework choice with architecture.",
+    "lesson": "Frameworks package recurring runtime mechanics but do not dictate architecture.",
+    "exercise": "Review SOTA orchestration architectures and framework-selection questions.",
     "failures": [
       "Assumption failure:: The model hallucinates an unsupported parameter.",
       "State leak:: Context is incorrectly preserved across runs.",
       "Timeout:: The tool takes too long and the agent loops.",
       "Auth bypass:: The agent attempts an action it shouldn't."
     ],
-    "notebook": "curriculum/beginner/05-computer-using-agents/05_computer_using_agents.ipynb",
+    "notebook": "curriculum/beginner/05-agent-development-frameworks/05_agent_development_frameworks.ipynb",
     "refs": [
-      "curriculum/beginner/05-computer-using-agents/README.md",
-      "curriculum/beginner/05-computer-using-agents/05_computer_using_agents.ipynb"
+      "curriculum/beginner/05-agent-development-frameworks/README.md",
+      "curriculum/beginner/05-agent-development-frameworks/05_agent_development_frameworks.ipynb"
     ],
     "code": "",
-    "goals": ["After completing the notebook and lab, you can:\n\n1","Explain the computer-use loop: **observe → ground → propose → validate → act → verify → recover or stop**","Distinguish browser automation (DOM/accessibility selectors) from screenshot-grounded visual computer use and native computer-use models","Define safe mouse, keyboard, navigation, and submission contracts with domain, action, risk, and confirmation boundaries","Recognize how web, desktop/OS, and mobile agents differ in their action surfaces and failure modes","Build a controller that survives a UI label change without trusting stale selectors or arbitrary coordinates","Evaluate completion, grounding accuracy, confirmation behavior, recovery quality, and action cost—not only final text"],
+    "goals": ["Review theoretical concepts and architecture", "Open companion notebook and execute cells", "Understand application-owned authorization, budgets, and policy"],
+    "quiz": [
+      {
+        "q": "What is the key difference between an agent framework and an agent architecture?",
+        "options": [
+          "They are the exact same thing",
+          "A framework provides the runtime mechanics, while the architecture defines the control flow and boundaries",
+          "An architecture is written in Python, while a framework is the API",
+          "Frameworks dictate that you must use multi-agent systems"
+        ],
+        "answer": 1,
+        "explanation": "Frameworks (like LangGraph or CrewAI) package runtime mechanics like state management and tool execution. Architecture is the design choice of how control, boundaries, and evaluation are structured."
+      },
+      {
+        "q": "How do durable execution checkpointers (like LangGraph MemorySaver) enhance long-running agent reliability?",
+        "options": [
+          "They automatically fix any model hallucination",
+          "They allow workflows to safely pause at human-in-the-loop breakpoints and resume without losing state",
+          "They remove the need for writing unit tests",
+          "They eliminate the need for API keys"
+        ],
+        "answer": 1,
+        "explanation": "Durable checkpointers persist the execution state at each graph transition, enabling safe interrupts, human confirmation gates, and resumption across process restarts."
+      },
+      {
+        "q": "Why is dependency injection (such as PydanticAI RunContext) preferable to global variables in agent tool functions?",
+        "options": [
+          "It makes the tools faster to execute",
+          "It securely injects trusted execution context (user ID, tenant ID, permissions) into tools without letting the model fabricate credentials",
+          "It allows the model to alter user roles dynamically",
+          "It avoids defining Pydantic schemas"
+        ],
+        "answer": 1,
+        "explanation": "Dependency injection guarantees that tools execute with application-verified user context, database handles, and tenant boundaries rather than untrusted model arguments."
+      }
+    ]
+  },
+  {
+    "id": "b6",
+    "level": "Beginner",
+    "step": "06",
+    "title": "Building Your First Complete Agent",
+    "description": "End-to-end implementation of an agent with tools and guardrails.",
+    "time": "45-60 min",
+    "outcome": "Assemble the concepts from Courses 01–05 into one complete, bounded, testable agent.",
+    "lesson": "Synthesize concepts into a single capstone scenario.",
+    "exercise": "Build the Northstar support escalation agent using raw execution loops and framework examples.",
+    "failures": [
+      "Assumption failure:: The model hallucinates an unsupported parameter.",
+      "State leak:: Context is incorrectly preserved across runs.",
+      "Timeout:: The tool takes too long and the agent loops.",
+      "Auth bypass:: The agent attempts an action it shouldn't."
+    ],
+    "notebook": "curriculum/beginner/06-building-your-first-agent/06_building_your_first_agent.ipynb",
+    "refs": [
+      "curriculum/beginner/06-building-your-first-agent/README.md",
+      "curriculum/beginner/06-building-your-first-agent/06_building_your_first_agent.ipynb"
+    ],
+    "code": "",
+    "goals": ["Assemble concepts into a complete agent", "Implement read-only support tools", "Understand that framework choice should not dictate architecture"],
+    "quiz": [
+      {
+        "q": "When building a complete, testable agent, what is the most robust way to handle external dependencies?",
+        "options": [
+          "Call production APIs directly to ensure realism",
+          "Use mocks or local fixtures for deterministic, repeatable testing",
+          "Disable all tests until the agent is in production",
+          "Write prompts that tell the model to imagine the API response"
+        ],
+        "answer": 1,
+        "explanation": "Local fixtures and mocks ensure that agent trajectories can be tested deterministically without risking side effects or dealing with network flakiness."
+      },
+      {
+        "q": "Why must all tool executions route through a centralized dispatcher rather than direct function calls?",
+        "options": [
+          "To enforce schema validation, authorization, business rules, and idempotency checks before invoking side effects",
+          "To convert all tool returns into unvalidated strings",
+          "Because Python does not allow calling functions directly",
+          "To allow the model to bypass permission checks"
+        ],
+        "answer": 0,
+        "explanation": "A centralized dispatcher acts as the application's security boundary, ensuring that every proposed action is strictly validated against schemas, permissions, business invariants, and idempotency guarantees before execution."
+      },
+      {
+        "q": "What parameters should a human approval token bind to for high-risk write actions?",
+        "options": [
+          "Only the current date",
+          "Proposal digest, target resource, action payload, approver identity, and expiration timestamp",
+          "Any future action the model decides to take",
+          "Only the model's confidence score"
+        ],
+        "answer": 1,
+        "explanation": "Cryptographically bound approvals guarantee that an approval token is valid only for the exact proposed action, target, payload digest, and time window, preventing replay attacks or action drift."
+      }
+    ]
+
+  },
+  {
+    "id": "b7",
+    "level": "Beginner",
+    "step": "07",
+    "title": "Computer-Using Agents",
+    "description": "Bridge the gap between LLMs and UI. Learn semantic locators, human confirmation, and bounded recovery.",
+    "time": "45-60 min",
+    "outcome": "Implement visual web navigation agents safely using deterministic grounding.",
+    "lesson": "Understand Accessibility Trees (AXTrees) vs Raw DOM and hybrid perception.",
+    "exercise": "Execute a 20-part capstone navigating a simulated UI portal safely.",
+    "failures": [
+      "Assumption failure:: The model hallucinates an unsupported parameter.",
+      "State leak:: Context is incorrectly preserved across runs.",
+      "Timeout:: The tool takes too long and the agent loops.",
+      "Auth bypass:: The agent attempts an action it shouldn't."
+    ],
+    "notebook": "curriculum/beginner/07-computer-using-agents/07_computer_using_agents.ipynb",
+    "refs": [
+      "curriculum/beginner/07-computer-using-agents/README.md",
+      "curriculum/beginner/07-computer-using-agents/07_computer_using_agents.ipynb"
+    ],
+    "code": "",
+    "goals": ["Explain the computer-use loop: observe → ground → propose → validate → act → verify → recover", "Distinguish browser automation from screenshot visual agents", "Build a controller that survives UI label changes"],
     "quiz": [
       {
         "q": "Which controls should intervene between a computer-use model's proposed click and a consequential UI action?",
@@ -337,12 +505,7 @@ export const curriculumData:Subject[] = [
           "Trusting any instruction visible on the webpage",
           "A post-action state check or safe escalation path"
         ],
-        "answer": [
-          0,
-          1,
-          2,
-          4
-        ],
+        "answer": [0, 1, 2, 4],
         "explanation": "A model proposes an action; deterministic control code verifies the current target and permissions, pauses consequential commits, and checks the resulting state. Page content is untrusted data and cannot grant authority."
       },
       {
@@ -354,12 +517,7 @@ export const curriculumData:Subject[] = [
           "Visual models remove the need for sandboxing and confirmation",
           "Both approaches require fresh observations and postcondition checks around consequential actions"
         ],
-        "answer": [
-          0,
-          1,
-          2,
-          4
-        ],
+        "answer": [0, 1, 2, 4],
         "explanation": "Interaction choice is a reliability and authorization decision. Visual capability broadens reach but does not make UI actions safe or deterministic."
       },
       {
@@ -371,12 +529,7 @@ export const curriculumData:Subject[] = [
           "Escalate when the new target is ambiguous, risky, or outside scope",
           "Record the UI change and terminal or recovery reason in the trace"
         ],
-        "answer": [
-          0,
-          1,
-          3,
-          4
-        ],
+        "answer": [0, 1, 3, 4],
         "explanation": "UI drift is an observation problem, not permission to click broadly. A safe controller re-grounds the action in current state, bounds recovery, and pauses whenever it cannot establish a unique authorized target."
       }
     ]
