@@ -114,9 +114,14 @@ curriculum/<level>/<topic>/
 └── *.md          # deep dive topics
 ```
 
-Clone the repository, create a Python environment, and install the project
-dependencies listed in the relevant topic or repository setup guide. Run the
-lab first, then open the notebook:
+Clone the repository, create a Python environment, and install only the dependency groups you need:
+
+- **Foundations:** `pip install -e '.[beginner]'`
+- **Frameworks:** `pip install -e '.[beginner,frameworks]'`
+- **Computer-Using Agents:** `pip install -e '.[beginner,browser]'`
+- **Intermediate/Advanced:** `pip install -e '.[intermediate]'` or `pip install -e '.[advanced]'`
+
+Run the lab first, then open the notebook:
 
 ```bash
 jupyter notebook curriculum/beginner/02-agent-loop/

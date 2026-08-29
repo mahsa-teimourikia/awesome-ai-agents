@@ -403,26 +403,6 @@ wheels = [
 ]
 
 [[package]]
-name = "autogen"
-version = "0.14.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "anyio" },
-    { name = "fast-depends", extra = ["pydantic"] },
-    { name = "httpx" },
-    { name = "packaging" },
-    { name = "pydantic" },
-    { name = "python-dotenv" },
-    { name = "pyyaml" },
-    { name = "termcolor" },
-    { name = "tiktoken" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/53/26/a97420a83228dd1bad86f94c26376849f7d7f90cbeec5a3ff89bb45049a6/autogen-0.14.1.tar.gz", hash = "sha256:befc6b0a148e3773c6b6a5ebe1c7d098f9eee5ca803c40bcf211b000e188cee2", size = 3428776, upload-time = "2026-06-30T02:44:24.617Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/31/0d/5a112c18924b5eca80e91b501209672f8b48c54997e24d14e6954a8b802a/autogen-0.14.1-py3-none-any.whl", hash = "sha256:e8fee67a0b8a7cacd0730ed1854e281d49ac3429786606545c2610ab707528f2", size = 1729160, upload-time = "2026-06-30T02:44:21.909Z" },
-]
-
-[[package]]
 name = "autogen-agentchat"
 version = "0.7.5"
 source = { registry = "https://pypi.org/simple" }
@@ -460,10 +440,9 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
-contributor = [
+advanced = [
     { name = "agentops" },
     { name = "anthropic" },
-    { name = "autogen" },
     { name = "chromadb" },
     { name = "crewai" },
     { name = "dspy-ai" },
@@ -471,100 +450,104 @@ contributor = [
     { name = "jupyter" },
     { name = "langchain" },
     { name = "langchain-openai" },
-    { name = "langgraph" },
     { name = "matplotlib" },
     { name = "mcp" },
-    { name = "nbclient" },
-    { name = "nbconvert" },
-    { name = "nbformat" },
     { name = "nest-asyncio" },
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "numpy", version = "2.5.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "openai" },
-    { name = "openai-agents" },
     { name = "opentelemetry-api" },
     { name = "opentelemetry-sdk" },
     { name = "pandas" },
-    { name = "playwright" },
     { name = "pyautogen" },
     { name = "pydantic" },
-    { name = "pydantic-ai" },
-    { name = "pytest" },
     { name = "semantic-router" },
     { name = "temporalio" },
     { name = "tqdm" },
     { name = "umap-learn" },
 ]
-learner = [
-    { name = "agentops" },
-    { name = "anthropic" },
-    { name = "autogen" },
-    { name = "chromadb" },
-    { name = "crewai" },
+beginner = [
+    { name = "ipykernel" },
+    { name = "jupyter" },
+    { name = "nest-asyncio" },
+    { name = "openai" },
+    { name = "pandas" },
+    { name = "pydantic" },
+]
+browser = [
+    { name = "playwright" },
+]
+contributor = [
+    { name = "nbclient" },
+    { name = "nbconvert" },
+    { name = "nbformat" },
+    { name = "pytest" },
+]
+core = [
+    { name = "ipykernel" },
+    { name = "jupyter" },
+    { name = "nest-asyncio" },
+    { name = "openai" },
+    { name = "pandas" },
+    { name = "pydantic" },
+]
+frameworks = [
+    { name = "langgraph" },
+    { name = "openai-agents" },
+    { name = "pydantic-ai" },
+]
+intermediate = [
     { name = "dspy-ai" },
     { name = "ipykernel" },
     { name = "jupyter" },
     { name = "langchain" },
     { name = "langchain-openai" },
-    { name = "langgraph" },
-    { name = "matplotlib" },
-    { name = "mcp" },
     { name = "nest-asyncio" },
-    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
-    { name = "numpy", version = "2.5.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "openai" },
-    { name = "openai-agents" },
-    { name = "opentelemetry-api" },
-    { name = "opentelemetry-sdk" },
     { name = "pandas" },
-    { name = "playwright" },
-    { name = "pyautogen" },
     { name = "pydantic" },
-    { name = "pydantic-ai" },
     { name = "semantic-router" },
-    { name = "temporalio" },
-    { name = "tqdm" },
-    { name = "umap-learn" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "agentops", marker = "extra == 'learner'" },
-    { name = "anthropic", marker = "extra == 'learner'" },
-    { name = "autogen", marker = "extra == 'learner'" },
-    { name = "awsome-ai-agents", extras = ["learner"], marker = "extra == 'contributor'" },
-    { name = "chromadb", marker = "extra == 'learner'" },
-    { name = "crewai", marker = "extra == 'learner'" },
-    { name = "dspy-ai", marker = "extra == 'learner'" },
+    { name = "agentops", marker = "extra == 'advanced'" },
+    { name = "anthropic", marker = "extra == 'advanced'" },
+    { name = "awsome-ai-agents", extras = ["core"], marker = "extra == 'beginner'" },
+    { name = "awsome-ai-agents", extras = ["core"], marker = "extra == 'intermediate'" },
+    { name = "awsome-ai-agents", extras = ["intermediate"], marker = "extra == 'advanced'" },
+    { name = "chromadb", marker = "extra == 'advanced'" },
+    { name = "crewai", marker = "extra == 'advanced'" },
+    { name = "dspy-ai", marker = "extra == 'intermediate'" },
     { name = "e2b-code-interpreter", specifier = ">=2.9.0" },
-    { name = "ipykernel", marker = "extra == 'learner'" },
-    { name = "jupyter", marker = "extra == 'learner'" },
-    { name = "langchain", marker = "extra == 'learner'" },
-    { name = "langchain-openai", marker = "extra == 'learner'" },
-    { name = "langgraph", marker = "extra == 'learner'" },
-    { name = "matplotlib", marker = "extra == 'learner'" },
-    { name = "mcp", marker = "extra == 'learner'" },
+    { name = "ipykernel", marker = "extra == 'core'" },
+    { name = "jupyter", marker = "extra == 'core'" },
+    { name = "langchain", marker = "extra == 'intermediate'" },
+    { name = "langchain-openai", marker = "extra == 'intermediate'" },
+    { name = "langgraph", marker = "extra == 'frameworks'", specifier = ">=1.2.0,<2.0.0" },
+    { name = "matplotlib", marker = "extra == 'advanced'" },
+    { name = "mcp", marker = "extra == 'advanced'" },
     { name = "nbclient", marker = "extra == 'contributor'" },
     { name = "nbconvert", marker = "extra == 'contributor'" },
     { name = "nbformat", marker = "extra == 'contributor'" },
-    { name = "nest-asyncio", marker = "extra == 'learner'", specifier = ">=1.5.0" },
-    { name = "numpy", marker = "extra == 'learner'" },
-    { name = "openai", marker = "extra == 'learner'" },
-    { name = "openai-agents", marker = "extra == 'learner'" },
-    { name = "opentelemetry-api", marker = "extra == 'learner'" },
-    { name = "opentelemetry-sdk", marker = "extra == 'learner'" },
-    { name = "pandas", marker = "extra == 'learner'" },
-    { name = "playwright", marker = "extra == 'learner'", specifier = ">=1.40.0" },
-    { name = "pyautogen", marker = "extra == 'learner'" },
-    { name = "pydantic", marker = "extra == 'learner'" },
-    { name = "pydantic-ai", marker = "extra == 'learner'" },
+    { name = "nest-asyncio", marker = "extra == 'core'", specifier = ">=1.5.0" },
+    { name = "numpy", marker = "extra == 'advanced'" },
+    { name = "openai", marker = "extra == 'core'" },
+    { name = "openai-agents", marker = "extra == 'frameworks'", specifier = ">=0.20.0,<0.21.0" },
+    { name = "opentelemetry-api", marker = "extra == 'advanced'" },
+    { name = "opentelemetry-sdk", marker = "extra == 'advanced'" },
+    { name = "pandas", marker = "extra == 'core'" },
+    { name = "playwright", marker = "extra == 'browser'", specifier = ">=1.40.0,<2.0.0" },
+    { name = "pyautogen", marker = "extra == 'advanced'" },
+    { name = "pydantic", marker = "extra == 'core'", specifier = ">=2.0.0" },
+    { name = "pydantic-ai", marker = "extra == 'frameworks'", specifier = ">=2.30.0,<3.0.0" },
     { name = "pytest", marker = "extra == 'contributor'" },
-    { name = "semantic-router", marker = "extra == 'learner'", specifier = "==0.1.16" },
-    { name = "temporalio", marker = "extra == 'learner'" },
-    { name = "tqdm", marker = "extra == 'learner'" },
-    { name = "umap-learn", marker = "extra == 'learner'" },
+    { name = "semantic-router", marker = "extra == 'intermediate'", specifier = "==0.1.16" },
+    { name = "temporalio", marker = "extra == 'advanced'" },
+    { name = "tqdm", marker = "extra == 'advanced'" },
+    { name = "umap-learn", marker = "extra == 'advanced'" },
 ]
-provides-extras = ["learner", "contributor"]
+provides-extras = ["frameworks", "core", "beginner", "browser", "intermediate", "advanced", "contributor"]
 
 [[package]]
 name = "babel"
@@ -1601,24 +1584,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/cc/28/c14e053b6762b1044f34a13aab6859bbf40456d37d23aa286ac24cfd9a5d/executing-2.2.1.tar.gz", hash = "sha256:3632cc370565f6648cc328b32435bd120a1e4ebb20c77e3fdde9a13cd1e533c4", size = 1129488, upload-time = "2025-09-01T09:48:10.866Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c1/ea/53f2148663b321f21b5a606bd5f191517cf40b7072c0497d3c92c4a13b1e/executing-2.2.1-py2.py3-none-any.whl", hash = "sha256:760643d3452b4d777d295bb167ccc74c64a81df23fb5e08eff250c425a4b2017", size = 28317, upload-time = "2025-09-01T09:48:08.5Z" },
-]
-
-[[package]]
-name = "fast-depends"
-version = "3.0.8"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "anyio" },
-    { name = "typing-extensions" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/f8/6d/787a21ca8043a8fdb737cf28f645e94a46fc30b44a31de54573299156bad/fast_depends-3.0.8.tar.gz", hash = "sha256:896b16f79a512b6ea1df721b0aa1708a192a06f964be6597e01fcf5412559101", size = 18382, upload-time = "2026-03-02T19:54:28.649Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/1d/1d/e4843e4eeb65f51447b8c22d200d12d8f94f27c97e77bb7162515cc8d61f/fast_depends-3.0.8-py3-none-any.whl", hash = "sha256:4c52c8a3907bca46d43e70e4364d6d016872d9a3aae4bc0c1c85e72e0a6a21c7", size = 25507, upload-time = "2026-03-02T19:54:27.594Z" },
-]
-
-[package.optional-dependencies]
-pydantic = [
-    { name = "pydantic" },
 ]
 
 [[package]]

@@ -7,38 +7,52 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-learner = [
+# NOTE: The version ranges below define broad compatibility for users.
+# For a strictly reproducible and tested environment, always use `uv.lock`.
+
+frameworks = [
+    "pydantic-ai>=2.30.0,<3.0.0",
+    "langgraph>=1.2.0,<2.0.0",
+    "openai-agents>=0.20.0,<0.21.0"
+]
+core = [
     "jupyter",
     "ipykernel",
-    "pydantic",
-    "pydantic-ai",
+    "pydantic>=2.0.0",
+    "pandas",
     "openai",
-    "anthropic",
+    "nest-asyncio>=1.5.0"
+]
+beginner = [
+    "awsome-ai-agents[core]"
+]
+browser = [
+    "playwright>=1.40.0,<2.0.0"
+]
+intermediate = [
+    "awsome-ai-agents[core]",
     "langchain",
-    "langgraph",
     "langchain-openai",
+    "dspy-ai",
+    "semantic-router==0.1.16"
+]
+advanced = [
+    "awsome-ai-agents[intermediate]",
     "pyautogen",
-    "autogen",
     "crewai",
     "agentops",
-    "pandas",
     "mcp",
-    "openai-agents",
     "chromadb",
-    "opentelemetry-api",
-    "opentelemetry-sdk",
     "temporalio",
-    "dspy-ai",
-    "semantic-router==0.1.16",
+    "anthropic",
     "matplotlib",
     "numpy",
     "tqdm",
     "umap-learn",
-    "playwright>=1.40.0",
-    "nest-asyncio>=1.5.0"
+    "opentelemetry-api",
+    "opentelemetry-sdk"
 ]
 contributor = [
-    "awsome-ai-agents[learner]",
     "pytest",
     "nbclient",
     "nbformat",
