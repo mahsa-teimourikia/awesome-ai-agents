@@ -58,6 +58,8 @@ class Approval(BaseModel):
     expires_at: float
     decision: Literal["approve", "reject"]
 
+ALLOWED_APPROVERS = {'sec-lead-1', 'sec-lead-2'}
+
 def compute_action_digest(action: UIAction) -> str:
     """Produces a deterministic SHA-256 digest of the proposed action payload."""
     note = getattr(action, "escalation_note", "") or getattr(action, "text", "")
@@ -121,6 +123,10 @@ def validate_approval(
     controller: ControllerState, 
     approval: Optional[Approval] = None
 ) -> ValidationResult:
+    """
+    Approver authentication/authorization is assumed to be enforced by the application identity layer.
+    This function validates the digest-bound approval against the proposed action and checks the authorized approver set.
+    """
     if action.risk_level == "COMMIT":
         if approval is None:
             return ValidationResult(
@@ -136,6 +142,28 @@ def validate_approval(
                 status="APPROVAL_INVALID", 
                 reason="Approval digest mismatch: approval does not match proposed action payload (mutated payload or target)."
             )
+        
+        if approval.case_id != getattr(action, 'case_id', ''):
+            return ValidationResult(
+                allowed=False,
+                status="APPROVAL_INVALID",
+                reason="Approval case_id mismatch."
+            )
+            
+        if approval.action_type != action.action_type:
+            return ValidationResult(
+                allowed=False,
+                status="APPROVAL_INVALID",
+                reason="Approval action_type mismatch."
+            )
+            
+        if approval.target_name != getattr(action, 'target_name', ''):
+            return ValidationResult(
+                allowed=False,
+                status="APPROVAL_INVALID",
+                reason="Approval target_name mismatch."
+            )
+
         if approval.snapshot_id != controller.latest_snapshot_id:
             return ValidationResult(
                 allowed=False, 
@@ -155,10 +183,17 @@ def validate_approval(
                 reason="Human approver rejected the action."
             )
             
+        if approval.approver_id not in ALLOWED_APPROVERS:
+            return ValidationResult(
+                allowed=False,
+                status="APPROVAL_INVALID",
+                reason=f"Approver {approval.approver_id} is not authorized."
+            )
+            
     return ValidationResult(allowed=True, status="ALLOWED", reason="Approval verified.")
 
 def grant_human_approval(action: UIAction, approver_id: str = "sec-lead-1", duration_sec: float = 60.0, decision: Literal["approve", "reject"] = "approve") -> Approval:
-    """Simulates the out-of-band human confirmation step producing a digest-bound Approval token."""
+    """Simulates the out-of-band human confirmation step producing a digest-bound approval."""
     digest = compute_action_digest(action)
     return Approval(
         proposal_digest=digest,
