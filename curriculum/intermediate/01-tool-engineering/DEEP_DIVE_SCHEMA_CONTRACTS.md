@@ -1,54 +1,38 @@
-# Deep Dive: Schema Contracts
+# Deep Dive: Schema Contracts & Capability Boundaries
 
-When an agent interacts with a tool, it isn't writing Python code. It is outputting a JSON string that is subsequently parsed by your orchestration framework (e.g., LangGraph or LangChain) and passed as arguments to a Python function.
+When an agent interacts with a tool, it isn't writing Python code. It is outputting a JSON string that is subsequently parsed by your orchestration framework and passed as arguments to a Python backend.
 
-If the agent hallucinates a parameter name, provides a string instead of an integer, or forgets a required argument entirely, the backend Python function will crash. 
+If the agent hallucinates a parameter name, provides a string instead of an integer, or injects unintended configuration data, the backend will either crash or worse, process an unsafe action.
 
-To solve this, SOTA architectures enforce strict **Schema Contracts** between the Agent and the Tool.
+To solve this, SOTA architectures enforce strict **Schema Contracts** between the Agent and the backend Capability.
 
 ---
 
-## 1. The Death of Docstrings
+## 1. Pydantic as the Universal Translator
 
-In early agent frameworks, developers relied on Python docstrings to explain tools to the LLM:
-
-```python
-# ❌ ANTI-PATTERN: The LLM has to guess the types and constraints.
-def create_user(name, age, role):
-    \"\"\"Creates a user. Age must be > 18. Role must be 'admin' or 'user'.\"\"\"
-    pass
-```
-
-This is brittle. The LLM has to parse the English text, infer that `age` is an integer, and hope it spells "admin" correctly.
-
-## 2. Pydantic as the Universal Translator
-
-**Pydantic** is the industry standard for defining Schema Contracts. When you define a Pydantic model, frameworks automatically translate it into a strict **JSON Schema** definition that is injected into the LLM's system prompt.
+**Pydantic** is the industry standard for defining Schema Contracts. When you define a Pydantic model, frameworks automatically translate it into a strict **JSON Schema** definition that is injected into the LLM's system prompt using `model_json_schema()`.
 
 ```python
 # ✅ SOTA PATTERN: Explicit Pydantic Contracts
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Literal
 
 class CreateUserInput(BaseModel):
+    model_config = ConfigDict(extra="forbid") # Crucial for security
+    
     name: str = Field(description="The full name of the user.")
     age: int = Field(ge=18, description="The user's age. Must be 18 or older.")
     role: Literal['admin', 'user'] = Field(description="The access tier.")
-
-@tool("create_user", args_schema=CreateUserInput)
-def create_user(name: str, age: int, role: str):
-    \"\"\"Creates a user in the database.\"\"\"
-    pass
 ```
 
 ### Why this is powerful:
 1. **The LLM sees a strict JSON Schema:** It explicitly knows that `age` is of type `integer` and `role` is an `enum`.
-2. **Automatic Validation:** Before the `create_user` Python function is ever executed, Pydantic intercepts the LLM's raw JSON output. If the LLM outputs `"age": "twenty"`, Pydantic throws a `ValidationError`.
-3. **Self-Correction:** Advanced frameworks catch the `ValidationError` and automatically feed it *back* to the LLM (e.g., *"Error: 'twenty' is not a valid integer for field 'age'. Try again."*), allowing the agent to fix its own mistake without crashing the program.
+2. **Strict Isolation (`extra="forbid"`):** By forbidding extra parameters, the model is physically prevented from attempting to supply its own `tenant_id` or `actor_id` to escalate privileges.
+3. **Self-Correction:** Advanced frameworks catch the `ValidationError` and automatically feed it *back* to the LLM (e.g., *"Error: Extra inputs are not permitted"*), allowing the agent to fix its own mistake without crashing the program.
 
 ---
 
-## 3. Engineering the `Field(description=...)`
+## 2. Engineering the `Field(description=...)`
 
 The `description` inside a Pydantic Field is **the most important prompt engineering you will do.** It is more important than the global system prompt.
 
@@ -68,14 +52,19 @@ user_id: int = Field(description="The 6-digit numeric database ID of the user. D
 
 ---
 
-## 4. Multi-Tool Disambiguation
+## 3. Schema Evolution and Versioning
 
-As you add more tools to an agent (e.g., 10-15 tools), the LLM starts getting confused about *which* tool to use. 
+As your backend APIs evolve, your tools must evolve. Tool versioning is critical because in an agentic system, old agents (or paused trajectories waiting for human approval) might still hold references to `v1` schemas.
 
-If you have `get_billing_info` and `get_shipping_info`, the LLM might use the wrong one.
+```python
+class QueryLogsArgsV1(BaseModel):
+    minutes: int
 
-**The Fix:** Your tool descriptions and schema descriptions must be mutually exclusive.
-- `get_billing_info`: *"Use this ONLY to check invoice history and payment methods. Do NOT use this to check delivery dates."*
-- `get_shipping_info`: *"Use this ONLY to check tracking numbers and delivery dates. Do NOT use this for payment issues."*
+class QueryLogsArgsV2(BaseModel):
+    time_range: TimeRange
+```
 
-By treating schemas as strict, documented API contracts, you drastically reduce hallucination rates and improve trajectory efficiency.
+**Best Practices for Schema Evolution:**
+- **Never mutate an existing tool signature in-place** if you have running workflows or approvals pending.
+- **Side-by-side deployment:** Deploy `query_logs_v2`, filter it into the catalog for new executions, and deprecate `query_logs_v1` while supporting existing paused states.
+- Treat your tool schemas identically to public REST API contracts. A breaking change in a schema will break the agent's ability to plan and execute successfully.

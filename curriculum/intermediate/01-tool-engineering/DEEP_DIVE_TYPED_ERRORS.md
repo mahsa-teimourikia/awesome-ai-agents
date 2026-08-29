@@ -1,10 +1,10 @@
-# Deep Dive: Typed Error Handling & Recovery Loops
+# Deep Dive: Typed Error Taxonomies & Recovery
 
 When a standard Python script hits an API error (e.g., an HTTP 404), it throws an Exception, prints a massive stack trace to `stderr`, and the program terminates.
 
 In Agentic Engineering, **an error is not a fatal crash; it is an Observation.**
 
-If a tool throws an unhandled exception, the orchestration framework will often crash, ending the entire agent trajectory. Even if the framework catches it, returning a raw 500-line HTML stack trace to the LLM will bloat the context window, cost thousands of tokens, and severely confuse the reasoning engine.
+If a tool throws an unhandled exception, returning a raw 500-line HTML stack trace to the LLM will bloat the context window, cost thousands of tokens, and severely confuse the reasoning engine. Worse, it exposes internal infrastructure details to the agent.
 
 ---
 
@@ -22,52 +22,43 @@ If the user provides an invalid SKU, `requests` throws a traceback. The LLM sees
 
 ---
 
-## 2. The SOTA Pattern: Semantic Error Strings
+## 2. The SOTA Pattern: Error Taxonomies
 
-SOTA tool engineering requires you to `try/except` everything, and return **Semantic Instructions** back to the LLM as standard string output.
-
-You treat the LLM like a junior developer. When they make a mistake, you don't scream binary code at them; you tell them *what* they did wrong and *how* to fix it.
+SOTA tool engineering requires mapping raw backend exceptions into a strict taxonomy of **Typed Errors**. We treat the LLM like a junior developer: we tell it *what* went wrong and *how* to recover, without exposing internal backend tracebacks.
 
 ```python
-# ✅ SOTA PATTERN: Catching and typing errors
-@tool
+# ✅ SOTA PATTERN: Typed Error Classification
+class ToolError(Exception):
+    def __init__(self, code: ErrorCode, safe_message: str, retryable: bool):
+        self.code = code
+        self.safe_message = safe_message
+        self.retryable = retryable
+
+@tool("check_inventory")
 def check_inventory(sku: str):
     try:
         response = requests.get(f"https://api.warehouse.com/inventory/{sku}")
-        
         if response.status_code == 404:
-            # Semantic instruction for a known error
-            return f"Error: The SKU '{sku}' does not exist in the catalog. Please ask the user to double-check their spelling."
-            
+            raise ToolError(ErrorCode.NOT_FOUND, f"SKU '{sku}' does not exist.", retryable=False)
         if response.status_code == 429:
-            # Semantic instruction for rate limiting
-            return "Error: The inventory API is rate-limited. Wait 5 seconds, use the `wait` tool, and try again."
+            raise ToolError(ErrorCode.RATE_LIMITED, "API rate limited.", retryable=True)
             
         response.raise_for_status()
         return response.json()
-        
     except requests.exceptions.ConnectionError:
-        # Hiding internal infrastructure failures from the LLM
-        return "Critical Error: The warehouse system is temporarily down. Inform the user you cannot check inventory right now."
-    except Exception as e:
-        # Catch-all
-        return f"Unexpected API Error. Do not retry this specific SKU."
+        # Hiding internal infrastructure failures
+        raise ToolError(ErrorCode.UNAVAILABLE, "Warehouse system is down.", retryable=True)
 ```
-
-### Why this works:
-1. **No Crashes:** The Python process never actually hits a fatal exception. The LangGraph loop keeps spinning.
-2. **Context Window Protection:** Instead of 2000 tokens of a stack trace, the LLM receives ~30 tokens of plain English.
-3. **Behavior Modification:** By returning phrases like *"Please ask the user..."*, you explicitly override the LLM's instinct to hallucinate and direct it back to the human.
 
 ---
 
-## 3. The Auto-Correction Loop (Pydantic Validation)
+## 3. Independent Retry Policies
 
-The most common error an LLM makes is a **Schema Error** (e.g., passing a string `"forty"` instead of an integer `40`).
+Not all errors should trigger an LLM loop. A sophisticated agent runtime maintains a `RetryPolicy` per tool.
 
-If you use `pydantic` for your Tool Schemas (as discussed in the Schema Contracts deep dive), modern frameworks like LangChain/LangGraph will automatically intercept the `ValidationError` *before* the function even executes.
+- **TIMEOUT / RATE_LIMITED**: The runtime automatically intercepts these and performs bounded exponential backoff *without* burning LLM tokens to ask the agent to try again.
+- **INVALID_ARGUMENT / NOT_FOUND**: These are returned to the agent as an observation so it can repair its arguments or halt.
+- **PERMISSION_DENIED**: The runtime intercepts this and immediately halts the tool execution. The agent is informed it lacks authorization, and it must never retry.
+- **POISONED_RESULT**: If the result validation pipeline detects prompt injection, it quarantines the payload and halts.
 
-They will automatically generate a Semantic Error String:
-> `Error: 1 validation error for ToolInput. age: Input should be a valid integer, unable to parse string as an integer.`
-
-The agent receives this as its "Observation", realizes its mistake, and in the next step of the trajectory, it corrects the JSON payload to `40`. This is known as a **Recovery Loop**, and it is essential for high-reliability enterprise agents.
+By defining independent retry behaviors, we prevent the agent from infinitely looping over deterministic failures (like authorization denials) while gracefully recovering from transient infrastructure issues.
