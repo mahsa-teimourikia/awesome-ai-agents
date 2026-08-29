@@ -5,10 +5,6 @@ import json
 from typing import Literal, List, Optional, Any, Union, Tuple, Dict
 from pydantic import BaseModel, Field, ConfigDict
 
-# Centralized model configuration (Model/API capabilities evolve over time;
-# official documentation at https://platform.openai.com/docs is the source of truth).
-OPENAI_MODEL = "gpt-4o-mini"
-
 # Action Types & Risk Classification
 ActionType = Literal["navigate", "click", "type", "scroll", "submit", "stop"]
 RiskLevel = Literal["OBSERVE", "DRAFT", "COMMIT", "SENSITIVE"]
