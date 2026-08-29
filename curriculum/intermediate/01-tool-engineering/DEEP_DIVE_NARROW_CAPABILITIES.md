@@ -37,14 +37,18 @@ def execute_sql(query: str):
 ### ✅ Preferred: Narrow Capability
 A "Narrow Capability" shifts the security responsibility back to the backend code. The LLM only controls the specific, safe parameters.
 ```python
-# SAFE: The LLM only controls the string ID. The backend controls the SQL parameterization.
+# NARROWER: The model controls only the customer ID.
+# The backend owns query structure, authorization, tenant validation, and parameterization.
 class MarkPasswordResetArgs(BaseModel):
     customer_id: str = Field(description="The ID of the customer to reset.")
 
 @tool("mark_password_reset_required", args_schema=MarkPasswordResetArgs)
-def mark_password_reset_required(customer_id: str):
+def mark_password_reset_required(customer_id: str, ctx: ExecutionContext):
     """Flags a customer account to require a password reset on next login."""
-    # The application enforces tenant isolation and safely parameterizes the query.
+    
+    # Assume trusted actor/tenant authorization is performed by the application before this backend call.
+    authorize_customer_scope(ctx, customer_id)
+    
     safe_sql = "UPDATE users SET needs_reset = True WHERE id = :customer_id"
     db.execute(safe_sql, {"customer_id": customer_id})
 ```
