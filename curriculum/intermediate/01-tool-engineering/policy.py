@@ -3,7 +3,8 @@ import hashlib
 from datetime import datetime
 from enum import Enum
 from typing import Literal, List, Dict, Any, Optional, Set, Callable, Type
-from pydantic import BaseModel, Field, ConfigDict, field_validator
+from pydantic import BaseModel, Field, ConfigDict, field_validator, ValidationError
+import uuid
 
 # 1. Trusted Execution Context
 class ExecutionContext(BaseModel):
@@ -180,14 +181,14 @@ restart_receipts = {}
 def execute_restart(command: RestartCommand) -> RestartReceipt:
     """
     The authoritative backend executor.
-    Only accepts cryptographically bound RestartCommands, never raw proposals.
+    Only accepts validated internal RestartCommand objects produced after digest-bound approval checks.
     """
     if command.idempotency_key in restart_receipts:
         # Return existing receipt on idempotent retry
         return restart_receipts[command.idempotency_key]
         
     receipt = RestartReceipt(
-        receipt_id=f"rcpt-{hashlib.md5(command.idempotency_key.encode()).hexdigest()[:8]}",
+        receipt_id=f"rcpt-{uuid.uuid4().hex[:8]}",
         service=command.proposal.service.value,
         status="restarting",
         restarted_at=datetime.now()
@@ -399,7 +400,7 @@ def dispatch_tool(tool_name: str, raw_args: dict, ctx: ExecutionContext) -> Vali
     # 3. Strict Schema Validation (Model -> Typed Domain Object)
     try:
         parsed_args = tool_def.input_model.model_validate(raw_args)
-    except Exception as e:
+    except ValidationError as e:
         raise ToolError(ErrorCode.INVALID_ARGUMENT, f"Argument validation failed: {str(e)}")
         
     # 4. Dispatch to Trusted Handler
