@@ -22,12 +22,12 @@ If the user provides an invalid service, `requests` throws a traceback. The LLM 
 
 ---
 
-## 2. The SOTA Pattern: Error Taxonomies
+## 2. The Enterprise Pattern: Error Taxonomies
 
-SOTA tool engineering requires mapping raw backend exceptions into a strict taxonomy of **Typed Errors**. We treat the LLM like a junior developer: we tell it *what* went wrong and *how* to recover, without exposing internal backend tracebacks.
+Enterprise tool engineering requires mapping raw backend exceptions into a strict taxonomy of **Typed Errors**. We treat the LLM like a junior developer: we tell it *what* went wrong and *how* to recover, without exposing internal backend tracebacks.
 
 ```python
-# ✅ SOTA PATTERN: Typed Error Classification
+# ✅ Enterprise PATTERN: Typed Error Classification
 class ToolError(Exception):
     def __init__(self, code: ErrorCode, safe_message: str, retryable: bool):
         self.code = code

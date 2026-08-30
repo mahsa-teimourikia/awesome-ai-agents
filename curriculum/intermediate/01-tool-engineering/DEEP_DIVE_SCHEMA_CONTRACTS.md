@@ -4,7 +4,7 @@ When an agent interacts with a tool, it isn't writing Python code. It is outputt
 
 If the agent hallucinates a parameter name, provides a string instead of an integer, or injects unintended configuration data, the backend will either crash or worse, process an unsafe action.
 
-To solve this, SOTA architectures enforce strict **Schema Contracts** between the Agent and the backend Capability.
+To solve this, Enterprise architectures enforce strict **Schema Contracts** between the Agent and the backend Capability.
 
 ---
 
@@ -13,7 +13,7 @@ To solve this, SOTA architectures enforce strict **Schema Contracts** between th
 **Pydantic** is the industry standard for defining Schema Contracts. When you define a Pydantic model, frameworks automatically translate it into a strict **JSON Schema** definition that is injected into the LLM's system prompt using `model_json_schema()`.
 
 ```python
-# ✅ SOTA PATTERN: Explicit Pydantic Contracts
+# ✅ Enterprise PATTERN: Explicit Pydantic Contracts
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Literal
 
@@ -44,7 +44,7 @@ user_id: int = Field(description="The user id.")
 ```
 *Why it fails:* Which ID? The database UUID? The customer support ticket ID? The LLM will guess, and it will often guess wrong.
 
-### SOTA Description:
+### Enterprise Description:
 ```python
 user_id: int = Field(description="The 6-digit numeric database ID of the user. Do NOT use the alphanumeric ticket ID here.")
 ```
@@ -65,6 +65,6 @@ class QueryLogsArgsV2(BaseModel):
 ```
 
 **Best Practices for Schema Evolution:**
-- **Never mutate an existing tool signature in-place** if you have running workflows or approvals pending.
+- **Never mutate an existing tool schema in-place** if you have running workflows or approvals pending.
 - **Side-by-side deployment:** Deploy `query_logs_v2`, filter it into the catalog for new executions, and deprecate `query_logs_v1` while supporting existing paused states.
 - Treat your tool schemas identically to public REST API contracts. A breaking change in a schema will break the agent's ability to plan and execute successfully.

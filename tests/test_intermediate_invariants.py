@@ -18,12 +18,12 @@ def test_course_01_proposal_validation():
     RestartProposal = policy.RestartProposal
     
     # Valid
-    valid = RestartProposal(service="checkout", region="eu-west", idempotency_key="key-123")
+    valid = RestartProposal(service="checkout", region="eu-west")
     assert valid.service == "checkout"
         
     # Unsafe input / extra fields rejected
     with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
-        RestartProposal(service="checkout", region="eu-west", idempotency_key="key-123", tenant_id="t-123")
+        RestartProposal(service="checkout", region="eu-west", tenant_id="t-123")
         
 def test_course_01_catalog_filtering():
     policy = get_policy('curriculum/intermediate/01-tool-engineering')
@@ -59,7 +59,7 @@ def test_course_01_tool_result_validation():
     # Safe result
     safe_ev = Evidence(source_id="sys1", source_type="log", observed_at=datetime.datetime.now(), tenant_id="t1", payload={"msg": "all good"})
     val = validate_tool_result(safe_ev, expected_tenant="t1")
-    assert val.is_safe
+    assert val.content_trust == "TRUSTED"
     assert len(val.validation_notes) == 0
     
     # Cross tenant
@@ -71,6 +71,7 @@ def test_course_01_tool_result_validation():
     val_poisoned = validate_tool_result(poisoned_ev, expected_tenant="t1")
     assert len(val_poisoned.validation_notes) > 0
     assert "WARNING" in val_poisoned.validation_notes[0]
+    assert val_poisoned.content_trust == "QUARANTINED"
 def test_course_03_human_approval():
     policy = get_policy('curriculum/intermediate/03-human-approval-permissions')
     RefundInput = policy.RefundInput

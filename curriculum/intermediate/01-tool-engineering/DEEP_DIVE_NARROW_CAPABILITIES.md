@@ -73,7 +73,7 @@ Even with narrow capabilities, systems are still vulnerable to:
 
 Sometimes, you *do* want an agent to write and execute code (e.g., a Data Analyst agent plotting a pandas graph). In these cases, Narrow Capabilities are not an option.
 
-To solve this, SOTA architectures use **Sandboxing**:
+To solve this, Enterprise architectures use **Sandboxing**:
 - Tools like `execute_python` are executed inside secure, ephemeral Docker containers or WebAssembly (Wasm) environments.
 - These environments have zero network access, zero access to production databases, and are destroyed immediately after execution.
 - If the Confused Deputy executes `os.system("rm -rf /")`, it only deletes a temporary sandbox, protecting the enterprise infrastructure.

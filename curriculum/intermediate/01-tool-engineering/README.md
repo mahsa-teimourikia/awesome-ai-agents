@@ -25,7 +25,7 @@ After this module you can design function/tool schemas, route a small capability
 | 2 | Which tool is available? | deterministic routing by actor, tenant, intent, and risk |
 | 3 | What execution shape fits? | sequential dependencies and bounded parallel reads |
 | 4 | What does the tool touch? | search, database, API, code, browser/computer boundaries |
-| 5 | Can the action happen? | scopes, approval tokens, and idempotency keys |
+| 5 | Can the action happen? | scopes, digest-bound approvals, and idempotency keys |
 | 6 | What if it fails? | typed errors, retry classification, escalation, and stop |
 | 7 | Can the result be trusted? | schema/provenance checks and poisoned-content rejection |
 | 8 | Is it ready to release? | trajectory, policy, and regression evaluation |
@@ -134,7 +134,7 @@ class EvidenceResult(BaseModel):
     tenant_id: str
 ```
 
-The model should supply only task parameters such as service and time window. The server should inject identity, tenant, locale, budget, approval token, and credential scope from trusted request context. Never let a model choose its own principal or a raw connection string.
+The model should supply only task parameters such as service and time window. The server should inject identity, tenant, locale, budget, digest-bound approval, and credential scope from trusted request context. Never let a model choose its own principal or a raw connection string.
 
 Version schemas deliberately (`query_logs.v2`) when changing semantics. Make errors typed and predictable: `InvalidArguments`, `PermissionDenied`, `NotFound`, `Conflict`, `RateLimited`, `Timeout`, and `Unavailable`. This lets the orchestrator choose repair, retry, re-plan, escalation, or stop rather than treating every failure as generic text.
 
@@ -291,7 +291,7 @@ To build enterprise-grade tool integrations, review these expanded topics:
 - **[Typed Errors (Self-Healing Agents)](DEEP_DIVE_TYPED_ERRORS.md)**
 
 
-## SOTA Deep Dives
+## Enterprise Deep Dives
 Explore industry-standard architectural patterns and enterprise implementation details:
 
 - [Narrow Capabilities](DEEP_DIVE_NARROW_CAPABILITIES.md)

@@ -1,11 +1,11 @@
-from typing import List, Literal, Any, Optional
+from typing import List, Literal, Any
 from pydantic import BaseModel, Field
 
 class HealthResult(BaseModel):
     evidence_id: str
     status: Literal['HEALTHY', 'DEGRADED', 'DOWN']
     error_rate_pct: float
-    symptom: Optional[str]
+    symptom: str | None
 
 class DeploymentResult(BaseModel):
     evidence_id: str
@@ -21,14 +21,14 @@ class ToolCall(BaseModel):
 class IncidentRecommendation(BaseModel):
     summary: str
     cited_evidence_ids: list[str]
-    suspected_deployment_id: Optional[str]
+    suspected_deployment_id: str | None
     attribution_strength: Literal["unknown", "correlated", "strong_evidence", "verified"]
     recommended_action: Literal["observe", "investigate", "consider_rollback", "escalate"]
 
 class ModelDecision(BaseModel):
     decision_summary: str
     tool_calls: List[ToolCall] = Field(default_factory=list)
-    final_answer: Optional[IncidentRecommendation] = None
+    final_answer: IncidentRecommendation | None = None
 
 class AgentRunResult(BaseModel):
     recommendation: IncidentRecommendation
