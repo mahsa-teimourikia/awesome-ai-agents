@@ -13,12 +13,12 @@ If a tool throws an unhandled exception, returning a raw 500-line HTML stack tra
 ```python
 # ❌ ANTI-PATTERN: Letting the LLM see raw system errors
 @tool
-def check_inventory(sku: str):
-    response = requests.get(f"https://api.warehouse.com/inventory/{sku}")
+def query_error_logs(service: str):
+    response = requests.get(f"https://api.northstar.com/logs/{service}")
     response.raise_for_status() # Throws HTTPError on 404
     return response.json()
 ```
-If the user provides an invalid SKU, `requests` throws a traceback. The LLM sees a wall of Python stack trace garbage. It might hallucinate an answer to escape the confusion, or get stuck in an infinite loop retrying the exact same bad SKU.
+If the user provides an invalid service, `requests` throws a traceback. The LLM sees a wall of Python stack trace garbage. It might hallucinate an answer to escape the confusion, or get stuck in an infinite loop retrying the exact same bad service name.
 
 ---
 
@@ -34,12 +34,12 @@ class ToolError(Exception):
         self.safe_message = safe_message
         self.retryable = retryable
 
-@tool("check_inventory")
-def check_inventory(sku: str):
+@tool("query_error_logs")
+def query_error_logs(service: str):
     try:
-        response = requests.get(f"https://api.warehouse.com/inventory/{sku}")
+        response = requests.get(f"https://api.northstar.com/logs/{service}")
         if response.status_code == 404:
-            raise ToolError(ErrorCode.NOT_FOUND, f"SKU '{sku}' does not exist.", retryable=False)
+            raise ToolError(ErrorCode.NOT_FOUND, f"Service '{service}' does not exist.", retryable=False)
         if response.status_code == 429:
             raise ToolError(ErrorCode.RATE_LIMITED, "API rate limited.", retryable=True)
             
@@ -47,7 +47,7 @@ def check_inventory(sku: str):
         return response.json()
     except requests.exceptions.ConnectionError:
         # Hiding internal infrastructure failures
-        raise ToolError(ErrorCode.UNAVAILABLE, "Warehouse system is down.", retryable=True)
+        raise ToolError(ErrorCode.UNAVAILABLE, "Log service is down.", retryable=True)
 ```
 
 ---

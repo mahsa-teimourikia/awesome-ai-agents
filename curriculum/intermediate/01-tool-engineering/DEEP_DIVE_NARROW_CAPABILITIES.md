@@ -37,29 +37,32 @@ def execute_sql(query: str):
 ### ✅ Preferred: Narrow Capability
 A "Narrow Capability" shifts the security responsibility back to the backend code. The LLM only controls the specific, safe parameters.
 ```python
-# NARROWER: The model controls only the customer ID.
-# The backend owns query structure, authorization, tenant validation, and parameterization.
-class MarkPasswordResetArgs(BaseModel):
-    customer_id: str = Field(description="The ID of the customer to reset.")
+# NARROWER: The model controls only the service and region.
+# The backend owns authorization, tenant validation, idempotency, and approval checking.
+class RestartServiceRequest(BaseModel):
+    service: str = Field(description="The service to restart.")
+    region: str = Field(description="The region to target.")
+    idempotency_key: str = Field(description="Unique key to prevent duplicate restarts.")
 
-@tool("mark_password_reset_required", args_schema=MarkPasswordResetArgs)
-def mark_password_reset_required(customer_id: str, ctx: ExecutionContext):
-    """Flags a customer account to require a password reset on next login."""
+@tool("restart_service", args_schema=RestartServiceRequest)
+def restart_service(service: str, region: str, idempotency_key: str, ctx: ExecutionContext):
+    """Restarts a service in a specific region."""
     
-    # Assume trusted actor/tenant authorization is performed by the application before this backend call.
-    authorize_customer_scope(ctx, customer_id)
+    # Assume trusted actor/tenant authorization and approval verification are performed by the application before execution.
+    authorize_restart_scope(ctx, service, region)
     
-    safe_sql = "UPDATE users SET needs_reset = True WHERE id = :customer_id"
-    db.execute(safe_sql, {"customer_id": customer_id})
+    safe_command = f"systemctl restart {service}-{region}"
+    # execute safe_command securely
+    pass
 ```
 
-In the preferred pattern, if an attacker tries a prompt injection (*"Delete all users"*), the LLM might try to comply, but it only has the `mark_password_reset_required` tool. The narrow typed interface prevents the model from supplying arbitrary SQL through this tool argument.
+In the preferred pattern, if an attacker tries a prompt injection (*"Delete all users"*), the LLM might try to comply, but it only has the `restart_service` tool. The narrow typed interface prevents the model from supplying arbitrary destructive commands through this tool argument.
 
 **Remaining Risks to Consider:**
 Even with narrow capabilities, systems are still vulnerable to:
 - Authorization errors (e.g., executing a command without validating the tenant).
 - Backend implementation bugs.
-- Wrong resource selection (the agent resetting the wrong user).
+- Wrong resource selection (the agent restarting the wrong service).
 - Confused deputy scenarios within the allowed bounded parameters.
 - Tenant escape (if backend isolation is weak).
 - Compromised backend services.

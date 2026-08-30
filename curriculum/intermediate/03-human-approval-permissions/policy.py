@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 import time
-from typing import Literal
+from typing import Literal, Optional
 
 db_processed_keys = set() # Mock database of processed keys
 
@@ -15,7 +15,7 @@ class Approval(BaseModel):
     approver_role: Literal['agent', 'manager', 'admin']
     approved_action: str
 
-def validate_approval(approval: Approval | None, expected_action: str):
+def validate_approval(approval: Optional[Approval], expected_action: str):
     if not approval:
         raise ValueError("Missing approval")
     if time.time() > approval.expires_at:
@@ -25,7 +25,7 @@ def validate_approval(approval: Approval | None, expected_action: str):
     if approval.approver_role not in ['manager', 'admin']:
         raise ValueError("Unauthorized approver")
 
-def process_refund_safe(user_id: int, amount: float, idempotency_key: str, approval: Approval | None = None):
+def process_refund_safe(user_id: int, amount: float, idempotency_key: str, approval: Optional[Approval] = None):
     validate_approval(approval, "refund")
     
     if idempotency_key in db_processed_keys:
