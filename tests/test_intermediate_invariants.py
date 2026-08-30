@@ -227,38 +227,54 @@ def test_course_01_dispatcher_and_approval_harness():
     with pytest.raises(policy.ToolError, match="STALE_EVIDENCE"):
         policy.validate_tool_result(stale_ev, "t1", 300)
         
-    # Generate a valid proposal for the next tests
+    # Generate a valid proposal and approval payload
     prop = policy.RestartProposal(service=policy.ServiceEnum.checkout, region=policy.RegionEnum.eu_west)
-    digest = policy.compute_proposal_digest(prop)
+    ev_ids = ["ev-123"]
+    valid_payload = policy.RestartApprovalPayload(
+        proposal=prop,
+        tenant_id=ctx.tenant_id,
+        target="checkout-eu-west",
+        evidence_ids=ev_ids,
+        policy_version="1.0"
+    )
+    digest = policy.compute_approval_digest(valid_payload)
+    appr_valid = policy.Approval(decision="approve", approver_id="manager-01", approval_digest=digest, expires_at=time.time() + 100)
     
     # 6. Unauthorized approver
-    appr_unauth = policy.Approval(decision="approve", approver_id="hacker-01", proposal_digest=digest, tenant_id="t1", target="checkout-eu-west", expires_at=time.time() + 100)
+    appr_unauth = policy.Approval(decision="approve", approver_id="hacker-01", approval_digest=digest, expires_at=time.time() + 100)
     with pytest.raises(policy.ToolError, match="not authorized for production restarts"):
-        policy.validate_restart_approval(prop, appr_unauth, ctx)
+        policy.validate_restart_approval(prop, appr_unauth, ctx, evidence_ids=ev_ids, policy_version="1.0")
         
     # 7. Expired approval
-    appr_expired = policy.Approval(decision="approve", approver_id="manager-01", proposal_digest=digest, tenant_id="t1", target="checkout-eu-west", expires_at=time.time() - 100)
+    appr_expired = policy.Approval(decision="approve", approver_id="manager-01", approval_digest=digest, expires_at=time.time() - 100)
     with pytest.raises(policy.ToolError, match="Approval has expired"):
-        policy.validate_restart_approval(prop, appr_expired, ctx)
+        policy.validate_restart_approval(prop, appr_expired, ctx, evidence_ids=ev_ids, policy_version="1.0")
         
     # 8. Mutated proposal
     mutated_prop = policy.RestartProposal(service=policy.ServiceEnum.checkout, region=policy.RegionEnum.us_east)
-    appr_valid = policy.Approval(decision="approve", approver_id="manager-01", proposal_digest=digest, tenant_id="t1", target="checkout-eu-west", expires_at=time.time() + 100)
     with pytest.raises(policy.ToolError, match="Digest mismatch"):
-        policy.validate_restart_approval(mutated_prop, appr_valid, ctx)
+        policy.validate_restart_approval(mutated_prop, appr_valid, ctx, evidence_ids=ev_ids, policy_version="1.0")
         
-    # 9. Wrong tenant
-    appr_wrong_tenant = policy.Approval(decision="approve", approver_id="manager-01", proposal_digest=digest, tenant_id="wrong_tenant", target="checkout-eu-west", expires_at=time.time() + 100)
-    with pytest.raises(policy.ToolError, match="Tenant mismatch"):
-        policy.validate_restart_approval(prop, appr_wrong_tenant, ctx)
+    # 9. Tenant mutation
+    ctx_wrong_tenant = policy.ExecutionContext(actor_id="agent1", tenant_id="wrong_tenant", roles={"support", "operator"}, request_id="req1", environment="production")
+    with pytest.raises(policy.ToolError, match="Digest mismatch"):
+        policy.validate_restart_approval(prop, appr_valid, ctx_wrong_tenant, evidence_ids=ev_ids, policy_version="1.0")
         
-    # 10. Wrong target
-    appr_wrong_target = policy.Approval(decision="approve", approver_id="manager-01", proposal_digest=digest, tenant_id="t1", target="payments-eu-west", expires_at=time.time() + 100)
-    with pytest.raises(policy.ToolError, match="Target mismatch"):
-        policy.validate_restart_approval(prop, appr_wrong_target, ctx)
+    # 10. Target mutation
+    prop_wrong_target = policy.RestartProposal(service=policy.ServiceEnum.payments, region=policy.RegionEnum.eu_west)
+    with pytest.raises(policy.ToolError, match="Digest mismatch"):
+        policy.validate_restart_approval(prop_wrong_target, appr_valid, ctx, evidence_ids=ev_ids, policy_version="1.0")
         
-    # 11. Duplicate idempotent restart
-    command = policy.validate_restart_approval(prop, appr_valid, ctx)
+    # 11. Evidence mutation
+    with pytest.raises(policy.ToolError, match="Digest mismatch"):
+        policy.validate_restart_approval(prop, appr_valid, ctx, evidence_ids=["ev-999"], policy_version="1.0")
+        
+    # 12. Policy-version mutation
+    with pytest.raises(policy.ToolError, match="Digest mismatch"):
+        policy.validate_restart_approval(prop, appr_valid, ctx, evidence_ids=ev_ids, policy_version="2.0")
+        
+    # 13. Duplicate idempotent restart (success)
+    command = policy.validate_restart_approval(prop, appr_valid, ctx, evidence_ids=ev_ids, policy_version="1.0")
     rcpt1 = policy.execute_restart(command)
     rcpt2 = policy.execute_restart(command)
     assert rcpt1.receipt_id == rcpt2.receipt_id

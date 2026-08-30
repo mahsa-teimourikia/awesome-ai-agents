@@ -155,16 +155,18 @@ class RestartReceipt(BaseModel):
     status: str
     restarted_at: datetime
 
+class RestartApprovalPayload(BaseModel):
+    proposal: RestartProposal
+    tenant_id: str
+    target: str
+    evidence_ids: List[str]
+    policy_version: str
+
 class Approval(BaseModel):
     decision: Literal["approve", "reject"]
     approver_id: str
-    proposal_digest: str
-    tenant_id: str
-    target: str
+    approval_digest: str
     expires_at: float
-    # Audit metadata (not cryptographically enforced for execution bounds)
-    policy_version: str = "1.0"
-    evidence_ids: List[str] = Field(default_factory=list)
 
 class RestartCommand(BaseModel):
     proposal: RestartProposal
@@ -193,31 +195,48 @@ def execute_restart(command: RestartCommand) -> RestartReceipt:
     restart_receipts[command.idempotency_key] = receipt
     return receipt
 
+def compute_approval_digest(payload: RestartApprovalPayload) -> str:
+    return hashlib.sha256(payload.model_dump_json(exclude_unset=True).encode("utf-8")).hexdigest()
+
 def compute_proposal_digest(proposal: BaseModel) -> str:
     return hashlib.sha256(proposal.model_dump_json(exclude_unset=True).encode("utf-8")).hexdigest()
 
 ALLOWED_RESTART_APPROVERS = {"manager-01", "system-admin"}
 
-def validate_restart_approval(proposal: RestartProposal, approval: Approval, ctx: ExecutionContext) -> RestartCommand:
+def validate_restart_approval(
+    proposal: RestartProposal, 
+    approval: Approval, 
+    ctx: ExecutionContext,
+    evidence_ids: List[str],
+    policy_version: str = "1.0"
+) -> RestartCommand:
     if approval.decision != "approve":
         raise ToolError(ErrorCode.PERMISSION_DENIED, "Approval decision is not 'approve'")
     if approval.approver_id not in ALLOWED_RESTART_APPROVERS:
         raise ToolError(ErrorCode.PERMISSION_DENIED, f"Approver {approval.approver_id} is not authorized for production restarts.")
-    if approval.proposal_digest != compute_proposal_digest(proposal):
-        raise ToolError(ErrorCode.PERMISSION_DENIED, "Digest mismatch: Proposal has been mutated.")
+    
     if time.time() > approval.expires_at:
         raise ToolError(ErrorCode.PERMISSION_DENIED, "Approval has expired.")
-    if approval.tenant_id != ctx.tenant_id:
-        raise ToolError(ErrorCode.PERMISSION_DENIED, "Tenant mismatch.")
-    
+
     expected_target = f"{proposal.service.value}-{proposal.region.value}"
-    if approval.target != expected_target:
-         raise ToolError(ErrorCode.PERMISSION_DENIED, "Target mismatch.")
+    
+    # Reconstruct the payload that should have been signed
+    expected_payload = RestartApprovalPayload(
+        proposal=proposal,
+        tenant_id=ctx.tenant_id,
+        target=expected_target,
+        evidence_ids=evidence_ids,
+        policy_version=policy_version
+    )
+    
+    expected_digest = compute_approval_digest(expected_payload)
+    if approval.approval_digest != expected_digest:
+        raise ToolError(ErrorCode.PERMISSION_DENIED, "Digest mismatch: The approval payload has been mutated or tampered with.")
          
     return RestartCommand(
         proposal=proposal,
         approval=approval,
-        idempotency_key=f"idemp-{approval.proposal_digest}-{ctx.request_id}"
+        idempotency_key=f"idemp-{approval.approval_digest}-{ctx.request_id}"
     )
 
 # 7. Catalog Filtering
