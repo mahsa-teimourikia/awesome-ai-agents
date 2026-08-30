@@ -48,8 +48,7 @@ class Evidence(BaseModel):
     observed_at: datetime
     tenant_id: str
     payload: Any
-    freshness_seconds: int = 0
-    max_freshness_seconds: int = 300
+    # Removed freshness_seconds and max_freshness_seconds to separate policy from observation
 
 class ValidatedEvidence(BaseModel):
     """Evidence that has passed the validation pipeline."""
@@ -79,6 +78,7 @@ class ToolDefinition(BaseModel):
     retry_policy: RetryPolicy = Field(default_factory=RetryPolicy)
     cost_class: Literal["low", "medium", "high"] = "low"
     version: str = "v1"
+    max_result_age_seconds: int = 300  # Policy extracted from observation
 
 # 5. Domain Models (Northstar Scenario)
 class ServiceEnum(str, Enum):
@@ -136,17 +136,24 @@ class IncidentDraftResult(BaseModel):
     draft_id: str
     status: str
 
-class RestartReceipt(BaseModel):
-    receipt_id: str
-    service: str
-    status: str
-    restarted_at: datetime
-
 # 6. Approvals for Restart
 class RestartProposal(BaseModel):
     model_config = ConfigDict(extra="forbid")
     service: ServiceEnum
     region: RegionEnum
+
+# We make the restart proposing tool return the proposal directly (or wrapped in a receipt)
+class RestartProposalReceipt(BaseModel):
+    proposal_id: str
+    proposal: RestartProposal
+    status: Literal["pending_approval"]
+    digest: str
+
+class RestartReceipt(BaseModel):
+    receipt_id: str
+    service: str
+    status: str
+    restarted_at: datetime
 
 class Approval(BaseModel):
     decision: Literal["approve", "reject"]
@@ -166,9 +173,13 @@ class RestartCommand(BaseModel):
 def compute_proposal_digest(proposal: BaseModel) -> str:
     return hashlib.sha256(proposal.model_dump_json(exclude_unset=True).encode("utf-8")).hexdigest()
 
+ALLOWED_RESTART_APPROVERS = {"manager-01", "system-admin"}
+
 def validate_restart_approval(proposal: RestartProposal, approval: Approval, ctx: ExecutionContext) -> RestartCommand:
     if approval.decision != "approve":
         raise ToolError(ErrorCode.PERMISSION_DENIED, "Approval decision is not 'approve'")
+    if approval.approver_id not in ALLOWED_RESTART_APPROVERS:
+        raise ToolError(ErrorCode.PERMISSION_DENIED, f"Approver {approval.approver_id} is not authorized for production restarts.")
     if approval.proposal_digest != compute_proposal_digest(proposal):
         raise ToolError(ErrorCode.PERMISSION_DENIED, "Digest mismatch: Proposal has been mutated.")
     if time.time() > approval.expires_at:
@@ -226,49 +237,52 @@ TOOL_REGISTRY: Dict[str, ToolDefinition] = {
         input_model=IncidentDraftRequest,
         result_model=IncidentDraftResult,
         effect=ToolEffect.PROPOSE,
-        required_permissions={"incident:write"}
+        required_permissions={"incident:propose"}
     ),
-    "restart_service": ToolDefinition(
-        name="restart_service",
+    "propose_service_restart": ToolDefinition(
+        name="propose_service_restart",
         purpose="Propose a restart for a given service in a specific region.",
         input_model=RestartProposal,
-        result_model=RestartReceipt,
-        effect=ToolEffect.WRITE,
-        required_permissions={"service:restart"}
+        result_model=RestartProposalReceipt,
+        effect=ToolEffect.PROPOSE,
+        required_permissions={"service:propose_restart"}
     )
+}
+
+ROLE_PERMISSIONS: Dict[str, Set[str]] = {
+    "support": {"health:read", "logs:read", "deployments:read", "tickets:read", "incident:propose"},
+    "operator": {"service:propose_restart"}
 }
 
 def eligible_tools(ctx: ExecutionContext) -> Dict[str, ToolDefinition]:
     """Deterministically filters the tool catalog based on trusted context and capabilities."""
     eligible = {}
+    
+    # Calculate unified permissions for all roles
+    allowed_permissions = set()
+    for role in ctx.roles:
+        if role in ROLE_PERMISSIONS:
+            allowed_permissions.update(ROLE_PERMISSIONS[role])
+            
     for name, tool_def in TOOL_REGISTRY.items():
-        has_permission = False
-        allowed_permissions = set()
-        
-        if "support" in ctx.roles:
-            allowed_permissions.update({"health:read", "logs:read", "deployments:read", "tickets:read", "incident:write"})
-        if "operator" in ctx.roles:
-            allowed_permissions.update({"service:restart"})
-            
-        if tool_def.required_permissions.issubset(allowed_permissions):
-            has_permission = True
-            
-        if not has_permission:
+        if not tool_def.required_permissions.issubset(allowed_permissions):
             continue
             
+        # Example environment constraint
         if ctx.environment == "production" and tool_def.effect == ToolEffect.WRITE and "operator" not in ctx.roles:
             continue
             
         eligible[name] = tool_def
     return eligible
 
-def validate_tool_result(result: Evidence, expected_tenant: str) -> ValidatedEvidence:
+def validate_tool_result(result: Evidence, expected_tenant: str, max_age_seconds: int) -> ValidatedEvidence:
     """Validates provenance, freshness, and content safety."""
     if result.tenant_id != expected_tenant:
         raise ToolError(ErrorCode.PERMISSION_DENIED, "AUTHORIZATION_DENIED: Cross-tenant data access blocked.")
         
-    if result.freshness_seconds > result.max_freshness_seconds:
-        raise ToolError(ErrorCode.INVALID_ARGUMENT, f"STALE_EVIDENCE: Data freshness ({result.freshness_seconds}s) exceeds policy ({result.max_freshness_seconds}s).")
+    age_seconds = (datetime.now() - result.observed_at).total_seconds()
+    if age_seconds > max_age_seconds:
+        raise ToolError(ErrorCode.INVALID_ARGUMENT, f"STALE_EVIDENCE: Data freshness ({age_seconds:.1f}s) exceeds policy ({max_age_seconds}s).")
         
     notes = []
     trust = "TRUSTED"
@@ -286,3 +300,79 @@ def validate_tool_result(result: Evidence, expected_tenant: str) -> ValidatedEvi
         contains_instruction_injection=injection,
         validation_notes=notes
     )
+
+# Mock handlers for demonstration
+def handle_get_service_health(args: ServiceHealthRequest, ctx: ExecutionContext) -> ServiceHealthResult:
+    return ServiceHealthResult(status="degraded", latency_ms=120)
+
+def handle_query_error_logs(args: QueryLogsRequest, ctx: ExecutionContext) -> LogEvidenceResult:
+    return LogEvidenceResult(error_count=55, sample_codes=["ERR-500", "ERR-503"])
+
+def handle_get_recent_deployment(args: DeploymentRequest, ctx: ExecutionContext) -> DeploymentResult:
+    return DeploymentResult(version="v1.4.2", deployed_at=datetime.now(), status="success")
+
+def handle_search_support_tickets(args: TicketSearchRequest, ctx: ExecutionContext) -> TicketSearchResult:
+    return TicketSearchResult(ticket_ids=["INC-482"], open_count=1)
+
+def handle_create_incident_draft(args: IncidentDraftRequest, ctx: ExecutionContext) -> IncidentDraftResult:
+    return IncidentDraftResult(draft_id="DRAFT-999", status="pending_review")
+
+def handle_propose_service_restart(args: RestartProposal, ctx: ExecutionContext) -> RestartProposalReceipt:
+    digest = compute_proposal_digest(args)
+    return RestartProposalReceipt(
+        proposal_id=f"prop-{digest[:8]}",
+        proposal=args,
+        status="pending_approval",
+        digest=digest
+    )
+
+TOOL_HANDLERS: Dict[str, Callable] = {
+    "get_service_health": handle_get_service_health,
+    "query_error_logs": handle_query_error_logs,
+    "get_recent_deployment": handle_get_recent_deployment,
+    "search_support_tickets": handle_search_support_tickets,
+    "create_incident_draft": handle_create_incident_draft,
+    "propose_service_restart": handle_propose_service_restart
+}
+
+def dispatch_tool(tool_name: str, raw_args: dict, ctx: ExecutionContext) -> ValidatedEvidence:
+    """The authoritative dispatcher for the tool subsystem."""
+    # 1. Reject unknown tools immediately
+    if tool_name not in TOOL_REGISTRY:
+        raise ToolError(ErrorCode.UNKNOWN_TOOL, f"Tool '{tool_name}' is not registered.")
+        
+    # 2. Enforce capabilities and roles
+    catalog = eligible_tools(ctx)
+    if tool_name not in catalog:
+        raise ToolError(ErrorCode.PERMISSION_DENIED, f"Tool '{tool_name}' is not permitted for this context.")
+        
+    tool_def = catalog[tool_name]
+    
+    # 3. Strict Schema Validation (Model -> Typed Domain Object)
+    try:
+        parsed_args = tool_def.input_model.model_validate(raw_args)
+    except Exception as e:
+        raise ToolError(ErrorCode.INVALID_ARGUMENT, f"Argument validation failed: {str(e)}")
+        
+    # 4. Dispatch to Trusted Handler
+    handler = TOOL_HANDLERS.get(tool_name)
+    if not handler:
+        raise ToolError(ErrorCode.INTERNAL_TOOL_ERROR, "No handler configured for this tool.")
+        
+    try:
+        result_payload = handler(parsed_args, ctx)
+    except ToolError:
+        raise
+    except Exception as e:
+        raise ToolError(ErrorCode.INTERNAL_TOOL_ERROR, f"Handler crashed: {str(e)}")
+        
+    # 5. Wrap in provenance and validate outbound boundary
+    evidence = Evidence(
+        source_id=f"{tool_name}-{ctx.request_id}",
+        source_type=tool_name,
+        observed_at=datetime.now(),
+        tenant_id=ctx.tenant_id,
+        payload=result_payload
+    )
+    
+    return validate_tool_result(evidence, ctx.tenant_id, tool_def.max_result_age_seconds)

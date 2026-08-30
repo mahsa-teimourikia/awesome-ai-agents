@@ -44,8 +44,8 @@ class RestartServiceRequest(BaseModel):
     region: str = Field(description="The region to target.")
     idempotency_key: str = Field(description="Unique key to prevent duplicate restarts.")
 
-@tool("restart_service", args_schema=RestartServiceRequest)
-def restart_service(service: str, region: str, idempotency_key: str, ctx: ExecutionContext):
+@tool("propose_service_restart", args_schema=RestartProposal)
+def propose_service_restart(service: str, region: str, idempotency_key: str, ctx: ExecutionContext):
     """Restarts a service in a specific region."""
     
     # Assume trusted actor/tenant authorization and approval verification are performed by the application before execution.
@@ -56,7 +56,7 @@ def restart_service(service: str, region: str, idempotency_key: str, ctx: Execut
     pass
 ```
 
-In the preferred pattern, if an attacker tries a prompt injection (*"Delete all users"*), the LLM might try to comply, but it only has the `restart_service` tool. The narrow typed interface prevents the model from supplying arbitrary destructive commands through this tool argument.
+In the preferred pattern, if an attacker tries a prompt injection (*"Delete all users"*), the LLM might try to comply, but it only has the `propose_service_restart` tool. The narrow typed interface prevents the model from supplying arbitrary destructive commands through this tool argument.
 
 **Remaining Risks to Consider:**
 Even with narrow capabilities, systems are still vulnerable to:
