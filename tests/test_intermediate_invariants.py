@@ -190,3 +190,75 @@ def test_course_08_planning():
     task_b = SubTask(task_id=11, description="B", expected_tool="web_search", dependencies=[10])
     with pytest.raises(ValidationError, match="Cycle detected in plan DAG"):
         Plan(subtasks=[task_a, task_b])
+
+def test_course_01_dispatcher_and_approval_harness():
+    policy = get_policy('curriculum/intermediate/01-tool-engineering')
+    ctx = policy.ExecutionContext(actor_id="agent1", tenant_id="t1", roles={"support", "operator"}, request_id="req1", environment="production")
+    
+    import time
+    from datetime import datetime
+    
+    # 1. Unknown tool
+    with pytest.raises(policy.ToolError, match="not registered") as e1:
+        policy.dispatch_tool("unknown_tool", {}, ctx)
+    assert e1.value.code == policy.ErrorCode.UNKNOWN_TOOL
+        
+    # 2. Ineligible tool
+    ctx_support_only = policy.ExecutionContext(actor_id="agent1", tenant_id="t1", roles={"support"}, request_id="req1", environment="production")
+    with pytest.raises(policy.ToolError, match="not permitted") as e2:
+        policy.dispatch_tool("propose_service_restart", {"service": "checkout", "region": "eu-west"}, ctx_support_only)
+    assert e2.value.code == policy.ErrorCode.PERMISSION_DENIED
+        
+    # 3. Malformed args
+    with pytest.raises(policy.ToolError, match="Argument validation failed") as e3:
+        policy.dispatch_tool("get_service_health", {"service": "invalid_service"}, ctx)
+    assert e3.value.code == policy.ErrorCode.INVALID_ARGUMENT
+        
+    # 4. Result schema mismatch (Mock a bad handler temporarily)
+    original_handler = policy.TOOL_HANDLERS["get_service_health"]
+    policy.TOOL_HANDLERS["get_service_health"] = lambda args, c: {"bad": "schema"}
+    with pytest.raises(policy.ToolError, match="The tool failed unexpectedly.") as e4:
+        policy.dispatch_tool("get_service_health", {"service": "checkout"}, ctx)
+    assert e4.value.code == policy.ErrorCode.INTERNAL_TOOL_ERROR
+    policy.TOOL_HANDLERS["get_service_health"] = original_handler # Restore
+    
+    # 5. Stale evidence
+    stale_ev = policy.Evidence(source_id="s1", source_type="t1", observed_at=datetime.fromtimestamp(time.time() - 600), tenant_id="t1", payload={})
+    with pytest.raises(policy.ToolError, match="STALE_EVIDENCE"):
+        policy.validate_tool_result(stale_ev, "t1", 300)
+        
+    # Generate a valid proposal for the next tests
+    prop = policy.RestartProposal(service=policy.ServiceEnum.checkout, region=policy.RegionEnum.eu_west)
+    digest = policy.compute_proposal_digest(prop)
+    
+    # 6. Unauthorized approver
+    appr_unauth = policy.Approval(decision="approve", approver_id="hacker-01", proposal_digest=digest, tenant_id="t1", target="checkout-eu-west", expires_at=time.time() + 100)
+    with pytest.raises(policy.ToolError, match="not authorized for production restarts"):
+        policy.validate_restart_approval(prop, appr_unauth, ctx)
+        
+    # 7. Expired approval
+    appr_expired = policy.Approval(decision="approve", approver_id="manager-01", proposal_digest=digest, tenant_id="t1", target="checkout-eu-west", expires_at=time.time() - 100)
+    with pytest.raises(policy.ToolError, match="Approval has expired"):
+        policy.validate_restart_approval(prop, appr_expired, ctx)
+        
+    # 8. Mutated proposal
+    mutated_prop = policy.RestartProposal(service=policy.ServiceEnum.checkout, region=policy.RegionEnum.us_east)
+    appr_valid = policy.Approval(decision="approve", approver_id="manager-01", proposal_digest=digest, tenant_id="t1", target="checkout-eu-west", expires_at=time.time() + 100)
+    with pytest.raises(policy.ToolError, match="Digest mismatch"):
+        policy.validate_restart_approval(mutated_prop, appr_valid, ctx)
+        
+    # 9. Wrong tenant
+    appr_wrong_tenant = policy.Approval(decision="approve", approver_id="manager-01", proposal_digest=digest, tenant_id="wrong_tenant", target="checkout-eu-west", expires_at=time.time() + 100)
+    with pytest.raises(policy.ToolError, match="Tenant mismatch"):
+        policy.validate_restart_approval(prop, appr_wrong_tenant, ctx)
+        
+    # 10. Wrong target
+    appr_wrong_target = policy.Approval(decision="approve", approver_id="manager-01", proposal_digest=digest, tenant_id="t1", target="payments-eu-west", expires_at=time.time() + 100)
+    with pytest.raises(policy.ToolError, match="Target mismatch"):
+        policy.validate_restart_approval(prop, appr_wrong_target, ctx)
+        
+    # 11. Duplicate idempotent restart
+    command = policy.validate_restart_approval(prop, appr_valid, ctx)
+    rcpt1 = policy.execute_restart(command)
+    rcpt2 = policy.execute_restart(command)
+    assert rcpt1.receipt_id == rcpt2.receipt_id

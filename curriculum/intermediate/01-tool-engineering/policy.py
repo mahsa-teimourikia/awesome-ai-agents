@@ -162,6 +162,7 @@ class Approval(BaseModel):
     tenant_id: str
     target: str
     expires_at: float
+    # Audit metadata (not cryptographically enforced for execution bounds)
     policy_version: str = "1.0"
     evidence_ids: List[str] = Field(default_factory=list)
 
@@ -169,6 +170,28 @@ class RestartCommand(BaseModel):
     proposal: RestartProposal
     approval: Approval
     idempotency_key: str
+
+
+# Simulated backend registry of restart receipts (Moved from Notebook for deterministic testing)
+restart_receipts = {}
+
+def execute_restart(command: RestartCommand) -> RestartReceipt:
+    """
+    The authoritative backend executor.
+    Only accepts cryptographically bound RestartCommands, never raw proposals.
+    """
+    if command.idempotency_key in restart_receipts:
+        # Return existing receipt on idempotent retry
+        return restart_receipts[command.idempotency_key]
+        
+    receipt = RestartReceipt(
+        receipt_id=f"rcpt-{hashlib.md5(command.idempotency_key.encode()).hexdigest()[:8]}",
+        service=command.proposal.service.value,
+        status="restarting",
+        restarted_at=datetime.now()
+    )
+    restart_receipts[command.idempotency_key] = receipt
+    return receipt
 
 def compute_proposal_digest(proposal: BaseModel) -> str:
     return hashlib.sha256(proposal.model_dump_json(exclude_unset=True).encode("utf-8")).hexdigest()
@@ -336,7 +359,13 @@ TOOL_HANDLERS: Dict[str, Callable] = {
 }
 
 def dispatch_tool(tool_name: str, raw_args: dict, ctx: ExecutionContext) -> ValidatedEvidence:
-    """The authoritative dispatcher for the tool subsystem."""
+    """
+    The authoritative dispatcher for the tool subsystem.
+    
+    NOTE ON RETRIES:
+    This dispatcher performs one authorized attempt. Orchestration is expected 
+    to inspect the ToolError and manage retries based on the tool's RetryPolicy.
+    """
     # 1. Reject unknown tools immediately
     if tool_name not in TOOL_REGISTRY:
         raise ToolError(ErrorCode.UNKNOWN_TOOL, f"Tool '{tool_name}' is not registered.")
@@ -361,10 +390,21 @@ def dispatch_tool(tool_name: str, raw_args: dict, ctx: ExecutionContext) -> Vali
         
     try:
         result_payload = handler(parsed_args, ctx)
+        # Enforce tool result_model schema post-execution
+        if isinstance(result_payload, BaseModel):
+            # If the handler returned a domain model directly, we dump to dict and validate,
+            # or just validate from attributes. Pydantic's model_validate handles dicts/objects.
+            validated_payload = tool_def.result_model.model_validate(result_payload, from_attributes=True)
+        else:
+            validated_payload = tool_def.result_model.model_validate(result_payload)
+            
+        result_payload = validated_payload
     except ToolError:
         raise
     except Exception as e:
-        raise ToolError(ErrorCode.INTERNAL_TOOL_ERROR, f"Handler crashed: {str(e)}")
+        # Sanitize internal handler failures: log the real error, return generic safe message
+        print(f"INTERNAL LOG (NOT SENT TO MODEL): Handler failed unexpectedly: {str(e)}")
+        raise ToolError(ErrorCode.INTERNAL_TOOL_ERROR, "The tool failed unexpectedly.")
         
     # 5. Wrap in provenance and validate outbound boundary
     evidence = Evidence(
