@@ -261,11 +261,16 @@ def build_context(request: ContextRequest, candidates: List[ContextItem]) -> Con
     if task_state:
         trace.append(SelectionTraceItem(item_id=task_state.item_id, decision="INCLUDED", reason="MANDATORY_STATE"))
     if summary:
-        trace.append(SelectionTraceItem(item_id=summary.item_id, decision="INCLUDED", reason="DERIVED_SUMMARY"))
         # Check conflict with task_state
         if task_state and hasattr(task_state, "payload") and hasattr(summary, "payload"):
             if "APPROVED" in str(summary.payload) and "NO_APPROVAL" in str(task_state.payload):
                 warnings.append("Summary conflicts with Task State. Task State overrides.")
+                trace.append(SelectionTraceItem(item_id=summary.item_id, decision="DROPPED", reason="CONFLICTS_WITH_AUTHORITATIVE_STATE"))
+                dropped.append(summary)
+                summary = None
+                
+        if summary is not None:
+            trace.append(SelectionTraceItem(item_id=summary.item_id, decision="INCLUDED", reason="DERIVED_SUMMARY"))
 
     # 4. Required Evidence Preservation
     budget_pool = []

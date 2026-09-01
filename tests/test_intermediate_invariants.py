@@ -127,6 +127,10 @@ def test_policy_version_invalidation(setup_data):
 
 def test_summary_invariant_preservation(setup_data):
     req, cands = setup_data
+    # Modify the summary payload to avoid conflict with task_state ("NO_APPROVAL")
+    for cand in cands:
+        if cand.item_id == "summary_1":
+            cand.payload = "NO_APPROVAL_YET"
     res = build_context(req, cands)
     # Verify that both task state and summary are preserved
     assert res.packet.task_state is not None
@@ -178,7 +182,8 @@ def test_summary_conflict_preserves_task_state(setup_data):
     assert res.status == ContextStatus.READY
     assert "Summary conflicts with Task State. Task State overrides." in res.warnings
     assert res.packet.task_state.payload == "NO_APPROVAL"
-    assert res.packet.structured_summary.payload == "APPROVED"
+    assert res.packet.structured_summary is None
+    assert any(t.item_id == "summary_1" and t.decision == "DROPPED" and t.reason == "CONFLICTS_WITH_AUTHORITATIVE_STATE" for t in res.packet.selection_trace)
 
 def test_cache_invalidation_content_hash_fallback(setup_data):
     req, cands = setup_data
