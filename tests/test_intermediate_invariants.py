@@ -67,12 +67,7 @@ def test_missing_required_evidence_detected(setup_data):
     assert res.status == ContextStatus.MISSING_REQUIRED_CONTEXT
     assert "does_not_exist" in res.missing_required_ids
 
-def test_required_quarantined_evidence_detected(setup_data):
-    req, cands = setup_data
-    req.required_evidence_ids = ["poison_doc"]
-    res = build_context(req, cands)
-    assert res.status == ContextStatus.AUTHORIZATION_BLOCKED
-    assert "poison_doc" in res.missing_required_ids
+
 
 def test_budget_exceeded_detected(setup_data):
     req, cands = setup_data
@@ -235,3 +230,42 @@ def test_phase_policy_recommend_prioritizes_evidence(setup_data):
     # ev_1 (0.7 + 0.4 = 1.1) > doc_1 (1.0). ev_1 should win.
     assert any(i.item_id == "ev_1" for i in res.packet.selected_items)
     assert not any(i.item_id == "doc_1" for i in res.packet.selected_items)
+
+
+def test_required_wrong_tenant_evidence_blocked(setup_data):
+    req, cands = setup_data
+    # globex_doc is tenant_id="globex", req is "acme"
+    req.required_evidence_ids = ["globex_doc"]
+    res = build_context(req, cands)
+    assert res.status == ContextStatus.AUTHORIZATION_BLOCKED
+
+def test_required_wrong_user_memory_blocked(setup_data):
+    req, cands = setup_data
+    # alice_mem is user_id="alice", req is "bob"
+    req.required_evidence_ids = ["alice_mem"]
+    res = build_context(req, cands)
+    assert res.status == ContextStatus.AUTHORIZATION_BLOCKED
+
+def test_required_sensitivity_blocked_item(setup_data):
+    req, cands = setup_data
+    # globex_doc is PUBLIC. If we only allow INTERNAL:
+    req.allowed_sensitivity = [Sensitivity.INTERNAL]
+    # state_1 is INTERNAL, but we want to test required blocked item.
+    # let's require global_pol (which is PUBLIC)
+    req.required_evidence_ids = ["global_pol"]
+    res = build_context(req, cands)
+    assert res.status == ContextStatus.AUTHORIZATION_BLOCKED
+
+def test_required_stale_evidence_missing(setup_data):
+    req, cands = setup_data
+    # stale_ev is expired
+    req.required_evidence_ids = ["stale_ev"]
+    res = build_context(req, cands)
+    assert res.status == ContextStatus.MISSING_REQUIRED_CONTEXT
+
+def test_required_quarantined_evidence_trust_blocked(setup_data):
+    req, cands = setup_data
+    # poison_doc is QUARANTINED
+    req.required_evidence_ids = ["poison_doc"]
+    res = build_context(req, cands)
+    assert res.status == ContextStatus.TRUST_BLOCKED

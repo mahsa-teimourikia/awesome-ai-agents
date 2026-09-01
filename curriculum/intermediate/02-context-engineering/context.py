@@ -45,6 +45,7 @@ class ContextStatus(str, Enum):
     MISSING_REQUIRED_CONTEXT = "MISSING_REQUIRED_CONTEXT"
     BUDGET_EXCEEDED = "BUDGET_EXCEEDED"
     AUTHORIZATION_BLOCKED = "AUTHORIZATION_BLOCKED"
+    TRUST_BLOCKED = "TRUST_BLOCKED"
     AMBIGUOUS_AUTHORITY = "AMBIGUOUS_AUTHORITY"
 
 
@@ -197,22 +198,35 @@ def build_context(request: ContextRequest, candidates: List[ContextItem]) -> Con
     missing_required = [req_id for req_id in request.required_evidence_ids if req_id not in valid_ids]
     if missing_required:
         auth_blocked = False
+        trust_blocked = False
+        
         for dropped_item in dropped + quarantined:
             if dropped_item.item_id in missing_required:
-                auth_blocked = True
-                break
+                # Find the reason this required item was dropped
+                reasons = [t.reason for t in trace if t.item_id == dropped_item.item_id]
+                for reason in reasons:
+                    if reason in ["WRONG_TENANT", "WRONG_USER", "RESTRICTED_ACCESS"]:
+                        auth_blocked = True
+                    elif reason in ["POISONED", "QUARANTINED"]:
+                        trust_blocked = True
         
         if auth_blocked:
             return ContextBuildResult(
                 status=ContextStatus.AUTHORIZATION_BLOCKED,
                 missing_required_ids=missing_required,
-                warnings=["Required evidence blocked by authorization or trust filters."]
+                warnings=["Required evidence blocked by authorization boundaries."]
+            )
+        elif trust_blocked:
+            return ContextBuildResult(
+                status=ContextStatus.TRUST_BLOCKED,
+                missing_required_ids=missing_required,
+                warnings=["Required evidence blocked by trust/quarantine boundaries."]
             )
         else:
             return ContextBuildResult(
                 status=ContextStatus.MISSING_REQUIRED_CONTEXT,
                 missing_required_ids=missing_required,
-                warnings=["Required evidence missing or dropped by filters."]
+                warnings=["Required evidence missing, stale, or dropped by non-security filters."]
             )
             
     # 3. Assign absolute categories (Policy, State, Summary) with ambiguity check
