@@ -68,17 +68,17 @@ high-risk actions, and adversarial testing.
 
 ## 3. The lab’s guardrails
 
-`lab.py` intentionally keeps detection simple and deterministic. It scans a
-poisoned runbook, quarantines it, emits no unsafe text into the model context,
-and blocks the document-requested restart at the tool boundary. The marker scan
+`policy.py` and the notebook intentionally keep detection simple and deterministic. They scan a
+poisoned runbook, quarantine it, emit no unsafe text into the model context,
+and block the document-requested restart at the tool boundary. The marker scan
 is a teaching device, **not** a complete prompt-injection defense: attackers can
 obfuscate, split, translate, or hide instructions in image/document content.
 
 ```python
-gate = classify_content(poisoned_document)
-context = build_context(poisoned_document, gate)
-tool_gate = validate_tool_call(restart_call, context, approved=False)
-assert gate.disposition == ContentDisposition.QUARANTINE
+content_decision = classify_content(poisoned_document)
+# The application handles quarantine and builds safe context...
+tool_gate = validate_tool_call(restart_call, context, validated_approval=None)
+assert content_decision.disposition == ContentDisposition.QUARANTINE
 assert tool_gate.status == GuardrailStatus.APPROVAL_REQUIRED
 ```
 
@@ -93,9 +93,9 @@ no detected marker.
 
 ### Experiment B — containment survives detector failure
 
-Temporarily bypass the injection detector. The document
+Temporarily use an obfuscated payload that bypasses the injection detector. The document
 may enter context, but `validate_tool_call` still blocks `restart_service`
-without application-owned approval. This illustrates defense in depth: no text
+without application-owned validated approval. This illustrates defense in depth: no text
 classifier should be the sole permission boundary.
 
 ### Experiment C — scope and tool abuse
