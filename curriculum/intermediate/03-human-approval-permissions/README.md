@@ -18,7 +18,7 @@ scoped action, evidence, risk, and expiry; the decision is durable and
 auditable; no duplicate action occurs on replay; and a rejected action stays
 rejected.
 
-![Diagram](diagram.svg)
+![Diagram](assets/diagram.svg)
 
 ## Learning outcomes
 
@@ -90,7 +90,7 @@ approved—not a broad role grant that lasts indefinitely.
 - original action fingerprint and the reviewer’s allowed choices;
 - a visible statement that approval authorizes this exact request once.
 
-![Diagram](diagram_2.svg)
+![Diagram](assets/diagram_2.svg)
 
 Modification is powerful but risky. Treat an edited action as a new action:
 revalidate arguments, recompute risk and its idempotency key, verify the editor
