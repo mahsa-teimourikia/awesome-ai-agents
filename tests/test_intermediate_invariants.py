@@ -585,3 +585,173 @@ def test_execution_audit_events(approval_setup):
     # Test EXECUTION_OUTCOME_UNKNOWN
     store.record_execution(cmd, ExecutionStatus.UNKNOWN_OUTCOME)
     assert store.audit_events[-1].event_type == EventType.EXECUTION_OUTCOME_UNKNOWN
+
+# ==========================================
+# Course 05 Invariant Tests (Agent Evaluation)
+# ==========================================
+import importlib.util
+import sys
+import os
+
+module_name = "policy_05"
+file_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../curriculum/intermediate/05-agent-evaluation/policy.py'))
+spec = importlib.util.spec_from_file_location(module_name, file_path)
+policy_05 = importlib.util.module_from_spec(spec)
+sys.modules[module_name] = policy_05
+spec.loader.exec_module(policy_05)
+
+RiskTier = policy_05.RiskTier
+DatasetSplit = policy_05.DatasetSplit
+StepType = policy_05.StepType
+FailureClass = policy_05.FailureClass
+ReleaseStatus = policy_05.ReleaseStatus
+EvalCase = policy_05.EvalCase
+TraceStep = policy_05.TraceStep
+AgentTrace = policy_05.AgentTrace
+ReleaseGate = policy_05.ReleaseGate
+ReleaseDecision = policy_05.ReleaseDecision
+check_expected_tools = policy_05.check_expected_tools
+check_forbidden_tools = policy_05.check_forbidden_tools
+check_tenant_isolation = policy_05.check_tenant_isolation
+check_required_evidence = policy_05.check_required_evidence
+check_unsupported_evidence = policy_05.check_unsupported_evidence
+check_tool_order = policy_05.check_tool_order
+check_duplicate_vs_retry = policy_05.check_duplicate_vs_retry
+check_cost_budget = policy_05.check_cost_budget
+check_latency_budget = policy_05.check_latency_budget
+
+
+import pytest
+
+@pytest.fixture
+def eval_case_05():
+    return EvalCase(
+        case_id="case-01",
+        task="Test task",
+        tenant_id="northstar",
+        risk_tier=RiskTier.MODERATE,
+        expected_tools=["tool_a", "tool_b"],
+        forbidden_tools=["tool_bad"],
+        required_evidence_ids=["ev-1"],
+        expected_outcome="Pass",
+        max_tool_calls=5,
+        max_cost_usd=0.10,
+        max_latency_ms=5000.0,
+        tags=["test"],
+        dataset_split=DatasetSplit.TEST,
+        dataset_version="1.0",
+        required_tool_order=["tool_a", "tool_b"],
+        allowed_retry_rules={"tool_retry": 1}
+    )
+
+def test_05_forbidden_action_fails(eval_case_05):
+    trace = AgentTrace(
+        run_id="run-1", case_id="case-01", tenant_id="northstar",
+        steps=[TraceStep(step_index=1, step_type=StepType.TOOL_CALL, tool_name="tool_bad", latency_ms=10, cost_usd=0.01)],
+        final_answer="Done", final_evidence_ids=["ev-1"], total_cost_usd=0.01, total_latency_ms=10,
+        agent_version="v1", model_version="v1", prompt_version="v1", tool_version="v1", policy_version="v1"
+    )
+    res = check_forbidden_tools(trace, eval_case_05)
+    assert not res.passed
+    assert FailureClass.POLICY_FAILURE in res.failure_classes
+
+def test_05_cross_tenant_hard_fail(eval_case_05):
+    trace = AgentTrace(
+        run_id="run-1", case_id="case-01", tenant_id="northstar",
+        steps=[TraceStep(step_index=1, step_type=StepType.TOOL_CALL, tool_name="tool_a", arguments={"tenant_id": "globex"}, latency_ms=10, cost_usd=0.01)],
+        final_answer="Done", final_evidence_ids=["ev-1"], total_cost_usd=0.01, total_latency_ms=10,
+        agent_version="v1", model_version="v1", prompt_version="v1", tool_version="v1", policy_version="v1"
+    )
+    res = check_tenant_isolation(trace, eval_case_05)
+    assert not res.passed
+    assert FailureClass.AUTHORIZATION_FAILURE in res.failure_classes
+
+def test_05_missing_required_evidence(eval_case_05):
+    trace = AgentTrace(
+        run_id="run-1", case_id="case-01", tenant_id="northstar",
+        steps=[],
+        final_answer="Done", final_evidence_ids=["ev-wrong"], total_cost_usd=0.0, total_latency_ms=0,
+        agent_version="v1", model_version="v1", prompt_version="v1", tool_version="v1", policy_version="v1"
+    )
+    res = check_required_evidence(trace, eval_case_05)
+    assert not res.passed
+    assert FailureClass.GROUNDING_FAILURE in res.failure_classes
+
+def test_05_tool_order_invalid(eval_case_05):
+    trace = AgentTrace(
+        run_id="run-1", case_id="case-01", tenant_id="northstar",
+        steps=[
+            TraceStep(step_index=1, step_type=StepType.TOOL_CALL, tool_name="tool_b", latency_ms=10, cost_usd=0.01),
+            TraceStep(step_index=2, step_type=StepType.TOOL_CALL, tool_name="tool_a", latency_ms=10, cost_usd=0.01)
+        ],
+        final_answer="Done", final_evidence_ids=["ev-1"], total_cost_usd=0.02, total_latency_ms=20,
+        agent_version="v1", model_version="v1", prompt_version="v1", tool_version="v1", policy_version="v1"
+    )
+    res = check_tool_order(trace, eval_case_05)
+    assert not res.passed
+
+def test_05_duplicate_calls_vs_retry(eval_case_05):
+    # Duplicate success
+    trace_dup = AgentTrace(
+        run_id="run-1", case_id="case-01", tenant_id="northstar",
+        steps=[
+            TraceStep(step_index=1, step_type=StepType.TOOL_CALL, tool_name="tool_a", arguments={"p": 1}, latency_ms=10, cost_usd=0.01),
+            TraceStep(step_index=2, step_type=StepType.TOOL_RESULT, result_status="SUCCESS", latency_ms=10, cost_usd=0.0),
+            TraceStep(step_index=3, step_type=StepType.TOOL_CALL, tool_name="tool_a", arguments={"p": 1}, latency_ms=10, cost_usd=0.01),
+            TraceStep(step_index=4, step_type=StepType.TOOL_RESULT, result_status="SUCCESS", latency_ms=10, cost_usd=0.0)
+        ],
+        final_answer="Done", final_evidence_ids=["ev-1"], total_cost_usd=0.02, total_latency_ms=40,
+        agent_version="v1", model_version="v1", prompt_version="v1", tool_version="v1", policy_version="v1"
+    )
+    res_dup = check_duplicate_vs_retry(trace_dup, eval_case_05)
+    assert not res_dup.passed
+    assert "Unnecessary duplicate side effect or call" in res_dup.failures[0]
+
+    # Bounded retry success
+    trace_retry = AgentTrace(
+        run_id="run-2", case_id="case-01", tenant_id="northstar",
+        steps=[
+            TraceStep(step_index=1, step_type=StepType.TOOL_CALL, tool_name="tool_retry", arguments={"p": 1}, latency_ms=10, cost_usd=0.01),
+            TraceStep(step_index=2, step_type=StepType.TOOL_RESULT, result_status="TIMEOUT", latency_ms=10, cost_usd=0.0),
+            TraceStep(step_index=3, step_type=StepType.TOOL_CALL, tool_name="tool_retry", arguments={"p": 1}, latency_ms=10, cost_usd=0.01),
+            TraceStep(step_index=4, step_type=StepType.TOOL_RESULT, result_status="SUCCESS", latency_ms=10, cost_usd=0.0)
+        ],
+        final_answer="Done", final_evidence_ids=["ev-1"], total_cost_usd=0.02, total_latency_ms=40,
+        agent_version="v1", model_version="v1", prompt_version="v1", tool_version="v1", policy_version="v1"
+    )
+    res_retry = check_duplicate_vs_retry(trace_retry, eval_case_05)
+    assert res_retry.passed
+
+def test_05_budgets_exceeded(eval_case_05):
+    trace = AgentTrace(
+        run_id="run-1", case_id="case-01", tenant_id="northstar",
+        steps=[],
+        final_answer="Done", final_evidence_ids=["ev-1"], total_cost_usd=0.50, total_latency_ms=10000.0,
+        agent_version="v1", model_version="v1", prompt_version="v1", tool_version="v1", policy_version="v1"
+    )
+    res_cost = check_cost_budget(trace, eval_case_05)
+    assert not res_cost.passed
+    
+    res_latency = check_latency_budget(trace, eval_case_05)
+    assert not res_latency.passed
+
+def test_05_release_gate_evaluates_constraints():
+    gate = ReleaseGate(
+        min_outcome_pass_rate=0.90,
+        min_required_evidence_recall=0.85,
+        max_forbidden_action_rate=0.00,
+        max_cross_tenant_violation_rate=0.00,
+        max_p95_latency_ms=5000.0,
+        max_cost_per_success=0.10,
+        max_allowed_regression_pp=0.02
+    )
+    candidate_forbidden_rate = 0.01
+    
+    if candidate_forbidden_rate > gate.max_forbidden_action_rate:
+        decision = ReleaseDecision(
+            status=ReleaseStatus.FAIL,
+            failed_constraints=["max_forbidden_action_rate"],
+            regressions=[],
+            summary="Candidate improves outcome but violates hard safety constraints."
+        )
+        assert decision.status == ReleaseStatus.FAIL

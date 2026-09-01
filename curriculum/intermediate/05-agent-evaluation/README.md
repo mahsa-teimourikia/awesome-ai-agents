@@ -2,28 +2,29 @@
 
 **Level:** Intermediate · **Time:** 60 min · **Prerequisites:** None
 
-**Scenario:** Northstar, a SaaS support team, is integrating this concept into their agentic workflow.
+**Primary lesson:**
+Evaluate the whole run—outcome, evidence, trajectory, safety, and operations—and release only when hard constraints hold.
 
-**Primary lesson:** **Notebook:** [`05_agent_evaluation.ipynb`](05_agent_evaluation.ipynb) 
+**Notebook:** [`05_agent_evaluation.ipynb`](05_agent_evaluation.ipynb) 
 
 ## Scenario
 
-Northstar’s checkout agent investigates EU latency and prepares rollback proposals. A polished answer can still be unsafe: it may skip required evidence, use the wrong tool, call a forbidden rollback tool, leak a tenant, or cost ten times more than a simpler path. This lesson evaluates the **run**, not only the prose.
+Northstar investigates high latency in the EU checkout service. A polished answer can still be unsafe or inefficient: it may skip required evidence, use the wrong tool, attempt cross-tenant access, or cost ten times more than a simpler path. This lesson evaluates the **run**, not only the prose.
 
-![Diagram](diagram.svg)
+![Diagram](assets/diagram.svg)
 
 ## Outcomes
 
-Build a representative dataset; score outcome, evidence/trajectory, safety, and operations; distinguish deterministic checks from LLM/human judgment; compare baseline and hardened agents; and define a release gate with non-negotiable safety constraints.
+Build a representative dataset; score outcome, evidence, trajectory, safety, robustness, cost, and latency; distinguish deterministic checks from LLM semantic judgment; compare baseline and hardened agents; and define a release gate with non-negotiable safety constraints.
 
 ## 1. What to evaluate
 
 | Dimension | Question | Example metric |
 | --- | --- | --- |
 | Outcome | Did it solve the task correctly? | diagnosis/recommendation supported |
-| Trajectory | Did it use appropriate tools and arguments? | expected tools, extra calls, recovery |
+| Trajectory | Did it use appropriate tools and arguments? | expected tools, duplicate calls, retries |
 | Safety | Did it remain inside policy? | forbidden action count, tenant violations |
-| Operations | Is it viable in production? | latency, cost, retries, tool calls |
+| Operations | Is it viable in production? | tail latency, cost per success |
 | Robustness | Does it survive realistic variation? | adversarial/pass-rate slices |
 
 Do not collapse all of these into one opaque score. A forbidden production action
@@ -37,15 +38,6 @@ Include normal tasks, hard-but-real tasks, regressions from production, policy
 edge cases, malformed tool results, and adversarial inputs. Split development,
 holdout, and canary sets; version data alongside agent code.
 
-```python
-EvalCase(
-    task="Investigate EU checkout latency",
-    expected_tools=("get_service_status", "query_logs"),
-    forbidden_tools=("restart_service",),
-    required_terms=("evidence", "checkout"),
-)
-```
-
 ## 3. Grade in layers
 
 Use deterministic assertions for tool names, schema validity, policy violations,
@@ -58,15 +50,9 @@ grader’s inputs and rationale traceable; an LLM judge can be wrong or biased.
 
 The lab compares a baseline that makes a plausible but unsupported answer and
 executes a forbidden rollback against a hardened route that gathers evidence and
-prepares an approval-gated proposal. Open `05_agent_evaluation.ipynb`, inspect each result,
-then compare `success_rate`, `forbidden_actions`, latency, and
-`cost_per_success`.
-
-**Experiment A:** edit a baseline answer so it sounds correct but omit
-`query_logs`; observe a trajectory failure. **Experiment B:** add an extra
-expensive tool call to the hardened run; outcome still passes, but operational
-efficiency worsens. **Experiment C:** add a cross-tenant tool call and make the
-release gate fail regardless of final prose.
+respects policy. Open `05_agent_evaluation.ipynb`, inspect each result,
+then compare `outcome_pass_rate`, `forbidden_actions`, p95 latency, and
+`cost_per_policy_compliant_success`.
 
 ## 5. Release gates and continuous evaluation
 
@@ -79,16 +65,13 @@ into the versioned dataset.
 ## 6. Deep trajectory-first evaluation
 
 ### Outcome and goal completion
-
-Score task success, correctness, grounded diagnosis, completion of all required deliverables, calibrated uncertainty, and whether the recommendation is supported by permitted evidence. Use exact/deterministic checks where possible and a human-calibrated rubric for genuinely semantic dimensions. A good outcome with unsupported evidence is not a reliable success.
+Score task success, correctness, grounded diagnosis, completion of all required deliverables, calibrated uncertainty, and whether the recommendation is supported by permitted evidence. A good outcome with unsupported evidence is not a reliable success.
 
 ### Steps, planning, and tool use
-
-Evaluate the *path*: appropriate decomposition, dependency order, replan trigger, selected tool, typed arguments, interpretation of tool result, duplicate/unnecessary action, recovery, and terminal condition. Keep expected and forbidden tool/action lists in each case. A tool-use judge should inspect arguments and result handling—not only the tool name.
+Evaluate the *path*: selected tool, typed arguments, handling of timeouts (bounded retries vs infinite loops), and unnecessary duplicate side effects. Trace observable actions, not hidden chain-of-thought storage.
 
 ### Efficiency, robustness, and safety
-
-Measure tokens, model/tool calls, p50/p95/p99 latency, queue/retry time, spend, and cost per successful policy-compliant task. Create perturbation cases for timeouts, malformed/empty results, changed UI/environment, ambiguous instructions, missing/conflicting evidence, unavailable tools, injected content, cross-tenant targets, expired approval, and budget exhaustion. Hard-fail unauthorized action, policy/tenant violation, unsafe data/credential exposure, or non-idempotent replay.
+Measure tokens, p50/p95/p99 latency, spend, and cost per successful policy-compliant task. Create perturbation cases for timeouts, cross-tenant targets, missing evidence, and budget exhaustion. Hard-fail unauthorized action, policy/tenant violation, or non-idempotent replay.
 
 ## 7. State of the art and technology choices
 
@@ -97,70 +80,70 @@ Measure tokens, model/tool calls, p50/p95/p99 latency, queue/retry time, spend, 
 | [OpenAI Evals](https://github.com/openai/evals) / [evaluation guidance](https://developers.openai.com/api/docs/guides/evaluation-best-practices) | Dataset and grader-driven evaluation | Flexible custom evaluators | You still own representative data, calibration, and safety gates |
 | [LangSmith](https://docs.smith.langchain.com/evaluation) | Trace-linked datasets, experiments, human/LLM feedback | Strong workflow for agent traces | Privacy and vendor deployment review |
 | [Arize Phoenix](https://docs.arize.com/phoenix) | Tracing, evaluation, retrieval/LLM analysis | Open-source-oriented observability/evaluation | Instrumentation and retention design |
-| [DeepEval](https://deepeval.com/) / [Ragas](https://docs.ragas.io/) | Test-like LLM/RAG metrics and custom cases | Developer-friendly assertions | Agent trajectory/policy tests need extra implementation |
-| [MLflow GenAI](https://mlflow.org/docs/latest/genai/eval-monitor/) | Experiment tracking, tracing, evaluation/monitoring | ML platform integration | Design task-specific graders and release gates |
 | Human review + LLM judge | Ambiguous quality and rubric scaling | Human calibration plus scale | Bias, agreement, cost, drift, and judge correlation |
-
-Recent agent-evaluation work emphasizes realistic and evolving environments, trajectory/tool granularity, safety/robustness, cost efficiency, and reproducible evaluation rather than one static final-answer benchmark. Use public benchmarks diagnostically, then build representative enterprise fixtures and shadow/canary monitoring.
-
-## 8. Comprehensive use-case extensions
-
-Extend the Northstar suite with: a tool timeout requiring bounded retry; an ambiguous “fix checkout” request requiring clarification; a changed deployment API schema requiring safe stop; a poison runbook requiring quarantine; a cross-tenant SLA lookup requiring deny; a replan after logs contradict the first hypothesis; and a high-cost trajectory that succeeds but fails the efficiency gate. For every case, record expected outcome/evidence/tools, forbidden actions, plan/replan expectation, budgets, human rubric, and failure class.
 
 ## Anti-patterns
 
 - judging only final text while ignoring tool calls;
 - optimizing one public benchmark rather than representative tasks;
-- using an LLM judge without calibration or deterministic safety checks;
+- using an LLM judge for deterministic facts (like budget or forbidden tools);
 - averaging away a catastrophic safety failure;
 - measuring per-call cost instead of cost per successful, policy-compliant task;
-- evaluating only happy paths or static snapshots.
-
-## Exercises
-
-1. Add a malformed-tool-result case and assert the agent escalates rather than
-   inventing evidence.
-2. Add a human-review rubric for rollback rationale and compare it to a
-   deterministic citation/evidence check.
-3. Slice results by incident severity and tenant; explain why aggregate pass
-   rate can hide a critical failure.
-4. Add a canary gate that blocks rollout on any new forbidden action.
+- sending unprojected traces full of PII/secrets to a Judge LLM.
 
 ## Watch For
 
-- **Assumption failure:** The model hallucinates an unsupported parameter.
-- **State leak:** Context is incorrectly preserved across runs.
-- **Timeout:** The tool takes too long and the agent loops.
-- **Auth bypass:** The agent attempts an action it shouldn't.
+- benchmark overfitting
+- judge bias
+- judge drift
+- dataset leakage
+- unrepresentative cases
+- safety averaged away
+- metric gaming
+- trace privacy
+- cost ignored
+- small-sample noise
 
 ## Checkpoint
 
-**1. What is the primary purpose of this module?**
-- A) To understand the core concept.
-- B) To write complex boilerplate.
-- C) To ignore system errors.
-- D) To bypass security.
+**1. Why can a correct final answer still be a failed agent run?**
+- A) Because the trajectory might include forbidden actions or excessive costs.
+- B) Because the user might not like the tone.
+- C) Because the LLM was too small.
+- D) Because the latency was exactly p50.
 
-**2. How do we mitigate the primary failure mode?**
-- A) Retries.
-- B) Human approval.
-- C) Logging.
-- D) Idempotency keys.
+**2. Which metrics should hard-fail release?**
+- A) A 1% regression in cost.
+- B) A cross-tenant access violation.
+- C) A single unnecessary retry.
+- D) A slightly lower p50 latency.
+
+**3. Why use deterministic graders before LLM judges?**
+- A) Because LLMs are too fast.
+- B) Because deterministic checks are 100% reliable for objective facts and cost nothing.
+- C) Because LLMs can't read JSON.
+- D) Because deterministic checks understand tone better.
+
+**4. How do you calibrate an LLM judge?**
+- A) Use the biggest model possible.
+- B) Compare its scores against a human-labeled reference dataset.
+- C) Ask it to calibrate itself.
+- D) Trust it if the prompt is long enough.
+
+**5. When is a repeated tool call justified?**
+- A) When the agent feels like it.
+- B) When it's an unnecessary duplicate side effect.
+- C) When it's a bounded, legitimate retry after a timeout or repairable error.
+- D) Never.
 
 ## References
 
 - [OpenAI evaluation best practices](https://developers.openai.com/api/docs/guides/evaluation-best-practices)
 - [Anthropic: Demystifying evals for AI agents](https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents)
 - [LangSmith evaluation](https://docs.langchain.com/langsmith/evaluation)
-- [INSTRUCTEVAL](https://arxiv.org/abs/2306.04757)
 - [AgentBench](https://arxiv.org/abs/2308.03688) · [τ-bench](https://arxiv.org/abs/2406.12045) · [Agent evaluation survey](https://arxiv.org/abs/2508.10416)
 
-## Deep Dives & State of the Art
+## Further Deep Dives
 
-- **[Outcome vs Trajectory Scoring SOTA](DEEP_DIVE_SCORING.md)**
-
-
-## SOTA Deep Dives
 Explore industry-standard architectural patterns and enterprise implementation details:
-
-- [Scoring](DEEP_DIVE_SCORING.md)
+- [Deterministic, Semantic, and Trajectory Evaluation](DEEP_DIVE_EVALUATION.md)
