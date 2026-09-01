@@ -321,12 +321,14 @@ def get_policy(action_type: str, env: Environment, risk: RiskTier) -> ApprovalPo
 def build_approval_payload(
     proposal: RollbackProposal,
     execution_context: ExecutionContext,
-    evidence_refs: List[EvidenceRef]
+    evidence_refs: List[EvidenceRef],
+    now: Optional[datetime] = None
 ) -> ApprovalPayload:
     
     risk = compute_risk(proposal, execution_context.environment)
     policy = get_policy("rollback_deployment", execution_context.environment, risk)
     
+    current_time = now or datetime.now(timezone.utc)
     return ApprovalPayload(
         proposal=proposal,
         tenant_id=execution_context.tenant_id,
@@ -334,7 +336,7 @@ def build_approval_payload(
         risk_tier=risk,
         evidence_refs=evidence_refs,
         policy_version=execution_context.policy_version,
-        expires_at=datetime.now(timezone.utc) + timedelta(seconds=policy.ttl_seconds)
+        expires_at=current_time + timedelta(seconds=policy.ttl_seconds)
     )
 
 class PolicyError(Exception):
@@ -349,7 +351,8 @@ def validate_approval(
     reviewers: List[ReviewerContext],
     proposer_id: str,
     current_policy_version: str,
-    current_evidence_state: Dict[str, EvidenceRef]
+    current_evidence_state: Dict[str, EvidenceRef],
+    now: Optional[datetime] = None
 ) -> RollbackCommand:
     """
     The authoritative approval validation function. 
@@ -361,7 +364,7 @@ def validate_approval(
     if payload.policy_version != current_policy_version:
         raise PolicyError("POLICY_CHANGED")
         
-    current_time = datetime.now(timezone.utc)
+    current_time = now or datetime.now(timezone.utc)
     if current_time > payload.expires_at:
         raise PolicyError("EXPIRED_APPROVAL")
         

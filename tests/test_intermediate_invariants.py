@@ -479,7 +479,7 @@ def test_idempotency_conflict_different_action_digest(approval_setup):
     cmd = validate_approval(payload, [decision], [reviewer], proposer_id="agent", current_policy_version="v3", current_evidence_state=current_evidence_state)
     
     store = ApprovalStore()
-    store.record_execution(cmd, ExecutionStatus.EXECUTED)
+    original_receipt = store.record_execution(cmd, ExecutionStatus.EXECUTED)
     
     # Tamper with the action digest via an evil command
     class EvilCommand(RollbackCommand):
@@ -488,10 +488,10 @@ def test_idempotency_conflict_different_action_digest(approval_setup):
             return "evil_action_digest"
             
     cmd_evil = EvilCommand(**cmd.model_dump())
-    receipt2 = store.check_idempotency(cmd_evil)
+    conflict_receipt = store.check_idempotency(cmd_evil)
     
-    assert receipt2.status == ExecutionStatus.CONFLICT
-    assert receipt2.execution_id != receipt1.execution_id if 'receipt1' in locals() else True
+    assert conflict_receipt.status == ExecutionStatus.CONFLICT
+    assert conflict_receipt.execution_id != original_receipt.execution_id
 
 def test_process_decision_engine(approval_setup):
     payload, decision_approve, reviewer, current_evidence_state = approval_setup
