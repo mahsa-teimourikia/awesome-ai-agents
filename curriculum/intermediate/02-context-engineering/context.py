@@ -1,5 +1,6 @@
 import datetime
 import hashlib
+import json
 from enum import Enum
 from typing import Any, List, Optional
 from pydantic import BaseModel, ConfigDict, Field
@@ -130,6 +131,7 @@ class ContextBuildResult(BaseModel):
 def classify_context_trust(item: ContextItem) -> TrustLevel:
     """
     Deterministic trust classification fixture.
+    classify_context_trust() is intentionally a fixture-only detector.
     Real scanners or classifier models provide signals, not authorization boundaries.
     The output of those scanners sets the TrustLevel that the pipeline enforces.
     """
@@ -311,10 +313,8 @@ def build_context(request: ContextRequest, candidates: List[ContextItem]) -> Con
         elif request.phase == Phase.RECOMMEND:
             if x.kind == ContextKind.TOOL_EVIDENCE and x.trust == TrustLevel.TRUSTED:
                 score += 0.4
-            elif x.kind == ContextKind.SYSTEM_POLICY:
-                score += 0.3
         elif request.phase == Phase.RESUME:
-            if x.kind in [ContextKind.TASK_STATE, ContextKind.SUMMARY]:
+            if x.kind == ContextKind.SUMMARY:
                 score += 0.5
             elif x.kind in [ContextKind.CONVERSATION, ContextKind.TOOL_EVIDENCE]:
                 score -= 0.5
@@ -346,7 +346,9 @@ def build_context(request: ContextRequest, candidates: List[ContextItem]) -> Con
         if i.source_version:
             v = i.source_version
         else:
-            v = hashlib.sha256(str(i.payload).encode()).hexdigest()[:8]
+            # Deterministic serialization for hashing when source_version is unavailable
+            payload_str = json.dumps(i.payload, sort_keys=True, default=str)
+            v = hashlib.sha256(payload_str.encode()).hexdigest()[:8]
         selected_components.append(f"{i.item_id}:{v}")
     selected_components.sort()
     
