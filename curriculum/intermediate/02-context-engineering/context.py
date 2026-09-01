@@ -2,7 +2,7 @@ import datetime
 import hashlib
 from enum import Enum
 from typing import Any, List, Optional
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ContextKind(str, Enum):
@@ -16,6 +16,11 @@ class ContextKind(str, Enum):
 
 
 class TrustLevel(str, Enum):
+    """
+    TRUSTED -> normal context
+    UNTRUSTED -> may enter as data with explicit provenance/delimiting; never grants authority
+    QUARANTINED -> excluded from model context
+    """
     TRUSTED = "TRUSTED"
     UNTRUSTED = "UNTRUSTED"
     QUARANTINED = "QUARANTINED"
@@ -40,6 +45,7 @@ class ContextStatus(str, Enum):
     MISSING_REQUIRED_CONTEXT = "MISSING_REQUIRED_CONTEXT"
     BUDGET_EXCEEDED = "BUDGET_EXCEEDED"
     AUTHORIZATION_BLOCKED = "AUTHORIZATION_BLOCKED"
+    AMBIGUOUS_AUTHORITY = "AMBIGUOUS_AUTHORITY"
 
 
 class ContextItem(BaseModel):
@@ -62,6 +68,11 @@ class ContextItem(BaseModel):
 
 
 class ContextRequest(BaseModel):
+    """
+    tenant_id, user_id, allowed_sensitivity, policy_version, and 
+    context_builder_version are application-owned trusted context.
+    The model must not be able to choose or expand them.
+    """
     model_config = ConfigDict(extra="forbid")
     
     request_id: str
@@ -111,8 +122,8 @@ class ContextBuildResult(BaseModel):
     
     status: ContextStatus
     packet: Optional[ContextPacket] = None
-    missing_required_ids: List[str] = []
-    warnings: List[str] = []
+    missing_required_ids: List[str] = Field(default_factory=list)
+    warnings: List[str] = Field(default_factory=list)
 
 
 def classify_context_trust(item: ContextItem) -> TrustLevel:
@@ -150,7 +161,7 @@ def build_context(request: ContextRequest, candidates: List[ContextItem]) -> Con
     
     for item in candidates:
         # User Scope check
-        if item.user_id and request.user_id and item.user_id != request.user_id:
+        if item.user_id is not None and item.user_id != request.user_id:
             trace.append(SelectionTraceItem(item_id=item.item_id, decision="DROPPED", reason="WRONG_USER"))
             dropped.append(item)
             continue
@@ -179,32 +190,31 @@ def build_context(request: ContextRequest, candidates: List[ContextItem]) -> Con
             dropped.append(item)
             continue
             
-        # Phase relevance check
-        # TRIAGE needs minimal context
-        if request.phase == Phase.TRIAGE and item.kind in [ContextKind.RETRIEVED_DOCUMENT, ContextKind.TOOL_EVIDENCE]:
-            if item.item_id not in request.required_evidence_ids:
-                trace.append(SelectionTraceItem(item_id=item.item_id, decision="DROPPED", reason="WRONG_PHASE"))
-                dropped.append(item)
-                continue
-        
-        # RECOMMEND requires verified evidence
-        if request.phase == Phase.RECOMMEND and item.kind == ContextKind.TOOL_EVIDENCE and item.trust != TrustLevel.TRUSTED:
-            trace.append(SelectionTraceItem(item_id=item.item_id, decision="DROPPED", reason="WRONG_PHASE"))
-            dropped.append(item)
-            continue
-                
         valid_candidates.append(item)
         
     # 2. Required Evidence Check
     valid_ids = {i.item_id for i in valid_candidates}
     missing_required = [req_id for req_id in request.required_evidence_ids if req_id not in valid_ids]
     if missing_required:
-        return ContextBuildResult(
-            status=ContextStatus.MISSING_REQUIRED_CONTEXT,
-            missing_required_ids=missing_required,
-            warnings=["Required evidence missing or dropped by filters."]
-        )
+        auth_blocked = False
+        for dropped_item in dropped + quarantined:
+            if dropped_item.item_id in missing_required:
+                auth_blocked = True
+                break
         
+        if auth_blocked:
+            return ContextBuildResult(
+                status=ContextStatus.AUTHORIZATION_BLOCKED,
+                missing_required_ids=missing_required,
+                warnings=["Required evidence blocked by authorization or trust filters."]
+            )
+        else:
+            return ContextBuildResult(
+                status=ContextStatus.MISSING_REQUIRED_CONTEXT,
+                missing_required_ids=missing_required,
+                warnings=["Required evidence missing or dropped by filters."]
+            )
+            
     # 3. Assign absolute categories (Policy, State, Summary) with ambiguity check
     pool = []
     ambiguous = False
@@ -216,20 +226,32 @@ def build_context(request: ContextRequest, candidates: List[ContextItem]) -> Con
             if task_state is not None: ambiguous = True
             task_state = item
         elif item.kind == ContextKind.SUMMARY:
-            if summary is not None: ambiguous = True
-            summary = item
+            # Summary is derived, not mandatory authoritative. We just select one (or the latest).
+            # If multiple exist, we can just use the first or add all to pool. For this, we just set it.
+            if summary is None:
+                summary = item
+            else:
+                pool.append(item)
         else:
             pool.append(item)
             
     if ambiguous:
         warnings.append("Ambiguous authoritative items. Expected 0 or 1, got multiple.")
+        return ContextBuildResult(
+            status=ContextStatus.AMBIGUOUS_AUTHORITY,
+            warnings=warnings
+        )
 
     if sys_policy:
         trace.append(SelectionTraceItem(item_id=sys_policy.item_id, decision="INCLUDED", reason="MANDATORY_POLICY"))
     if task_state:
         trace.append(SelectionTraceItem(item_id=task_state.item_id, decision="INCLUDED", reason="MANDATORY_STATE"))
     if summary:
-        trace.append(SelectionTraceItem(item_id=summary.item_id, decision="INCLUDED", reason="MANDATORY_SUMMARY"))
+        trace.append(SelectionTraceItem(item_id=summary.item_id, decision="INCLUDED", reason="DERIVED_SUMMARY"))
+        # Check conflict with task_state
+        if task_state and hasattr(task_state, "payload") and hasattr(summary, "payload"):
+            if "APPROVED" in str(summary.payload) and "NO_APPROVAL" in str(task_state.payload):
+                warnings.append("Summary conflicts with Task State. Task State overrides.")
 
     # 4. Required Evidence Preservation
     budget_pool = []
@@ -261,9 +283,22 @@ def build_context(request: ContextRequest, candidates: List[ContextItem]) -> Con
             delta = (x.expires_at - current_time).total_seconds()
             if delta > 3600: score += 0.1
         
-        # phase suitability bonus
-        if request.phase == Phase.INVESTIGATE and x.kind == ContextKind.TOOL_EVIDENCE:
-            score += 0.2
+        # phase suitability / Phase Policy
+        if request.phase == Phase.TRIAGE:
+            pass
+        elif request.phase == Phase.INVESTIGATE:
+            if x.kind == ContextKind.TOOL_EVIDENCE:
+                score += 0.2
+        elif request.phase == Phase.RECOMMEND:
+            if x.kind == ContextKind.TOOL_EVIDENCE and x.trust == TrustLevel.TRUSTED:
+                score += 0.4
+            elif x.kind == ContextKind.SYSTEM_POLICY:
+                score += 0.3
+        elif request.phase == Phase.RESUME:
+            if x.kind in [ContextKind.TASK_STATE, ContextKind.SUMMARY]:
+                score += 0.5
+            elif x.kind in [ContextKind.CONVERSATION, ContextKind.TOOL_EVIDENCE]:
+                score -= 0.5
             
         # cost penalty
         score -= (x.token_estimate / 10000.0)
@@ -289,7 +324,10 @@ def build_context(request: ContextRequest, candidates: List[ContextItem]) -> Con
     
     selected_components = []
     for i in all_selected:
-        v = i.source_version or "no_ver"
+        if i.source_version:
+            v = i.source_version
+        else:
+            v = hashlib.sha256(str(i.payload).encode()).hexdigest()[:8]
         selected_components.append(f"{i.item_id}:{v}")
     selected_components.sort()
     

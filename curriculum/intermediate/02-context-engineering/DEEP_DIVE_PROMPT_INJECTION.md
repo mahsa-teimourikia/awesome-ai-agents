@@ -19,7 +19,7 @@ The attacker does not speak to the agent directly. Instead, they embed the malic
 
 ---
 
-## 2. The SOTA Defense: Architectural Quarantine
+## 2. Architectural Isolation and Quarantine
 
 Historically, developers relied heavily on wrapping untrusted text in tags and telling the model to ignore commands inside them. While this is a necessary layer, **it is not sufficient on its own.** Delimiters do NOT create a true security boundary in LLMs.
 
@@ -29,7 +29,7 @@ Modern agent architectures defend against indirect injection at the **Context Pi
 
 1. **Explicit Trust Metadata:** Every piece of candidate context must carry a `TrustLevel` enum (`TRUSTED`, `UNTRUSTED`, `QUARANTINED`). 
 2. **Scanner Integration:** Before context is assembled, security scanners (or a smaller classifier model acting as a "Spotter") evaluate untrusted external documents for hostile instructions.
-3. **Pre-assembly Filtering:** The deterministic `build_context` pipeline acts as a hard boundary. If a document's trust level is `QUARANTINED`, the pipeline drops it *before* relevance ranking or prompt assembly.
+3. **Pre-assembly Filtering:** The deterministic `build_context` pipeline acts as a hard boundary. Once an item is classified as `QUARANTINED` by a trusted scanning/policy stage, the deterministic builder prevents its inclusion. Note that poison detection is not perfect; it acts as a defense-in-depth layer rather than a foolproof guarantee.
 
 By modeling context isolation formally, you ensure that a highly-relevant but poisoned document never enters the LLM's context window in the first place.
 

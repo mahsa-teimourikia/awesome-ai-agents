@@ -71,7 +71,7 @@ def test_required_quarantined_evidence_detected(setup_data):
     req, cands = setup_data
     req.required_evidence_ids = ["poison_doc"]
     res = build_context(req, cands)
-    assert res.status == ContextStatus.MISSING_REQUIRED_CONTEXT
+    assert res.status == ContextStatus.AUTHORIZATION_BLOCKED
     assert "poison_doc" in res.missing_required_ids
 
 def test_budget_exceeded_detected(setup_data):
@@ -138,3 +138,100 @@ def test_summary_invariant_preservation(setup_data):
     assert res.packet.task_state.item_id == "state_1"
     assert res.packet.structured_summary is not None
     assert res.packet.structured_summary.item_id == "summary_1"
+
+
+def test_scoped_item_rejected_when_request_user_is_none(setup_data):
+    req, cands = setup_data
+    req.user_id = None
+    # alice_mem is user_id="alice"
+    res = build_context(req, cands)
+    assert not any(i.item_id == "alice_mem" for i in res.packet.selected_items)
+    assert any(t.item_id == "alice_mem" and t.reason == "WRONG_USER" for t in res.packet.selection_trace)
+
+def test_sensitivity_restriction(setup_data):
+    req, cands = setup_data
+    req.allowed_sensitivity = [Sensitivity.PUBLIC]
+    # state_1 is INTERNAL
+    res = build_context(req, cands)
+    assert res.packet.task_state is None
+    assert any(t.item_id == "state_1" and t.reason == "RESTRICTED_ACCESS" for t in res.packet.selection_trace)
+
+def test_ambiguous_system_policies_rejected(setup_data):
+    req, cands = setup_data
+    now = datetime.now(timezone.utc)
+    future = now + timedelta(hours=2)
+    cands.append(
+        ContextItem(item_id="global_pol_2", kind=ContextKind.SYSTEM_POLICY, tenant_id="global", source_id="1", source_type="git", observed_at=now, expires_at=future, trust=TrustLevel.TRUSTED, sensitivity=Sensitivity.PUBLIC, relevance_score=1.0, token_estimate=100, payload="")
+    )
+    res = build_context(req, cands)
+    assert res.status == ContextStatus.AMBIGUOUS_AUTHORITY
+
+def test_ambiguous_task_states_rejected(setup_data):
+    req, cands = setup_data
+    now = datetime.now(timezone.utc)
+    future = now + timedelta(hours=2)
+    cands.append(
+        ContextItem(item_id="state_2", kind=ContextKind.TASK_STATE, tenant_id="acme", user_id="bob", source_id="2", source_type="db", observed_at=now, expires_at=future, trust=TrustLevel.TRUSTED, sensitivity=Sensitivity.INTERNAL, relevance_score=1.0, token_estimate=50, payload="")
+    )
+    res = build_context(req, cands)
+    assert res.status == ContextStatus.AMBIGUOUS_AUTHORITY
+
+def test_summary_conflict_preserves_task_state(setup_data):
+    req, cands = setup_data
+    # state_1 payload is "NO_APPROVAL", summary_1 payload is "APPROVED"
+    res = build_context(req, cands)
+    assert res.status == ContextStatus.READY
+    assert "Summary conflicts with Task State. Task State overrides." in res.warnings
+    assert res.packet.task_state.payload == "NO_APPROVAL"
+    assert res.packet.structured_summary.payload == "APPROVED"
+
+def test_cache_invalidation_content_hash_fallback(setup_data):
+    req, cands = setup_data
+    cands[0].source_version = None
+    cands[0].payload = "payload1"
+    res1 = build_context(req, cands)
+
+    cands[0].payload = "payload2"
+    res2 = build_context(req, cands)
+
+    assert res1.packet.cache_key != res2.packet.cache_key
+
+def test_phase_policy_resume_prioritizes_state(setup_data):
+    req, cands = setup_data
+    req.phase = Phase.RESUME
+    req.token_budget = 150 # enough for policy(100) + state(50), or policy(100) + summary(100) maybe?
+    # Actually state and summary are added independently now if they fit.
+    # Let's test the composite scoring directly using the internal budget pool.
+    # We can just check that conversation / tool evidence are dropped due to low score.
+    now = datetime.now(timezone.utc)
+    future = now + timedelta(hours=2)
+
+    test_cands = [
+        ContextItem(item_id="conv_1", kind=ContextKind.CONVERSATION, tenant_id="acme", source_id="1", source_type="db", observed_at=now, expires_at=future, trust=TrustLevel.TRUSTED, sensitivity=Sensitivity.PUBLIC, relevance_score=1.0, token_estimate=100, payload=""),
+        ContextItem(item_id="sum_2", kind=ContextKind.SUMMARY, tenant_id="acme", source_id="2", source_type="agent", observed_at=now, expires_at=future, trust=TrustLevel.TRUSTED, sensitivity=Sensitivity.PUBLIC, relevance_score=0.9, token_estimate=100, payload=""),
+    ]
+
+    req.token_budget = 100
+    res = build_context(req, test_cands)
+    # RESUME phase boosts SUMMARY by 0.5 and penalizes CONVERSATION by 0.5.
+    # So despite CONVERSATION having relevance 1.0 and SUMMARY 0.9, SUMMARY should win.
+    assert any(i.item_id == "sum_2" for i in res.packet.selected_items) or res.packet.structured_summary.item_id == "sum_2"
+    assert not any(i.item_id == "conv_1" for i in res.packet.selected_items)
+
+def test_phase_policy_recommend_prioritizes_evidence(setup_data):
+    req, cands = setup_data
+    req.phase = Phase.RECOMMEND
+    now = datetime.now(timezone.utc)
+    future = now + timedelta(hours=2)
+
+    test_cands = [
+        ContextItem(item_id="doc_1", kind=ContextKind.RETRIEVED_DOCUMENT, tenant_id="acme", source_id="1", source_type="db", observed_at=now, expires_at=future, trust=TrustLevel.TRUSTED, sensitivity=Sensitivity.PUBLIC, relevance_score=1.0, token_estimate=100, payload=""),
+        ContextItem(item_id="ev_1", kind=ContextKind.TOOL_EVIDENCE, tenant_id="acme", source_id="2", source_type="api", observed_at=now, expires_at=future, trust=TrustLevel.TRUSTED, sensitivity=Sensitivity.PUBLIC, relevance_score=0.7, token_estimate=100, payload=""),
+    ]
+
+    req.token_budget = 100
+    res = build_context(req, test_cands)
+    # RECOMMEND boosts trusted TOOL_EVIDENCE by 0.4.
+    # ev_1 (0.7 + 0.4 = 1.1) > doc_1 (1.0). ev_1 should win.
+    assert any(i.item_id == "ev_1" for i in res.packet.selected_items)
+    assert not any(i.item_id == "doc_1" for i in res.packet.selected_items)

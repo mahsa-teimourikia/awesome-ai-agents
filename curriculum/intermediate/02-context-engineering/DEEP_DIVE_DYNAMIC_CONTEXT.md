@@ -37,7 +37,7 @@ Imagine an incident response agent tasked with debugging a checkout issue.
    - *Doesn't Need:* The entire historic transcript.
    - *Action:* Picks up where a previous session left off.
 
-By defining explicit `ContextRequest` budgets and phase rules, you ensure the LLM only ever sees the exact tokens it needs.
+By defining explicit `ContextRequest` budgets and phase rules, you aim to provide a smaller decision-relevant context view.
 
 ---
 
