@@ -23,6 +23,10 @@ class SourceType(Enum):
     MEMORY = "MEMORY"
     SUBAGENT = "SUBAGENT"
 
+class EgressPurpose(Enum):
+    ALERTING = "ALERTING"
+    REPORTING = "REPORTING"
+
 class ContentDisposition(Enum):
     ALLOW_AS_DATA = "ALLOW_AS_DATA"
     QUARANTINE = "QUARANTINE"
@@ -41,7 +45,7 @@ class GuardrailStatus(Enum):
     ABSTAIN = "ABSTAIN"
     NEED_MORE_EVIDENCE = "NEED_MORE_EVIDENCE"
     QUARANTINE = "QUARANTINE"
-    PII_OR_SECRET_DETECTED = "PII_OR_SECRET_DETECTED"
+    PII_PATTERN_DETECTED = "PII_PATTERN_DETECTED"
     POLICY_CHECK_REQUIRED = "POLICY_CHECK_REQUIRED"
 
 class ContentItem(BaseModel):
@@ -80,6 +84,7 @@ class ExecutionContext(BaseModel):
     approved_capabilities: List[str]
     allowed_destinations: List[str]
     request_id: str
+    policy_version: str
 
 class ValidatedApprovalContext(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -107,6 +112,8 @@ class ToolDefinition(BaseModel):
     allowed_environments: List[str]
     input_model: Type[BaseModel]
 
+from pydantic import Field
+
 # --- Strict Per-Tool Input Schemas ---
 class QueryLogsArgs(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -114,24 +121,26 @@ class QueryLogsArgs(BaseModel):
 
 class HealthArgs(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    service: str
+    service: Literal["payment", "auth", "checkout"]
 
 class DeploymentArgs(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    cluster: str
+    cluster: Literal["us-east", "eu-west", "ap-south"]
 
 class RestartProposalArgs(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    cluster: str
+    cluster: Literal["us-east", "eu-west", "ap-south"]
     reason: str
 
 class RestartServiceArgs(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    cluster: str
+    cluster: Literal["us-east", "eu-west", "ap-south"]
 
 class ExportCustomerRecordsArgs(BaseModel):
     model_config = ConfigDict(extra="forbid")
     destination: str
+    purpose: EgressPurpose
+    sensitivity: Sensitivity
 
 # --- Authoritative Tool Registry ---
 TOOL_REGISTRY: Dict[str, ToolDefinition] = {
@@ -260,6 +269,36 @@ def classify_content(item: ContentItem) -> ContentDecision:
         reason="Untrusted data; no known injection markers detected. Eligible for delimited inclusion under downstream containment controls."
     )
 
+import json
+from datetime import timezone
+
+class EgressPolicy(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    status: GuardrailStatus
+    reason: str
+
+def validate_egress(destination: str, tenant: str, sensitivity: Sensitivity, purpose: EgressPurpose, context: ExecutionContext) -> EgressPolicy:
+    if tenant != context.tenant_id:
+        return EgressPolicy(status=GuardrailStatus.BLOCKED, reason="WRONG_TENANT")
+        
+    if destination not in context.allowed_destinations:
+        return EgressPolicy(status=GuardrailStatus.BLOCKED, reason="EGRESS_DENIED: Unapproved destination")
+        
+    if sensitivity == Sensitivity.RESTRICTED and destination not in ["secure-vault@northstar.internal"]:
+        return EgressPolicy(status=GuardrailStatus.BLOCKED, reason="EGRESS_DENIED: Restricted data destination mismatch")
+        
+    return EgressPolicy(status=GuardrailStatus.ALLOWED, reason="EGRESS_ALLOWED")
+
+def compute_digest(tool_name: str, tenant: str, arguments: dict) -> str:
+    import hashlib
+    payload = {
+        "tool_name": tool_name,
+        "tenant": tenant,
+        "arguments": arguments
+    }
+    canonical = json.dumps(payload, sort_keys=True)
+    return hashlib.sha256(canonical.encode()).hexdigest()
+
 def validate_tool_call(call: ToolCall, context: ExecutionContext, validated_approval: Optional[ValidatedApprovalContext] = None) -> ToolDecision:
     if call.name not in TOOL_REGISTRY:
         return ToolDecision(status=GuardrailStatus.BLOCKED, reason=f"UNKNOWN_TOOL: {call.name}")
@@ -268,9 +307,12 @@ def validate_tool_call(call: ToolCall, context: ExecutionContext, validated_appr
     
     # Structural Validation
     try:
-        definition.input_model.model_validate(call.arguments)
+        validated_args = definition.input_model.model_validate(call.arguments)
     except ValidationError as e:
-        return ToolDecision(status=GuardrailStatus.REPAIRABLE, reason=f"INVALID_ARGUMENT: {str(e)}")
+        repairs = []
+        for error in e.errors():
+            repairs.append({"field": error.get("loc"), "error_code": error.get("type"), "repair_hint": error.get("msg")})
+        return ToolDecision(status=GuardrailStatus.REPAIRABLE, reason=json.dumps(repairs))
     
     # Authority Validation
     if call.requested_tenant_id and call.requested_tenant_id != context.tenant_id:
@@ -283,37 +325,49 @@ def validate_tool_call(call: ToolCall, context: ExecutionContext, validated_appr
     if context.environment not in definition.allowed_environments:
         return ToolDecision(status=GuardrailStatus.BLOCKED, reason="ENVIRONMENT_NOT_ALLOWED")
         
-    if definition.requires_approval and not validated_approval:
-        return ToolDecision(status=GuardrailStatus.APPROVAL_REQUIRED, reason="APPROVAL_REQUIRED")
+    # Approval Validation
+    if definition.requires_approval:
+        if not validated_approval:
+            return ToolDecision(status=GuardrailStatus.APPROVAL_REQUIRED, reason="APPROVAL_REQUIRED")
+        
+        # Cryptographic and Semantic checks
+        if validated_approval.tenant != context.tenant_id:
+            return ToolDecision(status=GuardrailStatus.BLOCKED, reason="APPROVAL_MISMATCH: wrong tenant")
+        
+        if validated_approval.action != call.name:
+            return ToolDecision(status=GuardrailStatus.BLOCKED, reason="APPROVAL_MISMATCH: wrong action")
+            
+        if validated_approval.policy_version != context.policy_version:
+            return ToolDecision(status=GuardrailStatus.BLOCKED, reason="APPROVAL_MISMATCH: stale policy version")
+            
+        current_time = datetime.now(timezone.utc)
+        if validated_approval.expiry <= current_time:
+            return ToolDecision(status=GuardrailStatus.BLOCKED, reason="APPROVAL_MISMATCH: expired approval")
+            
+        expected_digest = compute_digest(call.name, context.tenant_id, validated_args.model_dump(mode="json"))
+        if validated_approval.target_digest != expected_digest:
+            return ToolDecision(status=GuardrailStatus.BLOCKED, reason="APPROVAL_MISMATCH: wrong target digest")
+
+    # Integrated Egress
+    if call.name == "export_customer_records":
+        egress_decision = validate_egress(
+            destination=validated_args.destination,
+            tenant=context.tenant_id,
+            sensitivity=validated_args.sensitivity,
+            purpose=validated_args.purpose,
+            context=context
+        )
+        if egress_decision.status != GuardrailStatus.ALLOWED:
+            return ToolDecision(status=egress_decision.status, reason=egress_decision.reason)
         
     return ToolDecision(status=GuardrailStatus.ALLOWED, reason="ALLOW")
-
-class EgressPolicy(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    status: GuardrailStatus
-    reason: str
-
-def validate_egress(destination: str, tenant: str, sensitivity: Sensitivity, purpose: str, context: ExecutionContext) -> EgressPolicy:
-    if tenant != context.tenant_id:
-        return EgressPolicy(status=GuardrailStatus.BLOCKED, reason="WRONG_TENANT")
-        
-    if destination not in context.allowed_destinations:
-        return EgressPolicy(status=GuardrailStatus.BLOCKED, reason="EGRESS_DENIED: Unapproved destination")
-        
-    if purpose not in ["alerting", "reporting", "exfiltration_test"]:
-        return EgressPolicy(status=GuardrailStatus.BLOCKED, reason="EGRESS_DENIED: Invalid purpose")
-        
-    if sensitivity == Sensitivity.RESTRICTED and destination not in ["secure-vault@northstar.internal"]:
-        return EgressPolicy(status=GuardrailStatus.BLOCKED, reason="EGRESS_DENIED: Restricted data destination mismatch")
-        
-    return EgressPolicy(status=GuardrailStatus.ALLOWED, reason="EGRESS_ALLOWED")
 
 class InvestigationResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
     summary: str
     evidence_ids: List[str]
     recommended_action: Literal["restart", "export", "monitor", "escalate"]
-    confidence: float
+    confidence: float = Field(ge=0, le=1)
     
 class OutputValidationResult(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -321,6 +375,7 @@ class OutputValidationResult(BaseModel):
     reason: str
 
 def detect_pii(text: str) -> bool:
+    '''WARNING: Regex detection is incomplete and does not catch all PII/secrets. Not a robust secret scanner.'''
     ssn_pattern = r'\b\d{3}-\d{2}-\d{4}\b'
     cc_pattern = r'\b(?:\d{4}[ -]?){3}\d{4}\b'
     if re.search(ssn_pattern, text) or re.search(cc_pattern, text):
@@ -329,7 +384,7 @@ def detect_pii(text: str) -> bool:
 
 def validate_investigation_response(response: InvestigationResponse, valid_evidence_ids: Set[str]) -> OutputValidationResult:
     if detect_pii(response.summary):
-        return OutputValidationResult(status=GuardrailStatus.PII_OR_SECRET_DETECTED, reason="PII detected in output summary")
+        return OutputValidationResult(status=GuardrailStatus.PII_PATTERN_DETECTED, reason="PII detected in output summary")
         
     for eid in response.evidence_ids:
         if eid not in valid_evidence_ids:

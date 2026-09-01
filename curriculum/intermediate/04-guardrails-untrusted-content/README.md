@@ -19,6 +19,10 @@ side effect.
 
 ## Outcomes
 
+Detection signals can have false positives (e.g., "ignore policy" in an internal legitimate document).
+`REQUIRE_REVIEW` prevents heuristic detection from becoming an automatic authority decision, keeping humans in the loop for ambiguous cases.
+
+
 You will distinguish direct from indirect injection; model behavior from
 enforceable application controls; input, context, output, tool, and execution
 guardrails; and detection from containment. You will also build a deterministic

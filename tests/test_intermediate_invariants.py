@@ -1,5 +1,5 @@
 import pytest
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta, timedelta
 import sys
 import os
 
@@ -591,7 +591,7 @@ def test_execution_audit_events(approval_setup):
 # Course 04: Guardrails and Untrusted Content
 # ============================================================================
 import pytest
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import importlib.util
 spec = importlib.util.spec_from_file_location(
     "policy_04", 
@@ -615,6 +615,9 @@ validate_tool_call_04 = policy_04.validate_tool_call
 validate_egress_04 = policy_04.validate_egress
 InvestigationResponse_04 = policy_04.InvestigationResponse
 validate_investigation_response_04 = policy_04.validate_investigation_response
+ValidatedApprovalContext_04 = policy_04.ValidatedApprovalContext
+EgressPurpose_04 = policy_04.EgressPurpose
+compute_digest_04 = policy_04.compute_digest
 
 @pytest.fixture
 def base_context_04():
@@ -624,7 +627,20 @@ def base_context_04():
         environment="production",
         approved_capabilities=["logs:read", "health:read", "deployment:read", "deployment:propose"],
         allowed_destinations=["alerts@northstar.internal", "pagerduty://northstar"],
-        request_id="req_999"
+        request_id="req_999",
+        policy_version="1.0"
+    )
+
+@pytest.fixture
+def authorized_context_04():
+    return ExecutionContext_04(
+        tenant_id="northstar",
+        user_id="user_123",
+        environment="production",
+        approved_capabilities=["logs:read", "health:read", "deployment:read", "deployment:propose", "deployment:write", "customer_data:export"],
+        allowed_destinations=["alerts@northstar.internal", "pagerduty://northstar", "secure-vault@northstar.internal", "external-partner.com"],
+        request_id="req_999",
+        policy_version="1.0"
     )
 
 def test_poisoned_doc_quarantined():
@@ -705,14 +721,116 @@ def test_invalid_tool_schema_blocked(base_context_04):
     call = ToolCall_04(name="restart_service", arguments={"wrong_arg": "eu-west"})
     decision = validate_tool_call_04(call, base_context_04, validated_approval=None)
     assert decision.status == GuardrailStatus_04.REPAIRABLE
-    assert "INVALID_ARGUMENT" in decision.reason
+    assert "error_code" in decision.reason
 
 def test_extra_security_field_rejected(base_context_04):
     # Trying to inject an unallowed argument
     call = ToolCall_04(name="query_logs", arguments={"query": "errors", "bypass_security": True})
     decision = validate_tool_call_04(call, base_context_04, validated_approval=None)
     assert decision.status == GuardrailStatus_04.REPAIRABLE
-    assert "INVALID_ARGUMENT" in decision.reason
+    assert "error_code" in decision.reason
+
+
+def test_valid_approval_succeeds(authorized_context_04):
+    args = {"cluster": "eu-west"}
+    digest = compute_digest_04("restart_service", "northstar", args)
+    
+    approval = ValidatedApprovalContext_04(
+        action="restart_service",
+        tenant="northstar",
+        target_digest=digest,
+        expiry=datetime.now(timezone.utc) + timedelta(minutes=10),
+        policy_version="1.0"
+    )
+    
+    call = ToolCall_04(name="restart_service", arguments=args)
+    decision = validate_tool_call_04(call, authorized_context_04, validated_approval=approval)
+    assert decision.status == GuardrailStatus_04.ALLOWED
+
+def test_wrong_approval_tenant(authorized_context_04):
+    args = {"cluster": "eu-west"}
+    digest = compute_digest_04("restart_service", "wrong_tenant", args)
+    
+    approval = ValidatedApprovalContext_04(
+        action="restart_service",
+        tenant="wrong_tenant",
+        target_digest=digest,
+        expiry=datetime.now(timezone.utc) + timedelta(minutes=10),
+        policy_version="1.0"
+    )
+    
+    call = ToolCall_04(name="restart_service", arguments=args)
+    decision = validate_tool_call_04(call, authorized_context_04, validated_approval=approval)
+    assert decision.status == GuardrailStatus_04.BLOCKED
+    assert "wrong tenant" in decision.reason
+
+def test_wrong_approval_action(authorized_context_04):
+    args = {"cluster": "eu-west"}
+    digest = compute_digest_04("wrong_action", "northstar", args)
+    
+    approval = ValidatedApprovalContext_04(
+        action="wrong_action",
+        tenant="northstar",
+        target_digest=digest,
+        expiry=datetime.now(timezone.utc) + timedelta(minutes=10),
+        policy_version="1.0"
+    )
+    
+    call = ToolCall_04(name="restart_service", arguments=args)
+    decision = validate_tool_call_04(call, authorized_context_04, validated_approval=approval)
+    assert decision.status == GuardrailStatus_04.BLOCKED
+    assert "wrong action" in decision.reason
+
+def test_expired_approval(authorized_context_04):
+    args = {"cluster": "eu-west"}
+    digest = compute_digest_04("restart_service", "northstar", args)
+    
+    approval = ValidatedApprovalContext_04(
+        action="restart_service",
+        tenant="northstar",
+        target_digest=digest,
+        expiry=datetime.now(timezone.utc) - timedelta(minutes=10),
+        policy_version="1.0"
+    )
+    
+    call = ToolCall_04(name="restart_service", arguments=args)
+    decision = validate_tool_call_04(call, authorized_context_04, validated_approval=approval)
+    assert decision.status == GuardrailStatus_04.BLOCKED
+    assert "expired approval" in decision.reason
+
+def test_stale_policy_version(authorized_context_04):
+    args = {"cluster": "eu-west"}
+    digest = compute_digest_04("restart_service", "northstar", args)
+    
+    approval = ValidatedApprovalContext_04(
+        action="restart_service",
+        tenant="northstar",
+        target_digest=digest,
+        expiry=datetime.now(timezone.utc) + timedelta(minutes=10),
+        policy_version="0.9"
+    )
+    
+    call = ToolCall_04(name="restart_service", arguments=args)
+    decision = validate_tool_call_04(call, authorized_context_04, validated_approval=approval)
+    assert decision.status == GuardrailStatus_04.BLOCKED
+    assert "stale policy version" in decision.reason
+
+def test_wrong_target_digest(authorized_context_04):
+    args = {"cluster": "eu-west"}
+    wrong_digest = compute_digest_04("restart_service", "northstar", {"cluster": "us-east"})
+    
+    approval = ValidatedApprovalContext_04(
+        action="restart_service",
+        tenant="northstar",
+        target_digest=wrong_digest,
+        expiry=datetime.now(timezone.utc) + timedelta(minutes=10),
+        policy_version="1.0"
+    )
+    
+    call = ToolCall_04(name="restart_service", arguments=args)
+    decision = validate_tool_call_04(call, authorized_context_04, validated_approval=approval)
+    assert decision.status == GuardrailStatus_04.BLOCKED
+    assert "wrong target digest" in decision.reason
 
 def test_wrong_tenant_blocked(base_context_04):
     call = ToolCall_04(name="query_logs", arguments={"query": "errors"}, requested_tenant_id="globex")
@@ -726,16 +844,49 @@ def test_unknown_tool_blocked(base_context_04):
     assert decision.status == GuardrailStatus_04.BLOCKED
     assert "UNKNOWN_TOOL" in decision.reason
 
-def test_egress_restricted_data_blocked(base_context_04):
-    decision = validate_egress_04(
-        destination="alerts@northstar.internal",
-        tenant="northstar",
-        sensitivity=Sensitivity_04.RESTRICTED,
-        purpose="alerting",
-        context=base_context_04
-    )
+def test_egress_wrong_tenant_blocked(authorized_context_04):
+    args = {"destination": "alerts@northstar.internal", "purpose": EgressPurpose_04.ALERTING.value, "sensitivity": Sensitivity_04.INTERNAL.value}
+    digest = compute_digest_04("export_customer_records", "northstar", args)
+    approval = ValidatedApprovalContext_04(action="export_customer_records", tenant="northstar", target_digest=digest, expiry=datetime.now(timezone.utc) + timedelta(minutes=10), policy_version="1.0")
+    
+    call = ToolCall_04(name="export_customer_records", arguments=args, requested_tenant_id="wrong_tenant")
+    decision = validate_tool_call_04(call, authorized_context_04, validated_approval=approval)
+    assert decision.status == GuardrailStatus_04.BLOCKED
+    assert "WRONG_TENANT" in decision.reason
+
+def test_egress_invalid_purpose_blocked(authorized_context_04):
+    # This shouldn't even pass pydantic validation for the ToolCall now
+    call = ToolCall_04(name="export_customer_records", arguments={"destination": "alerts@northstar.internal", "purpose": "exfiltration_test", "sensitivity": Sensitivity_04.INTERNAL.value})
+    decision = validate_tool_call_04(call, authorized_context_04, validated_approval=None)
+    assert decision.status == GuardrailStatus_04.REPAIRABLE
+
+def test_egress_restricted_data_blocked(authorized_context_04):
+    args = {"destination": "alerts@northstar.internal", "purpose": EgressPurpose_04.ALERTING.value, "sensitivity": Sensitivity_04.RESTRICTED.value}
+    digest = compute_digest_04("export_customer_records", "northstar", args)
+    approval = ValidatedApprovalContext_04(action="export_customer_records", tenant="northstar", target_digest=digest, expiry=datetime.now(timezone.utc) + timedelta(minutes=10), policy_version="1.0")
+    
+    call = ToolCall_04(name="export_customer_records", arguments=args)
+    decision = validate_tool_call_04(call, authorized_context_04, validated_approval=approval)
     assert decision.status == GuardrailStatus_04.BLOCKED
     assert "Restricted data destination mismatch" in decision.reason
+
+def test_egress_restricted_data_to_vault_allowed(authorized_context_04):
+    args = {"destination": "secure-vault@northstar.internal", "purpose": EgressPurpose_04.ALERTING.value, "sensitivity": Sensitivity_04.RESTRICTED.value}
+    digest = compute_digest_04("export_customer_records", "northstar", args)
+    approval = ValidatedApprovalContext_04(action="export_customer_records", tenant="northstar", target_digest=digest, expiry=datetime.now(timezone.utc) + timedelta(minutes=10), policy_version="1.0")
+    
+    call = ToolCall_04(name="export_customer_records", arguments=args)
+    decision = validate_tool_call_04(call, authorized_context_04, validated_approval=approval)
+    assert decision.status == GuardrailStatus_04.ALLOWED
+
+def test_egress_ordinary_reporting_allowed(authorized_context_04):
+    args = {"destination": "alerts@northstar.internal", "purpose": EgressPurpose_04.REPORTING.value, "sensitivity": Sensitivity_04.INTERNAL.value}
+    digest = compute_digest_04("export_customer_records", "northstar", args)
+    approval = ValidatedApprovalContext_04(action="export_customer_records", tenant="northstar", target_digest=digest, expiry=datetime.now(timezone.utc) + timedelta(minutes=10), policy_version="1.0")
+    
+    call = ToolCall_04(name="export_customer_records", arguments=args)
+    decision = validate_tool_call_04(call, authorized_context_04, validated_approval=approval)
+    assert decision.status == GuardrailStatus_04.ALLOWED
 
 def test_tool_output_injection_is_untrusted():
     item = ContentItem_04(
@@ -762,7 +913,7 @@ def test_output_validation_unsupported_evidence():
     decision = validate_investigation_response_04(response, {"valid_id_1"})
     assert decision.status == GuardrailStatus_04.NEED_MORE_EVIDENCE
 
-def test_pii_secret_output_blocked():
+def test_pii_pattern_output_blocked():
     response = InvestigationResponse_04(
         summary="User SSN is 123-45-6789.",
         evidence_ids=["valid_id_1"],
@@ -770,7 +921,7 @@ def test_pii_secret_output_blocked():
         confidence=0.9
     )
     decision = validate_investigation_response_04(response, {"valid_id_1"})
-    assert decision.status == GuardrailStatus_04.PII_OR_SECRET_DETECTED
+    assert decision.status == GuardrailStatus_04.PII_PATTERN_DETECTED
 
 def test_write_recommendation_requires_policy():
     response = InvestigationResponse_04(
