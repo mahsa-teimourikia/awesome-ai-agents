@@ -4,49 +4,44 @@ In distributed systems, networks fail. APIs time out. Servers restart.
 
 If an agent is executing a read-only query (`get_weather()`) and the network drops, the orchestration framework can simply retry the tool call. No harm done.
 
-But if the agent is executing a mutative action (`charge_credit_card()`) and the HTTP response times out, the agent is left in a blind state. **Did the charge go through, or did it fail before reaching the server?** 
+But if the agent is executing a mutative, consequential action (`rollback_deployment()`) and the HTTP response times out, the agent is left in a blind state. **Did the rollback execute, or did it fail before reaching the server?** 
 
-If the agent retries blindly, the user gets double-charged.
-
----
-
-## 1. The SOTA Solution: Idempotency Keys
-
-An operation is **idempotent** if performing it multiple times yields the same result as performing it exactly once. 
-
-To achieve this in agentic workflows, the Agent must generate a unique UUID for every *distinct intention*, and pass it to the backend Tool.
-
-### The Mechanism
-
-1. **Tool Schema Definition:** The `charge_credit_card` tool requires an `idempotency_key: str` parameter.
-2. **Agent Reasoning:** The LLM decides to charge the card. It generates a UUID (e.g., `a1b2c3d4`) and calls the tool: `charge_card(amount=50, idempotency_key='a1b2c3d4')`.
-3. **Backend Execution (First Try):** The backend checks its database. Has it seen `a1b2c3d4`? No. It charges the card, saves the key, and begins to return a 200 OK.
-4. **Network Failure:** The wifi drops. The agent receives a timeout error.
-5. **Agent Retry:** The agent's framework retries the *exact same tool payload*: `charge_card(amount=50, idempotency_key='a1b2c3d4')`.
-6. **Backend Execution (Second Try):** The backend checks its database. Has it seen `a1b2c3d4`? **Yes.** It skips the charge, and immediately returns a 200 OK.
+If the orchestration framework retries blindly, the execution might occur twice, potentially causing catastrophic system states.
 
 ---
 
-## 2. Enforcing Idempotency via Pydantic
+## 1. The SOTA Solution: Application-Owned Idempotency
 
-You cannot trust the LLM to understand idempotency natively. It might hallucinate a new key on the retry. 
+An operation is **idempotent** if performing it multiple times yields the exact same result as performing it once. 
 
-SOTA architectures use orchestration frameworks (like LangChain or custom wrappers) to auto-inject the key outside of the LLM's control, or use strict Pydantic defaults.
+To achieve this in agentic workflows, we use **Idempotency Keys**.
 
-### Auto-Injection Pattern
-The LLM only provides the business logic. The wrapper injects the UUID.
+### The Anti-Pattern: LLM-Generated Keys
+Do **not** trust the LLM to generate the idempotency key (e.g. `generate a UUID for this action`).
+1. The LLM might hallucinate a completely new UUID upon a retry, bypassing the idempotency check entirely.
+2. The LLM might reuse a UUID for a completely different action.
+
+### The SOTA Pattern: Deterministic Application Derivation
+The application should derive the idempotency key logically from the exact, digest-bound intent.
+
 ```python
-# The LLM only sees this schema:
-class ChargeInput(BaseModel):
-    amount: float
-
-# The backend tool wrapper handles the key:
-@tool
-def charge_card(amount: float, run_manager=None):
-    # run_manager.run_id remains static across automatic retries of the SAME tool step
-    unique_key = run_manager.run_id 
-    backend_api.charge(amount, idempotency_key=unique_key)
+# The application computes this, not the LLM
+idempotency_key = f"cmd_{tenant_id}_{payload.digest}"
 ```
 
-## 3. Real-World Enterprise Impact
-Stripe, AWS, and GCP all enforce Idempotency Keys on mutative API endpoints. If your agent is writing data, sending emails, or moving money, it must be instrumented with idempotency, or your retry loops will cause catastrophic data duplication.
+Because the `digest` covers the exact region, service, evidence, and risk tier, any retry of the *exact same approved payload* yields the exact same idempotency key. Any modification yields a new key, forcing re-approval.
+
+---
+
+## 2. The Execution Flow
+
+1. **Agent Reasoning:** The LLM proposes a rollback and the UI captures human approval for the exact digest.
+2. **Key Derivation:** The policy engine validates the approval and derives the key `cmd_acme_a1b2c3d4`.
+3. **Backend Execution (First Try):** The execution engine checks the database. Has it seen this key? No. It executes the rollback, saves the key, and begins to return a 200 OK.
+4. **Network Failure:** The wifi drops. The orchestration framework receives a timeout error.
+5. **Agent Retry:** The framework automatically retries the execution.
+6. **Backend Execution (Second Try):** The execution engine checks the database. Has it seen `cmd_acme_a1b2c3d4`? **Yes.** It verifies the digest matches the original record, skips the execution, and immediately returns a successful "Already Executed" receipt.
+
+## 3. Duplicate Payload Conflicts
+
+If the execution engine detects that the `idempotency_key` matches an existing record, but the `action_digest` is different, this indicates a severe conflict (e.g., an attacker trying to reuse an approved key for a malicious payload, or a race condition). The system must hard-reject the execution as a `CONFLICT`.

@@ -185,24 +185,23 @@ against a repeated API request after a UI refresh.
 
 ## Watch For
 
-- **Assumption failure:** The model hallucinates an unsupported parameter.
-- **State leak:** Context is incorrectly preserved across runs.
-- **Timeout:** The tool takes too long and the agent loops.
-- **Auth bypass:** The agent attempts an action it shouldn't.
+- **Authorization Leakage:** Assuming the orchestration framework handles security, rather than the application policy engine.
+- **Digest Mutation:** Modifying a proposal without re-calculating its digest and re-triggering a review.
+- **LLM-Generated Idempotency:** Trusting the model to generate a UUID instead of deterministically deriving it from the application state.
 
 ## Checkpoint
 
-**1. What is the primary purpose of this module?**
-- A) To understand the core concept.
-- B) To write complex boilerplate.
-- C) To ignore system errors.
-- D) To bypass security.
+**1. What is the true security boundary for human approval?**
+- A) The LLM prompt instructing it to ask for permission.
+- B) The LangGraph `interrupt()` function.
+- C) The application's deterministic Policy Engine validating identity and payload digests.
+- D) A simple `is_approved=True` boolean in the state.
 
-**2. How do we mitigate the primary failure mode?**
-- A) Retries.
-- B) Human approval.
-- C) Logging.
-- D) Idempotency keys.
+**2. Why must approvals be bound to a payload digest?**
+- A) To save database space.
+- B) To ensure a reviewer cannot approve a safe proposal and later modify it into a dangerous execution.
+- C) Because LangGraph requires it.
+- D) To encrypt the payload.
 
 ## References
 
@@ -219,8 +218,3 @@ against a repeated API request after a UI refresh.
 - **[Human-in-the-Loop (HITL) Architectures](DEEP_DIVE_HITL.md)**
 
 
-## SOTA Deep Dives
-Explore industry-standard architectural patterns and enterprise implementation details:
-
-- [Hitl](DEEP_DIVE_HITL.md)
-- [Idempotency](DEEP_DIVE_IDEMPOTENCY.md)
