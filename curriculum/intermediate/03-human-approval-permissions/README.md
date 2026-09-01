@@ -1,8 +1,7 @@
 # 03 — Human approval and permissions
 
-**Level:** Intermediate · **Time:** 2–3 hours · **Primary lesson:**
+**Level:** Intermediate · **Time:** 2–3 hours
 
-**Scenario:** Northstar, a SaaS support team, is integrating this concept into their agentic workflow.
 **Notebook:** [`03_human_approval_permissions.ipynb`](03_human_approval_permissions.ipynb) 
 
 ## Scenario: a rollback that must not happen by itself
@@ -135,7 +134,7 @@ time out after a provider has already performed the operation. Protect it:
 5. expire and re-review stale requests when evidence, deployment state, or
    authorization has changed.
 
-The lab’s `ApprovalStore.executed_fingerprints` is a tiny deterministic
+The lab’s `ApprovalStore.idempotency_records` is a tiny deterministic
 demonstration. A real system would use a transactional database/outbox and an
 immutable audit sink.
 
@@ -143,7 +142,7 @@ immutable audit sink.
 
 ### Experiment A — approve versus reject
 
-Run `propose_rollback`, then call `decide(..., "approve", ...)`. Inspect the
+Run `build_approval_payload`, then call `process_decision(...)` with an `APPROVE` decision. Inspect the
 action, evidence, audit event, and idempotency key. In a second store, reject
 the same proposal; confirm it records a decision but never creates an execution
 record. Discuss why “reject” should be a terminal state or a deliberate route
@@ -153,7 +152,7 @@ back to investigation, not an implicit retry.
 
 Create a modified action that changes `region` from `eu-west` to `global` or
 changes the deployment ID. The lab rejects it because its schema only accepts
-the validated target. Then call `decide` a second time after approval: it
+the validated target. Then call `process_decision(...)` a second time after approval: it
 rejects the non-paused request / duplicate fingerprint. Explain how this guards
 against a repeated API request after a UI refresh.
 
@@ -212,7 +211,7 @@ against a repeated API request after a UI refresh.
 - [OWASP GenAI Security Project](https://genai.owasp.org/)
 - [OWASP: LLM Top 10 (2025)](https://genai.owasp.org/llmrisk/)
 
-## Deep Dives & State of the Art
+## Further Deep Dives
 
 - **[Idempotency Keys in Agentic Execution](DEEP_DIVE_IDEMPOTENCY.md)**
 - **[Human-in-the-Loop (HITL) Architectures](DEEP_DIVE_HITL.md)**

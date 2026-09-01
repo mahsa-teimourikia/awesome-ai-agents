@@ -1,9 +1,9 @@
 import hashlib
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from enum import Enum
-from typing import List, Set, Literal, Optional, Dict, Tuple
+from typing import List, Set, Literal, Optional, Dict, Tuple, Union
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -33,6 +33,26 @@ class DecisionType(str, Enum):
     MODIFY = "MODIFY"
     ESCALATE = "ESCALATE"
 
+class ExecutionStatus(str, Enum):
+    EXECUTED = "EXECUTED"
+    FAILED_BEFORE_COMMIT = "FAILED_BEFORE_COMMIT"
+    UNKNOWN_OUTCOME = "UNKNOWN_OUTCOME"
+    ALREADY_EXECUTED = "ALREADY_EXECUTED"
+    CONFLICT = "CONFLICT"
+
+class EventType(str, Enum):
+    PROPOSAL_CREATED = "PROPOSAL_CREATED"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+    MODIFIED = "MODIFIED"
+    ESCALATED = "ESCALATED"
+    AUTHORIZATION_DENIED = "AUTHORIZATION_DENIED"
+    EXECUTION_STARTED = "EXECUTION_STARTED"
+    EXECUTION_SUCCEEDED = "EXECUTION_SUCCEEDED"
+    DUPLICATE_BLOCKED = "DUPLICATE_BLOCKED"
+    CONFLICT = "CONFLICT"
+    EXPIRED = "EXPIRED"
+
 
 class RollbackProposal(BaseModel):
     """The model-generated proposal containing only business intent."""
@@ -42,7 +62,7 @@ class RollbackProposal(BaseModel):
     region: Region
     deployment_id: str
     reason: str
-    evidence_ids: List[str]
+    # Evidence refs are bound in the payload, removed from the proposal to avoid duplication
 
 
 class ExecutionContext(BaseModel):
@@ -50,8 +70,6 @@ class ExecutionContext(BaseModel):
     model_config = ConfigDict(extra="forbid")
     
     tenant_id: str
-    actor_id: str
-    actor_roles: Set[str]
     environment: Environment
     request_id: str
     policy_version: str
@@ -80,15 +98,30 @@ class ApprovalPolicy(BaseModel):
     ttl_seconds: int
 
 
+class EvidenceRef(BaseModel):
+    """A reference to the exact evidence the proposal was based upon."""
+    model_config = ConfigDict(extra="forbid")
+    
+    evidence_id: str
+    source_version: str
+    observed_at: datetime
+    max_age_seconds: int
+    
+    @property
+    def is_stale(self) -> bool:
+        age = (datetime.now(timezone.utc) - self.observed_at).total_seconds()
+        return age > self.max_age_seconds
+
+
 class ApprovalPayload(BaseModel):
-    """The exact bound state that a human approves, signed by digest."""
+    """The exact bound state that a human approves, bound to approval by digest."""
     model_config = ConfigDict(extra="forbid")
     
     proposal: RollbackProposal
     tenant_id: str
     environment: Environment
     risk_tier: RiskTier
-    evidence_ids: List[str]
+    evidence_refs: List[EvidenceRef]
     policy_version: str
     expires_at: datetime
     
@@ -96,7 +129,12 @@ class ApprovalPayload(BaseModel):
     def digest(self) -> str:
         # Deterministic serialization to detect ANY mutation
         payload_str = json.dumps(self.model_dump(mode='json'), sort_keys=True)
-        return hashlib.sha256(payload_str.encode()).hexdigest()[:16]
+        # SOTA: Use the full digest internally.
+        return hashlib.sha256(payload_str.encode()).hexdigest()
+        
+    @property
+    def display_digest(self) -> str:
+        return self.digest[:16]
 
 
 class ApprovalDecision(BaseModel):
@@ -120,6 +158,11 @@ class RollbackCommand(BaseModel):
     reviewer_ids: List[str]
     idempotency_key: str
     policy_version: str
+    
+    @property
+    def action_digest(self) -> str:
+        # Normalized executor semantics
+        return hashlib.sha256(f"{self.tenant_id}:{self.proposal.service}:{self.proposal.region}:{self.proposal.deployment_id}".encode()).hexdigest()
 
 
 class ExecutionReceipt(BaseModel):
@@ -129,7 +172,7 @@ class ExecutionReceipt(BaseModel):
     execution_id: str
     idempotency_key: str
     action_digest: str
-    status: Literal["EXECUTED", "ALREADY_EXECUTED", "FAILED", "CONFLICT"]
+    status: ExecutionStatus
     executed_at: datetime
 
 
@@ -141,10 +184,10 @@ class ApprovalAuditEvent(BaseModel):
     run_id: str
     tenant_id: str
     proposal_digest: Optional[str]
-    event_type: str
-    decision: Optional[DecisionType]
-    reviewer_id: Optional[str]
-    reviewer_roles: Optional[List[str]]
+    event_type: EventType
+    decision: Optional[DecisionType] = None
+    reviewer_id: Optional[str] = None
+    reviewer_roles: Optional[List[str]] = None
     reason: str
     policy_version: str
     timestamp: datetime
@@ -161,39 +204,61 @@ class ApprovalStore:
         self.audit_events.append(event)
         
     def check_idempotency(self, command: RollbackCommand) -> Optional[ExecutionReceipt]:
-        """Validates that retries use the EXACT SAME payload."""
+        """Validates that retries use the EXACT SAME normalized action_digest."""
         if command.idempotency_key in self.idempotency_records:
-            stored_digest, receipt = self.idempotency_records[command.idempotency_key]
+            stored_action_digest, receipt = self.idempotency_records[command.idempotency_key]
             
-            # Key reuse with DIFFERENT payload is a severe conflict
-            if stored_digest != command.approval_digest:
-                return ExecutionReceipt(
+            # Same key + different action_digest = Conflict
+            if stored_action_digest != command.action_digest:
+                conflict_receipt = ExecutionReceipt(
                     execution_id=str(uuid.uuid4()),
                     idempotency_key=command.idempotency_key,
-                    action_digest=command.approval_digest,
-                    status="CONFLICT",
+                    action_digest=command.action_digest,
+                    status=ExecutionStatus.CONFLICT,
+                    executed_at=datetime.now(timezone.utc)
+                )
+                self.record_event(ApprovalAuditEvent(
+                    event_id=str(uuid.uuid4()), run_id="system", tenant_id=command.tenant_id,
+                    proposal_digest=command.approval_digest, event_type=EventType.CONFLICT,
+                    reason="Idempotency key reuse with different action digest", policy_version=command.policy_version,
+                    timestamp=datetime.now(timezone.utc)
+                ))
+                return conflict_receipt
+            
+            if receipt.status == ExecutionStatus.EXECUTED:
+                # Safe replay
+                return ExecutionReceipt(
+                    execution_id=receipt.execution_id,
+                    idempotency_key=command.idempotency_key,
+                    action_digest=command.action_digest,
+                    status=ExecutionStatus.ALREADY_EXECUTED,
                     executed_at=datetime.now(timezone.utc)
                 )
             
-            # Safe replay
-            return ExecutionReceipt(
-                execution_id=receipt.execution_id,
-                idempotency_key=command.idempotency_key,
-                action_digest=command.approval_digest,
-                status="ALREADY_EXECUTED",
-                executed_at=datetime.now(timezone.utc)
-            )
+            # For FAILED_BEFORE_COMMIT or UNKNOWN_OUTCOME, we just return the previous receipt
+            # and the executor logic decides whether to retry or reconcile.
+            return receipt
+            
         return None
         
-    def record_execution(self, command: RollbackCommand, status: Literal["EXECUTED", "FAILED"]) -> ExecutionReceipt:
+    def record_execution(self, command: RollbackCommand, status: ExecutionStatus) -> ExecutionReceipt:
         receipt = ExecutionReceipt(
             execution_id=str(uuid.uuid4()),
             idempotency_key=command.idempotency_key,
-            action_digest=command.approval_digest,
+            action_digest=command.action_digest,
             status=status,
             executed_at=datetime.now(timezone.utc)
         )
-        self.idempotency_records[command.idempotency_key] = (command.approval_digest, receipt)
+        self.idempotency_records[command.idempotency_key] = (command.action_digest, receipt)
+        
+        event_type = EventType.EXECUTION_SUCCEEDED if status == ExecutionStatus.EXECUTED else EventType.EXECUTION_STARTED
+        self.record_event(ApprovalAuditEvent(
+            event_id=str(uuid.uuid4()), run_id="system", tenant_id=command.tenant_id,
+            proposal_digest=command.approval_digest, event_type=event_type,
+            reason=f"Execution recorded with status {status.value}", policy_version=command.policy_version,
+            timestamp=datetime.now(timezone.utc)
+        ))
+        
         return receipt
 
 
@@ -214,7 +279,7 @@ def compute_risk(proposal: RollbackProposal, env: Environment) -> RiskTier:
 
 def get_policy(action_type: str, env: Environment, risk: RiskTier) -> ApprovalPolicy:
     """Returns the deterministic application policy."""
-    if action_type == "production_rollback":
+    if action_type == "rollback_deployment":
         if env == Environment.STAGING:
             return ApprovalPolicy(
                 action_type=action_type, environment=env, risk_tier=risk, 
@@ -245,6 +310,25 @@ def get_policy(action_type: str, env: Environment, risk: RiskTier) -> ApprovalPo
     raise ValueError(f"Unknown action type: {action_type}")
 
 
+def build_approval_payload(
+    proposal: RollbackProposal,
+    execution_context: ExecutionContext,
+    evidence_refs: List[EvidenceRef]
+) -> ApprovalPayload:
+    
+    risk = compute_risk(proposal, execution_context.environment)
+    policy = get_policy("rollback_deployment", execution_context.environment, risk)
+    
+    return ApprovalPayload(
+        proposal=proposal,
+        tenant_id=execution_context.tenant_id,
+        environment=execution_context.environment,
+        risk_tier=risk,
+        evidence_refs=evidence_refs,
+        policy_version=execution_context.policy_version,
+        expires_at=datetime.now(timezone.utc) + timedelta(seconds=policy.ttl_seconds)
+    )
+
 class PolicyError(Exception):
     def __init__(self, code: str):
         self.code = code
@@ -262,7 +346,9 @@ def validate_approval(
     The authoritative approval validation function. 
     Verifies auth, policy, digest matching, and expiry before generating an internal command.
     """
-    
+    if len(decisions) != len(reviewers):
+        raise PolicyError("APPROVAL_CONTEXT_MISMATCH")
+        
     if payload.policy_version != current_policy_version:
         raise PolicyError("POLICY_CHANGED")
         
@@ -270,44 +356,64 @@ def validate_approval(
     if current_time > payload.expires_at:
         raise PolicyError("EXPIRED_APPROVAL")
         
-    policy = get_policy("production_rollback", payload.environment, payload.risk_tier)
+    for ev in payload.evidence_refs:
+        if ev.is_stale:
+            raise PolicyError("STALE_EVIDENCE")
+            
+    expected_risk = compute_risk(payload.proposal, payload.environment)
+    if payload.risk_tier != expected_risk:
+        raise PolicyError("RISK_MISMATCH")
+        
+    policy = get_policy("rollback_deployment", payload.environment, payload.risk_tier)
     
     valid_approver_ids = []
+    covered_roles = set()
     
     for decision, reviewer in zip(decisions, reviewers):
-        # 1. Authentication
+        # 1. Identity Match
+        if decision.approver_id != reviewer.reviewer_id:
+            raise PolicyError("REVIEWER_ID_MISMATCH")
+            
+        # 2. Authentication
         if not reviewer.authenticated:
             raise PolicyError("UNAUTHENTICATED_REVIEWER")
             
-        # 2. Tenant Isolation
+        # 3. Tenant Isolation
         if reviewer.tenant_id != payload.tenant_id:
             raise PolicyError("WRONG_TENANT")
             
-        # 3. Decision Type
+        # 4. Decision Type
         if decision.decision != DecisionType.APPROVE:
             # Rejection or Escalation never produces a Command
             raise PolicyError(f"DECISION_{decision.decision.value}")
             
-        # 4. Digest Binding (Detects Mutation)
+        # 5. Digest Binding (Detects Mutation)
         if decision.approved_digest != payload.digest:
             raise PolicyError("DIGEST_MISMATCH")
             
-        # 5. Role Authorization
-        if not policy.required_roles.intersection(reviewer.roles):
+        # 6. Role Authorization
+        valid_roles = policy.required_roles.intersection(reviewer.roles)
+        if not valid_roles:
             raise PolicyError("UNAUTHORIZED_REVIEWER")
             
+        covered_roles.update(valid_roles)
         valid_approver_ids.append(reviewer.reviewer_id)
         
-    # 6. Approvals Count
+    # 7. Approvals Count
     if len(valid_approver_ids) < policy.approvals_required:
         raise PolicyError("MISSING_APPROVAL")
         
-    # 7. Separation of Duties
+    # 8. Separation of Duties
     if policy.separation_of_duties:
         if len(set(valid_approver_ids)) < len(valid_approver_ids):
             raise PolicyError("SEPARATION_OF_DUTIES_VIOLATION")
         if proposer_id in valid_approver_ids:
             raise PolicyError("SEPARATION_OF_DUTIES_VIOLATION")
+            
+    # 9. Critical Role Coverage
+    # For a CRITICAL policy requiring incident_commander + sre_lead, the union of roles across valid reviewers MUST cover both.
+    if policy.approvals_required > 1 and policy.required_roles and not policy.required_roles.issubset(covered_roles):
+        raise PolicyError("MISSING_REQUIRED_REVIEWER_ROLE")
             
     # Derive logical, application-owned idempotency key AFTER validation
     idempotency_key = f"cmd_{payload.tenant_id}_{payload.digest}"
@@ -320,3 +426,66 @@ def validate_approval(
         idempotency_key=idempotency_key,
         policy_version=payload.policy_version
     )
+
+
+def process_decision(
+    store: ApprovalStore,
+    run_id: str,
+    payload: ApprovalPayload,
+    decisions: List[ApprovalDecision],
+    reviewers: List[ReviewerContext],
+    proposer_id: str,
+    current_policy_version: str
+) -> Union[RollbackCommand, ApprovalAuditEvent]:
+    """
+    First-class decision processing engine.
+    Routes APPROVE to validation, and handles REJECT/MODIFY/ESCALATE naturally with proper audit events.
+    """
+    # If any decision is a REJECT
+    if any(d.decision == DecisionType.REJECT for d in decisions):
+        event = ApprovalAuditEvent(
+            event_id=str(uuid.uuid4()), run_id=run_id, tenant_id=payload.tenant_id,
+            proposal_digest=payload.digest, event_type=EventType.REJECTED, decision=DecisionType.REJECT,
+            reason="Proposal was rejected by reviewer.", policy_version=current_policy_version, timestamp=datetime.now(timezone.utc)
+        )
+        store.record_event(event)
+        return event
+        
+    # If any decision is ESCALATE
+    if any(d.decision == DecisionType.ESCALATE for d in decisions):
+        event = ApprovalAuditEvent(
+            event_id=str(uuid.uuid4()), run_id=run_id, tenant_id=payload.tenant_id,
+            proposal_digest=payload.digest, event_type=EventType.ESCALATED, decision=DecisionType.ESCALATE,
+            reason="Proposal escalated to higher reviewer.", policy_version=current_policy_version, timestamp=datetime.now(timezone.utc)
+        )
+        store.record_event(event)
+        return event
+
+    # If any decision is MODIFY
+    if any(d.decision == DecisionType.MODIFY for d in decisions):
+        event = ApprovalAuditEvent(
+            event_id=str(uuid.uuid4()), run_id=run_id, tenant_id=payload.tenant_id,
+            proposal_digest=payload.digest, event_type=EventType.MODIFIED, decision=DecisionType.MODIFY,
+            reason="Reviewer requested modifications. New proposal required.", policy_version=current_policy_version, timestamp=datetime.now(timezone.utc)
+        )
+        store.record_event(event)
+        return event
+
+    # If ALL are APPROVE, try to validate and yield command
+    try:
+        cmd = validate_approval(payload, decisions, reviewers, proposer_id, current_policy_version)
+        event = ApprovalAuditEvent(
+            event_id=str(uuid.uuid4()), run_id=run_id, tenant_id=payload.tenant_id,
+            proposal_digest=payload.digest, event_type=EventType.APPROVED, decision=DecisionType.APPROVE,
+            reason="Approval validated successfully.", policy_version=current_policy_version, timestamp=datetime.now(timezone.utc)
+        )
+        store.record_event(event)
+        return cmd
+    except PolicyError as e:
+        event = ApprovalAuditEvent(
+            event_id=str(uuid.uuid4()), run_id=run_id, tenant_id=payload.tenant_id,
+            proposal_digest=payload.digest, event_type=EventType.AUTHORIZATION_DENIED,
+            reason=f"Authorization denied: {e.code}", policy_version=current_policy_version, timestamp=datetime.now(timezone.utc)
+        )
+        store.record_event(event)
+        raise e
