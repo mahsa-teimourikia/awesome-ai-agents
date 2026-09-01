@@ -23,7 +23,7 @@ You will be able to:
 
 The model does not “see the whole application.” It sees the token packet constructed for this turn. A stronger model can still make a weak decision if it receives an irrelevant transcript, stale tool result, wrong tenant’s data, or a document that tries to manipulate its behavior. A larger context window is capacity—not automatic relevance, truth, authorization, or memory. By generating a strictly validated **ContextBuildResult**, we encapsulate our required constraints, warnings, and the final **ContextPacket**.
 
-![Diagram](diagram.svg)
+![Diagram](assets/diagram.svg)
 
 ## 1. Context anatomy
 
