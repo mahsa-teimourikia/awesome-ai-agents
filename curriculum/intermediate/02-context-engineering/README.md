@@ -21,7 +21,7 @@ You will be able to:
 
 ## Why context engineering matters
 
-The model does not “see the whole application.” It sees the token packet constructed for this turn. A stronger model can still make a weak decision if it receives an irrelevant transcript, stale tool result, wrong tenant’s data, or a document that tries to manipulate its behavior. A larger context window is capacity—not automatic relevance, truth, authorization, or memory.
+The model does not “see the whole application.” It sees the token packet constructed for this turn. A stronger model can still make a weak decision if it receives an irrelevant transcript, stale tool result, wrong tenant’s data, or a document that tries to manipulate its behavior. A larger context window is capacity—not automatic relevance, truth, authorization, or memory. By generating a strictly validated **ContextBuildResult**, we encapsulate our required constraints, warnings, and the final **ContextPacket**.
 
 ![Diagram](diagram.svg)
 
@@ -95,7 +95,7 @@ The lab quarantines an Acme document containing an instruction injection and dro
 
 ## 6. Guided lab
 
-1. Open `02_context_engineering.ipynb`. Inspect the selected items, token estimate, dropped items, quarantine list, cache key, and structured summary.
+1. Open `02_context_engineering.ipynb`. Inspect the `ContextRequest`, `ContextPacket`, selection trace, dropped items, quarantine list, cache key, and structured summary built by `context.py`.
 2. Compare `triage` and `investigate` requests. Why should raw tool/document evidence appear only in the latter?
 3. Add a huge old conversation turn. Confirm it is pruned under the budget rather than displacing current incident state.
 4. Add a trusted but stale source. Extend the routing policy with freshness and show how the packet changes.
@@ -130,17 +130,17 @@ The lab quarantines an Acme document containing an instruction injection and dro
 
 ## Checkpoint
 
-**1. What is the primary purpose of this module?**
-- A) To understand the core concept.
-- B) To write complex boilerplate.
-- C) To ignore system errors.
-- D) To bypass security.
+**1. Why does the `build_context` pipeline enforce authorization and trust boundaries *before* relevance ranking?**
+- A) Because relevance scoring is too computationally expensive.
+- B) To ensure that highly-relevant but unauthorized or poisoned data is never evaluated as a valid context candidate.
+- C) Because token budgets must be calculated first.
+- D) To support multi-agent planning.
 
-**2. How do we mitigate the primary failure mode?**
-- A) Retries.
-- B) Human approval.
-- C) Logging.
-- D) Idempotency keys.
+**2. What happens if the mandatory items (system policy, task state, summary) and required evidence exceed the `ContextRequest` token budget?**
+- A) The pipeline silently truncates the required evidence.
+- B) The pipeline drops the system policy.
+- C) The pipeline returns a `BUDGET_EXCEEDED` status, refusing to build a dangerous or truncated packet.
+- D) The pipeline ignores the budget.
 
 ## References
 
@@ -151,13 +151,7 @@ The lab quarantines an Acme document containing an instruction injection and dro
 - [OWASP Top 10 for LLM Applications](https://genai.owasp.org/llmrisk/llm01-prompt-injection/) — prompt-injection risks and defenses.
 
 ## Deep Dives & State of the Art
-
-- **[Dynamic Context & Vector DBs](DEEP_DIVE_DYNAMIC_CONTEXT.md)**
-- **[Prompt Injection & XML Tagging](DEEP_DIVE_PROMPT_INJECTION.md)**
-
-
-## SOTA Deep Dives
 Explore industry-standard architectural patterns and enterprise implementation details:
 
-- [Dynamic Context](DEEP_DIVE_DYNAMIC_CONTEXT.md)
-- [Prompt Injection](DEEP_DIVE_PROMPT_INJECTION.md)
+- [Context Compaction, Routing, and Phase-Scoped Views](DEEP_DIVE_DYNAMIC_CONTEXT.md)
+- [Defending Against Prompt Injection via Context Engineering](DEEP_DIVE_PROMPT_INJECTION.md)

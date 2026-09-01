@@ -21,23 +21,23 @@ The attacker does not speak to the agent directly. Instead, they embed the malic
 
 ## 2. The SOTA Defense: Architectural Quarantine
 
-Historically, developers relied heavily on "XML Sandboxing"—wrapping untrusted text in `<data></data>` tags and telling the model to ignore commands inside them. While this is a necessary defense-in-depth layer, **it is not sufficient on its own.**
+Historically, developers relied heavily on wrapping untrusted text in tags and telling the model to ignore commands inside them. While this is a necessary layer, **it is not sufficient on its own.** Delimiters do NOT create a true security boundary in LLMs.
 
-State-of-the-Art (SOTA) agent architectures defend against indirect injection at the **Context Pipeline** layer, long before the data reaches the LLM.
+Modern agent architectures defend against indirect injection at the **Context Pipeline** layer, long before the data reaches the LLM.
 
 ### The Trust/Quarantine Pipeline
 
 1. **Explicit Trust Metadata:** Every piece of candidate context must carry a `TrustLevel` enum (`TRUSTED`, `UNTRUSTED`, `QUARANTINED`). 
-2. **Scanner Integration:** Before context is assembled, security scanners (or fast classifier LLMs like Claude-3-Haiku acting as "Spotters") evaluate untrusted external documents for hostile instructions.
+2. **Scanner Integration:** Before context is assembled, security scanners (or a smaller classifier model acting as a "Spotter") evaluate untrusted external documents for hostile instructions.
 3. **Pre-assembly Filtering:** The deterministic `build_context` pipeline acts as a hard boundary. If a document's trust level is `QUARANTINED`, the pipeline drops it *before* relevance ranking or prompt assembly.
 
 By modeling context isolation formally, you ensure that a highly-relevant but poisoned document never enters the LLM's context window in the first place.
 
 ---
 
-## 3. Defense in Depth: XML Sandboxing
+## 3. Defense in Depth: Structured Delimiting
 
-Even with strict architectural quarantine, some `UNTRUSTED` user data must eventually be passed to the LLM. For this data, you must use explicit XML delimiters.
+Even with strict architectural quarantine, some `UNTRUSTED` user data must eventually be passed to the LLM. For this data, you must use structured delimiting and defense-in-depth formatting.
 
 ### ❌ The Vulnerable Pattern (F-String Blending)
 ```python
@@ -48,7 +48,7 @@ You are a summarization agent. Summarize the following document:
 ```
 Because the untrusted string is blended seamlessly into the prompt, the LLM cannot tell where the instructions end and the data begins.
 
-### ✅ The Secure Pattern (XML Tagging)
+### ✅ The Defense-in-Depth Pattern (Structured Tagging)
 ```python
 system_prompt = f\"\"\"
 You are a data processing agent. 
@@ -63,4 +63,4 @@ INSTRUCTIONS:
 \"\"\"
 ```
 
-XML provides a strict, unambiguous delimiter. However, always remember: **Quarantine first, sandbox second.**
+Structured tagging provides a strong heuristic separation. However, always remember: **Delimiters are not a security boundary; quarantine first, format second.**

@@ -1,9 +1,8 @@
 import datetime
 import hashlib
-import json
 from enum import Enum
 from typing import Any, List, Optional
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 
 
 class ContextKind(str, Enum):
@@ -36,6 +35,13 @@ class Phase(str, Enum):
     RESUME = "RESUME"
 
 
+class ContextStatus(str, Enum):
+    READY = "READY"
+    MISSING_REQUIRED_CONTEXT = "MISSING_REQUIRED_CONTEXT"
+    BUDGET_EXCEEDED = "BUDGET_EXCEEDED"
+    AUTHORIZATION_BLOCKED = "AUTHORIZATION_BLOCKED"
+
+
 class ContextItem(BaseModel):
     model_config = ConfigDict(extra="forbid")
     
@@ -45,6 +51,7 @@ class ContextItem(BaseModel):
     user_id: Optional[str] = None
     source_id: str
     source_type: str
+    source_version: Optional[str] = None
     observed_at: datetime.datetime
     expires_at: Optional[datetime.datetime] = None
     trust: TrustLevel
@@ -64,7 +71,9 @@ class ContextRequest(BaseModel):
     phase: Phase
     token_budget: int
     required_evidence_ids: List[str]
+    allowed_sensitivity: List[Sensitivity]
     policy_version: str
+    context_builder_version: str
 
 
 class SelectionTraceItem(BaseModel):
@@ -97,7 +106,29 @@ class ContextPacket(BaseModel):
     selection_trace: List[SelectionTraceItem]
 
 
-def build_context(request: ContextRequest, candidates: List[ContextItem]) -> ContextPacket:
+class ContextBuildResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    
+    status: ContextStatus
+    packet: Optional[ContextPacket] = None
+    missing_required_ids: List[str] = []
+    warnings: List[str] = []
+
+
+def classify_context_trust(item: ContextItem) -> TrustLevel:
+    """
+    Deterministic trust classification fixture.
+    Real scanners or classifier models provide signals, not authorization boundaries.
+    The output of those scanners sets the TrustLevel that the pipeline enforces.
+    """
+    if "IGNORE SYSTEM POLICY" in str(item.payload):
+        return TrustLevel.QUARANTINED
+    if item.source_type == "web" or item.kind == ContextKind.RETRIEVED_DOCUMENT:
+        return TrustLevel.UNTRUSTED
+    return TrustLevel.TRUSTED
+
+
+def build_context(request: ContextRequest, candidates: List[ContextItem]) -> ContextBuildResult:
     """
     Authoritative Context Builder Pipeline.
     Enforces strict authorization, trust isolation, freshness, and budget ranking.
@@ -106,6 +137,7 @@ def build_context(request: ContextRequest, candidates: List[ContextItem]) -> Con
     selected = []
     quarantined = []
     dropped = []
+    warnings = []
     
     sys_policy = None
     task_state = None
@@ -117,12 +149,24 @@ def build_context(request: ContextRequest, candidates: List[ContextItem]) -> Con
     valid_candidates = []
     
     for item in candidates:
-        # Authorization check: strict tenant isolation
+        # User Scope check
+        if item.user_id and request.user_id and item.user_id != request.user_id:
+            trace.append(SelectionTraceItem(item_id=item.item_id, decision="DROPPED", reason="WRONG_USER"))
+            dropped.append(item)
+            continue
+            
+        # Tenant Isolation check
         if item.tenant_id != "global" and item.tenant_id != request.tenant_id:
             trace.append(SelectionTraceItem(item_id=item.item_id, decision="DROPPED", reason="WRONG_TENANT"))
             dropped.append(item)
             continue
             
+        # Sensitivity check
+        if item.sensitivity not in request.allowed_sensitivity:
+            trace.append(SelectionTraceItem(item_id=item.item_id, decision="DROPPED", reason="RESTRICTED_ACCESS"))
+            dropped.append(item)
+            continue
+
         # Trust check: quarantine poisoned or explicitly untrusted items
         if item.trust == TrustLevel.QUARANTINED:
             trace.append(SelectionTraceItem(item_id=item.item_id, decision="QUARANTINED", reason="POISONED"))
@@ -136,30 +180,58 @@ def build_context(request: ContextRequest, candidates: List[ContextItem]) -> Con
             continue
             
         # Phase relevance check
+        # TRIAGE needs minimal context
         if request.phase == Phase.TRIAGE and item.kind in [ContextKind.RETRIEVED_DOCUMENT, ContextKind.TOOL_EVIDENCE]:
             if item.item_id not in request.required_evidence_ids:
                 trace.append(SelectionTraceItem(item_id=item.item_id, decision="DROPPED", reason="WRONG_PHASE"))
                 dropped.append(item)
                 continue
+        
+        # RECOMMEND requires verified evidence
+        if request.phase == Phase.RECOMMEND and item.kind == ContextKind.TOOL_EVIDENCE and item.trust != TrustLevel.TRUSTED:
+            trace.append(SelectionTraceItem(item_id=item.item_id, decision="DROPPED", reason="WRONG_PHASE"))
+            dropped.append(item)
+            continue
                 
         valid_candidates.append(item)
         
-    # 2. Assign absolute categories (Policy, State, Summary)
+    # 2. Required Evidence Check
+    valid_ids = {i.item_id for i in valid_candidates}
+    missing_required = [req_id for req_id in request.required_evidence_ids if req_id not in valid_ids]
+    if missing_required:
+        return ContextBuildResult(
+            status=ContextStatus.MISSING_REQUIRED_CONTEXT,
+            missing_required_ids=missing_required,
+            warnings=["Required evidence missing or dropped by filters."]
+        )
+        
+    # 3. Assign absolute categories (Policy, State, Summary) with ambiguity check
     pool = []
+    ambiguous = False
     for item in valid_candidates:
         if item.kind == ContextKind.SYSTEM_POLICY:
+            if sys_policy is not None: ambiguous = True
             sys_policy = item
-            trace.append(SelectionTraceItem(item_id=item.item_id, decision="INCLUDED", reason="MANDATORY_POLICY"))
         elif item.kind == ContextKind.TASK_STATE:
+            if task_state is not None: ambiguous = True
             task_state = item
-            trace.append(SelectionTraceItem(item_id=item.item_id, decision="INCLUDED", reason="MANDATORY_STATE"))
         elif item.kind == ContextKind.SUMMARY:
+            if summary is not None: ambiguous = True
             summary = item
-            trace.append(SelectionTraceItem(item_id=item.item_id, decision="INCLUDED", reason="MANDATORY_SUMMARY"))
         else:
             pool.append(item)
+            
+    if ambiguous:
+        warnings.append("Ambiguous authoritative items. Expected 0 or 1, got multiple.")
 
-    # 3. Required Evidence Preservation
+    if sys_policy:
+        trace.append(SelectionTraceItem(item_id=sys_policy.item_id, decision="INCLUDED", reason="MANDATORY_POLICY"))
+    if task_state:
+        trace.append(SelectionTraceItem(item_id=task_state.item_id, decision="INCLUDED", reason="MANDATORY_STATE"))
+    if summary:
+        trace.append(SelectionTraceItem(item_id=summary.item_id, decision="INCLUDED", reason="MANDATORY_SUMMARY"))
+
+    # 4. Required Evidence Preservation
     budget_pool = []
     for item in pool:
         if item.item_id in request.required_evidence_ids:
@@ -168,20 +240,38 @@ def build_context(request: ContextRequest, candidates: List[ContextItem]) -> Con
         else:
             budget_pool.append(item)
             
-    # 4. Token-budget ranking (sort by relevance descending)
-    budget_pool.sort(key=lambda x: x.relevance_score, reverse=True)
-    
     current_tokens = sum(i.token_estimate for i in selected)
     if sys_policy: current_tokens += sys_policy.token_estimate
     if task_state: current_tokens += task_state.token_estimate
     if summary: current_tokens += summary.token_estimate
     
-    for item in budget_pool:
-        if item.relevance_score < 0.3:
-            trace.append(SelectionTraceItem(item_id=item.item_id, decision="DROPPED", reason="LOW_RELEVANCE"))
-            dropped.append(item)
-            continue
+    if current_tokens > request.token_budget:
+        return ContextBuildResult(
+            status=ContextStatus.BUDGET_EXCEEDED,
+            warnings=["Token budget exceeded by mandatory and required items alone."]
+        )
             
+    # 5. Composite Token-budget ranking
+    # Baseline composite: relevance + freshness + phase suitability
+    def composite_score(x: ContextItem) -> float:
+        score = x.relevance_score
+        
+        # freshness bonus
+        if x.expires_at:
+            delta = (x.expires_at - current_time).total_seconds()
+            if delta > 3600: score += 0.1
+        
+        # phase suitability bonus
+        if request.phase == Phase.INVESTIGATE and x.kind == ContextKind.TOOL_EVIDENCE:
+            score += 0.2
+            
+        # cost penalty
+        score -= (x.token_estimate / 10000.0)
+        return score
+        
+    budget_pool.sort(key=composite_score, reverse=True)
+    
+    for item in budget_pool:
         if current_tokens + item.token_estimate <= request.token_budget:
             selected.append(item)
             current_tokens += item.token_estimate
@@ -190,15 +280,29 @@ def build_context(request: ContextRequest, candidates: List[ContextItem]) -> Con
             trace.append(SelectionTraceItem(item_id=item.item_id, decision="DROPPED", reason="TOKEN_BUDGET"))
             dropped.append(item)
             
-    # 5. Cache Key Generation
-    # A safe cache key must bind the exact task, policy version, and selected evidence.
+    # 6. Cache Key Generation
+    # Ensure tenant, user, task, phase, policy, cb ver, and items/versions are all bound.
+    all_selected = selected.copy()
+    if sys_policy: all_selected.append(sys_policy)
+    if task_state: all_selected.append(task_state)
+    if summary: all_selected.append(summary)
+    
+    selected_components = []
+    for i in all_selected:
+        v = i.source_version or "no_ver"
+        selected_components.append(f"{i.item_id}:{v}")
+    selected_components.sort()
+    
     evidence_fingerprint = hashlib.sha256(
-        ",".join(sorted(i.item_id for i in selected)).encode()
+        ",".join(selected_components).encode()
     ).hexdigest()[:8]
     
-    cache_key = f"{request.tenant_id}::{request.task_id}::pol_{request.policy_version}::ev_{evidence_fingerprint}"
+    user_str = request.user_id or "no_user"
+    cache_key = (f"{request.tenant_id}::{user_str}::{request.task_id}::{request.phase.value}::"
+                 f"pol_{request.policy_version}::cb_{request.context_builder_version}::"
+                 f"items_{evidence_fingerprint}")
     
-    return ContextPacket(
+    packet = ContextPacket(
         request_id=request.request_id,
         tenant_id=request.tenant_id,
         phase=request.phase,
@@ -211,4 +315,10 @@ def build_context(request: ContextRequest, candidates: List[ContextItem]) -> Con
         estimated_tokens=current_tokens,
         cache_key=cache_key,
         selection_trace=trace
+    )
+    
+    return ContextBuildResult(
+        status=ContextStatus.READY,
+        packet=packet,
+        warnings=warnings
     )
