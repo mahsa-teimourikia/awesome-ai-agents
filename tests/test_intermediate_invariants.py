@@ -324,121 +324,128 @@ def approval_setup():
         decided_at=datetime.now(timezone.utc)
     )
     
-    return payload, decision, reviewer
+    current_evidence_state = {ev.evidence_id: ev for ev in evidence_refs}
+    
+    return payload, decision, reviewer, current_evidence_state
 
 def test_valid_approval_succeeds(approval_setup):
-    payload, decision, reviewer = approval_setup
-    cmd = validate_approval(payload, [decision], [reviewer], proposer_id="agent", current_policy_version="v3")
+    payload, decision, reviewer, current_evidence_state = approval_setup
+    cmd = validate_approval(payload, [decision], [reviewer], proposer_id="agent", current_policy_version="v3", current_evidence_state=current_evidence_state)
     assert cmd.tenant_id == "acme"
     assert "alice" in cmd.reviewer_ids
     assert cmd.approval_digest == payload.digest
 
 def test_reviewer_id_mismatch(approval_setup):
-    payload, decision, reviewer = approval_setup
+    payload, decision, reviewer, current_evidence_state = approval_setup
     decision.approver_id = "bob"
     with pytest.raises(PolicyError, match="REVIEWER_ID_MISMATCH"):
-        validate_approval(payload, [decision], [reviewer], proposer_id="agent", current_policy_version="v3")
+        validate_approval(payload, [decision], [reviewer], proposer_id="agent", current_policy_version="v3", current_evidence_state=current_evidence_state)
 
 def test_approval_context_lengths_mismatch(approval_setup):
-    payload, decision, reviewer = approval_setup
+    payload, decision, reviewer, current_evidence_state = approval_setup
     with pytest.raises(PolicyError, match="APPROVAL_CONTEXT_MISMATCH"):
-        validate_approval(payload, [decision, decision], [reviewer], proposer_id="agent", current_policy_version="v3")
+        validate_approval(payload, [decision, decision], [reviewer], proposer_id="agent", current_policy_version="v3", current_evidence_state=current_evidence_state)
 
 def test_unauthenticated_reviewer_rejected(approval_setup):
-    payload, decision, reviewer = approval_setup
+    payload, decision, reviewer, current_evidence_state = approval_setup
     reviewer.authenticated = False
     with pytest.raises(PolicyError, match="UNAUTHENTICATED_REVIEWER"):
-        validate_approval(payload, [decision], [reviewer], proposer_id="agent", current_policy_version="v3")
+        validate_approval(payload, [decision], [reviewer], proposer_id="agent", current_policy_version="v3", current_evidence_state=current_evidence_state)
 
 def test_unauthorized_approver_rejected(approval_setup):
-    payload, decision, reviewer = approval_setup
+    payload, decision, reviewer, current_evidence_state = approval_setup
     reviewer.roles = {"operator"} # HIGH risk requires incident_commander
     with pytest.raises(PolicyError, match="UNAUTHORIZED_REVIEWER"):
-        validate_approval(payload, [decision], [reviewer], proposer_id="agent", current_policy_version="v3")
+        validate_approval(payload, [decision], [reviewer], proposer_id="agent", current_policy_version="v3", current_evidence_state=current_evidence_state)
 
 def test_wrong_tenant_rejected(approval_setup):
-    payload, decision, reviewer = approval_setup
+    payload, decision, reviewer, current_evidence_state = approval_setup
     reviewer.tenant_id = "globex"
     with pytest.raises(PolicyError, match="WRONG_TENANT"):
-        validate_approval(payload, [decision], [reviewer], proposer_id="agent", current_policy_version="v3")
+        validate_approval(payload, [decision], [reviewer], proposer_id="agent", current_policy_version="v3", current_evidence_state=current_evidence_state)
 
 def test_expired_approval_rejected(approval_setup):
-    payload, decision, reviewer = approval_setup
+    payload, decision, reviewer, current_evidence_state = approval_setup
     payload.expires_at = datetime.now(timezone.utc) - timedelta(hours=1)
     with pytest.raises(PolicyError, match="EXPIRED_APPROVAL"):
-        validate_approval(payload, [decision], [reviewer], proposer_id="agent", current_policy_version="v3")
+        validate_approval(payload, [decision], [reviewer], proposer_id="agent", current_policy_version="v3", current_evidence_state=current_evidence_state)
 
 def test_stale_evidence_rejected(approval_setup):
-    payload, decision, reviewer = approval_setup
-    payload.evidence_refs[0].observed_at = datetime.now(timezone.utc) - timedelta(hours=2)
+    payload, decision, reviewer, current_evidence_state = approval_setup
+    # Modify the payload's evidence to be stale, AND update the current_evidence_state
+    # to match (so we don't hit EVIDENCE_CHANGED instead).
+    stale_time = datetime.now(timezone.utc) - timedelta(hours=2)
+    payload.evidence_refs[0].observed_at = stale_time
+    current_evidence_state["health-123"] = current_evidence_state["health-123"].model_copy(update={"observed_at": stale_time})
     with pytest.raises(PolicyError, match="STALE_EVIDENCE"):
-        validate_approval(payload, [decision], [reviewer], proposer_id="agent", current_policy_version="v3")
+        validate_approval(payload, [decision], [reviewer], proposer_id="agent", current_policy_version="v3", current_evidence_state=current_evidence_state)
 
 def test_risk_recompute_mismatch(approval_setup):
-    payload, decision, reviewer = approval_setup
+    payload, decision, reviewer, current_evidence_state = approval_setup
     # Manually downgrade risk in payload
     payload.risk_tier = RiskTier.LOW
     decision.approved_digest = payload.digest
     with pytest.raises(PolicyError, match="RISK_MISMATCH"):
-        validate_approval(payload, [decision], [reviewer], proposer_id="agent", current_policy_version="v3")
+        validate_approval(payload, [decision], [reviewer], proposer_id="agent", current_policy_version="v3", current_evidence_state=current_evidence_state)
 
 def test_proposal_digest_mismatch_rejected(approval_setup):
-    payload, decision, reviewer = approval_setup
+    payload, decision, reviewer, current_evidence_state = approval_setup
     decision.approved_digest = "tampered_digest"
     with pytest.raises(PolicyError, match="DIGEST_MISMATCH"):
-        validate_approval(payload, [decision], [reviewer], proposer_id="agent", current_policy_version="v3")
+        validate_approval(payload, [decision], [reviewer], proposer_id="agent", current_policy_version="v3", current_evidence_state=current_evidence_state)
 
 def test_rejection_never_executes(approval_setup):
-    payload, decision, reviewer = approval_setup
+    payload, decision, reviewer, current_evidence_state = approval_setup
     decision.decision = DecisionType.REJECT
     with pytest.raises(PolicyError, match="DECISION_REJECT"):
-        validate_approval(payload, [decision], [reviewer], proposer_id="agent", current_policy_version="v3")
+        validate_approval(payload, [decision], [reviewer], proposer_id="agent", current_policy_version="v3", current_evidence_state=current_evidence_state)
 
 def test_modification_creates_new_digest(approval_setup):
-    payload, decision, reviewer = approval_setup
+    payload, decision, reviewer, current_evidence_state = approval_setup
     new_proposal = payload.proposal.model_copy(update={"region": Region.GLOBAL})
     new_payload = payload.model_copy(update={"proposal": new_proposal})
     assert new_payload.digest != payload.digest
 
 def test_escalation_never_executes(approval_setup):
-    payload, decision, reviewer = approval_setup
+    payload, decision, reviewer, current_evidence_state = approval_setup
     decision.decision = DecisionType.ESCALATE
     with pytest.raises(PolicyError, match="DECISION_ESCALATE"):
-        validate_approval(payload, [decision], [reviewer], proposer_id="agent", current_policy_version="v3")
+        validate_approval(payload, [decision], [reviewer], proposer_id="agent", current_policy_version="v3", current_evidence_state=current_evidence_state)
 
 def test_policy_version_mismatch_rejected(approval_setup):
-    payload, decision, reviewer = approval_setup
+    payload, decision, reviewer, current_evidence_state = approval_setup
     with pytest.raises(PolicyError, match="POLICY_CHANGED"):
-        validate_approval(payload, [decision], [reviewer], proposer_id="agent", current_policy_version="v4")
+        validate_approval(payload, [decision], [reviewer], proposer_id="agent", current_policy_version="v4", current_evidence_state=current_evidence_state)
 
 def test_two_person_rule_enforced_and_missing_required_role():
     proposal = RollbackProposal(service=Service.CHECKOUT, region=Region.GLOBAL, deployment_id="d1", reason="bug")
     context = ExecutionContext(tenant_id="acme", environment=Environment.PRODUCTION, request_id="1", policy_version="v1")
     payload = build_approval_payload(proposal, context, [])
+    current_evidence_state = {}
     
     r1 = ReviewerContext(reviewer_id="alice", tenant_id="acme", roles={"incident_commander"}, authenticated=True)
     d1 = ApprovalDecision(decision=DecisionType.APPROVE, approver_id="alice", approved_digest=payload.digest, reason="ok", decided_at=datetime.now(timezone.utc))
     
     # 1 approver when 2 needed
     with pytest.raises(PolicyError, match="MISSING_APPROVAL"):
-        validate_approval(payload, [d1], [r1], proposer_id="agent", current_policy_version="v1")
+        validate_approval(payload, [d1], [r1], proposer_id="agent", current_policy_version="v1", current_evidence_state=current_evidence_state)
         
     # Same approver twice (SoD violation)
     with pytest.raises(PolicyError, match="SEPARATION_OF_DUTIES_VIOLATION"):
-        validate_approval(payload, [d1, d1], [r1, r1], proposer_id="agent", current_policy_version="v1")
+        validate_approval(payload, [d1, d1], [r1, r1], proposer_id="agent", current_policy_version="v1", current_evidence_state=current_evidence_state)
         
     # Two distinct approvers, but missing 'sre_lead'
     r2 = ReviewerContext(reviewer_id="bob", tenant_id="acme", roles={"incident_commander"}, authenticated=True)
     d2 = ApprovalDecision(decision=DecisionType.APPROVE, approver_id="bob", approved_digest=payload.digest, reason="ok", decided_at=datetime.now(timezone.utc))
     
     with pytest.raises(PolicyError, match="MISSING_REQUIRED_REVIEWER_ROLE"):
-        validate_approval(payload, [d1, d2], [r1, r2], proposer_id="agent", current_policy_version="v1")
+        validate_approval(payload, [d1, d2], [r1, r2], proposer_id="agent", current_policy_version="v1", current_evidence_state=current_evidence_state)
 
     # Two distinct approvers with correct roles
     r3 = ReviewerContext(reviewer_id="charlie", tenant_id="acme", roles={"sre_lead"}, authenticated=True)
     d3 = ApprovalDecision(decision=DecisionType.APPROVE, approver_id="charlie", approved_digest=payload.digest, reason="ok", decided_at=datetime.now(timezone.utc))
     
-    cmd = validate_approval(payload, [d1, d3], [r1, r3], proposer_id="agent", current_policy_version="v1")
+    cmd = validate_approval(payload, [d1, d3], [r1, r3], proposer_id="agent", current_policy_version="v1", current_evidence_state=current_evidence_state)
     assert "alice" in cmd.reviewer_ids
     assert "charlie" in cmd.reviewer_ids
 
@@ -446,17 +453,18 @@ def test_separation_of_duties_proposer_cannot_approve():
     proposal = RollbackProposal(service=Service.CHECKOUT, region=Region.EU_WEST, deployment_id="d1", reason="bug")
     context = ExecutionContext(tenant_id="acme", environment=Environment.PRODUCTION, request_id="1", policy_version="v1")
     payload = build_approval_payload(proposal, context, [])
+    current_evidence_state = {}
     
     r1 = ReviewerContext(reviewer_id="alice", tenant_id="acme", roles={"incident_commander"}, authenticated=True)
     d1 = ApprovalDecision(decision=DecisionType.APPROVE, approver_id="alice", approved_digest=payload.digest, reason="ok", decided_at=datetime.now(timezone.utc))
     
     # Alice proposes, Alice approves -> SoD violation
     with pytest.raises(PolicyError, match="SEPARATION_OF_DUTIES_VIOLATION"):
-        validate_approval(payload, [d1], [r1], proposer_id="alice", current_policy_version="v1")
+        validate_approval(payload, [d1], [r1], proposer_id="alice", current_policy_version="v1", current_evidence_state={})
         
 def test_duplicate_command_executes_once(approval_setup):
-    payload, decision, reviewer = approval_setup
-    cmd = validate_approval(payload, [decision], [reviewer], proposer_id="agent", current_policy_version="v3")
+    payload, decision, reviewer, current_evidence_state = approval_setup
+    cmd = validate_approval(payload, [decision], [reviewer], proposer_id="agent", current_policy_version="v3", current_evidence_state=current_evidence_state)
     
     store = ApprovalStore()
     receipt1 = store.record_execution(cmd, ExecutionStatus.EXECUTED)
@@ -467,8 +475,8 @@ def test_duplicate_command_executes_once(approval_setup):
     assert receipt1.execution_id == receipt2.execution_id
 
 def test_idempotency_conflict_different_action_digest(approval_setup):
-    payload, decision, reviewer = approval_setup
-    cmd = validate_approval(payload, [decision], [reviewer], proposer_id="agent", current_policy_version="v3")
+    payload, decision, reviewer, current_evidence_state = approval_setup
+    cmd = validate_approval(payload, [decision], [reviewer], proposer_id="agent", current_policy_version="v3", current_evidence_state=current_evidence_state)
     
     store = ApprovalStore()
     store.record_execution(cmd, ExecutionStatus.EXECUTED)
@@ -486,36 +494,94 @@ def test_idempotency_conflict_different_action_digest(approval_setup):
     assert receipt2.execution_id != receipt1.execution_id if 'receipt1' in locals() else True
 
 def test_process_decision_engine(approval_setup):
-    payload, decision_approve, reviewer = approval_setup
+    payload, decision_approve, reviewer, current_evidence_state = approval_setup
     store = ApprovalStore()
     
     # REJECT routes to Audit Event
     decision_reject = decision_approve.model_copy(update={"decision": DecisionType.REJECT})
-    res_reject = process_decision(store, "run-1", payload, [decision_reject], [reviewer], "agent", "v3")
+    res_reject = process_decision(store, "run-1", payload, [decision_reject], [reviewer], "agent", "v3", current_evidence_state)
     assert isinstance(res_reject, ApprovalAuditEvent)
     assert res_reject.event_type == EventType.REJECTED
     
     # MODIFY routes to Audit Event
     decision_modify = decision_approve.model_copy(update={"decision": DecisionType.MODIFY})
-    res_modify = process_decision(store, "run-1", payload, [decision_modify], [reviewer], "agent", "v3")
+    res_modify = process_decision(store, "run-1", payload, [decision_modify], [reviewer], "agent", "v3", current_evidence_state)
     assert isinstance(res_modify, ApprovalAuditEvent)
     assert res_modify.event_type == EventType.MODIFIED
     
     # ESCALATE routes to Audit Event
     decision_escalate = decision_approve.model_copy(update={"decision": DecisionType.ESCALATE})
-    res_escalate = process_decision(store, "run-1", payload, [decision_escalate], [reviewer], "agent", "v3")
+    res_escalate = process_decision(store, "run-1", payload, [decision_escalate], [reviewer], "agent", "v3", current_evidence_state)
     assert isinstance(res_escalate, ApprovalAuditEvent)
     assert res_escalate.event_type == EventType.ESCALATED
     
     # APPROVE routes to validation and yields RollbackCommand
-    res_approve = process_decision(store, "run-1", payload, [decision_approve], [reviewer], "agent", "v3")
+    res_approve = process_decision(store, "run-1", payload, [decision_approve], [reviewer], "agent", "v3", current_evidence_state)
     assert isinstance(res_approve, RollbackCommand)
     
     # FAILED validation routes to Audit Event and raises PolicyError
     decision_wrong_digest = decision_approve.model_copy(update={"approved_digest": "wrong"})
     with pytest.raises(PolicyError):
-        process_decision(store, "run-1", payload, [decision_wrong_digest], [reviewer], "agent", "v3")
+        process_decision(store, "run-1", payload, [decision_wrong_digest], [reviewer], "agent", "v3", current_evidence_state)
         
     audit_events = store.audit_events
     assert len(audit_events) == 5
     assert audit_events[-1].event_type == EventType.AUTHORIZATION_DENIED
+
+def test_revalidate_evidence_missing(approval_setup):
+    payload, decision, reviewer, current_evidence_state = approval_setup
+    # Remove evidence from current state
+    current_evidence_state = {}
+    with pytest.raises(PolicyError, match="EVIDENCE_CHANGED"):
+        validate_approval(payload, [decision], [reviewer], proposer_id="agent", current_policy_version="v3", current_evidence_state=current_evidence_state)
+
+def test_revalidate_evidence_version_changed(approval_setup):
+    payload, decision, reviewer, current_evidence_state = approval_setup
+    # Change version in current state
+    current_evidence_state["health-123"] = current_evidence_state["health-123"].model_copy(update={"source_version": "v2"})
+    with pytest.raises(PolicyError, match="EVIDENCE_CHANGED"):
+        validate_approval(payload, [decision], [reviewer], proposer_id="agent", current_policy_version="v3", current_evidence_state=current_evidence_state)
+
+def test_revalidate_evidence_stale(approval_setup):
+    payload, decision, reviewer, current_evidence_state = approval_setup
+    # Change observed_at in current state to be stale
+    stale_time = datetime.now(timezone.utc) - timedelta(hours=2)
+    current_evidence_state["health-123"] = current_evidence_state["health-123"].model_copy(update={"observed_at": stale_time})
+    with pytest.raises(PolicyError, match="STALE_EVIDENCE"):
+        validate_approval(payload, [decision], [reviewer], proposer_id="agent", current_policy_version="v3", current_evidence_state=current_evidence_state)
+
+def test_modify_is_true_new_action_path(approval_setup):
+    payload, decision, reviewer, current_evidence_state = approval_setup
+    
+    # Simulate reviewer rejecting and wanting a modification
+    decision.decision = DecisionType.MODIFY
+    
+    store = ApprovalStore()
+    result = process_decision(store, "run-1", payload, [decision], [reviewer], "agent", "v3", current_evidence_state)
+    
+    # Must never return RollbackCommand
+    assert isinstance(result, ApprovalAuditEvent)
+    assert result.event_type == EventType.MODIFIED
+    
+    # Must create a new payload that will have a new digest
+    new_proposal = payload.proposal.model_copy(update={"deployment_id": "deploy-fixed"})
+    new_payload = payload.model_copy(update={"proposal": new_proposal})
+    assert new_payload.digest != payload.digest
+
+def test_execution_audit_events(approval_setup):
+    payload, decision, reviewer, current_evidence_state = approval_setup
+    cmd = validate_approval(payload, [decision], [reviewer], proposer_id="agent", current_policy_version="v3", current_evidence_state=current_evidence_state)
+    
+    store = ApprovalStore()
+    
+    # Test EXECUTION_SUCCEEDED
+    store.record_execution(cmd, ExecutionStatus.EXECUTED)
+    assert store.audit_events[-1].event_type == EventType.EXECUTION_SUCCEEDED
+    
+    # Test EXECUTION_FAILED
+    store.record_execution(cmd, ExecutionStatus.FAILED_BEFORE_COMMIT)
+    assert store.audit_events[-1].event_type == EventType.EXECUTION_FAILED
+    
+    # Test EXECUTION_OUTCOME_UNKNOWN
+    store.record_execution(cmd, ExecutionStatus.UNKNOWN_OUTCOME)
+    assert store.audit_events[-1].event_type == EventType.EXECUTION_OUTCOME_UNKNOWN

@@ -49,6 +49,8 @@ class EventType(str, Enum):
     AUTHORIZATION_DENIED = "AUTHORIZATION_DENIED"
     EXECUTION_STARTED = "EXECUTION_STARTED"
     EXECUTION_SUCCEEDED = "EXECUTION_SUCCEEDED"
+    EXECUTION_FAILED = "EXECUTION_FAILED"
+    EXECUTION_OUTCOME_UNKNOWN = "EXECUTION_OUTCOME_UNKNOWN"
     DUPLICATE_BLOCKED = "DUPLICATE_BLOCKED"
     CONFLICT = "CONFLICT"
     EXPIRED = "EXPIRED"
@@ -107,9 +109,8 @@ class EvidenceRef(BaseModel):
     observed_at: datetime
     max_age_seconds: int
     
-    @property
-    def is_stale(self) -> bool:
-        age = (datetime.now(timezone.utc) - self.observed_at).total_seconds()
+    def is_stale(self, now: datetime) -> bool:
+        age = (now - self.observed_at).total_seconds()
         return age > self.max_age_seconds
 
 
@@ -251,7 +252,14 @@ class ApprovalStore:
         )
         self.idempotency_records[command.idempotency_key] = (command.action_digest, receipt)
         
-        event_type = EventType.EXECUTION_SUCCEEDED if status == ExecutionStatus.EXECUTED else EventType.EXECUTION_STARTED
+        if status == ExecutionStatus.EXECUTED:
+            event_type = EventType.EXECUTION_SUCCEEDED
+        elif status == ExecutionStatus.FAILED_BEFORE_COMMIT:
+            event_type = EventType.EXECUTION_FAILED
+        elif status == ExecutionStatus.UNKNOWN_OUTCOME:
+            event_type = EventType.EXECUTION_OUTCOME_UNKNOWN
+        else:
+            event_type = EventType.EXECUTION_STARTED
         self.record_event(ApprovalAuditEvent(
             event_id=str(uuid.uuid4()), run_id="system", tenant_id=command.tenant_id,
             proposal_digest=command.approval_digest, event_type=event_type,
@@ -340,7 +348,8 @@ def validate_approval(
     decisions: List[ApprovalDecision],
     reviewers: List[ReviewerContext],
     proposer_id: str,
-    current_policy_version: str
+    current_policy_version: str,
+    current_evidence_state: Dict[str, EvidenceRef]
 ) -> RollbackCommand:
     """
     The authoritative approval validation function. 
@@ -357,7 +366,12 @@ def validate_approval(
         raise PolicyError("EXPIRED_APPROVAL")
         
     for ev in payload.evidence_refs:
-        if ev.is_stale:
+        if ev.evidence_id not in current_evidence_state:
+            raise PolicyError("EVIDENCE_CHANGED")
+        current_ev = current_evidence_state[ev.evidence_id]
+        if current_ev.source_version != ev.source_version:
+            raise PolicyError("EVIDENCE_CHANGED")
+        if current_ev.is_stale(current_time):
             raise PolicyError("STALE_EVIDENCE")
             
     expected_risk = compute_risk(payload.proposal, payload.environment)
@@ -416,7 +430,9 @@ def validate_approval(
         raise PolicyError("MISSING_REQUIRED_REVIEWER_ROLE")
             
     # Derive logical, application-owned idempotency key AFTER validation
-    idempotency_key = f"cmd_{payload.tenant_id}_{payload.digest}"
+    # Use normalized action semantics instead of the exact approval digest
+    action_digest = hashlib.sha256(f"{payload.tenant_id}:{payload.proposal.service}:{payload.proposal.region}:{payload.proposal.deployment_id}".encode()).hexdigest()
+    idempotency_key = f"cmd_{payload.tenant_id}_{action_digest}"
     
     return RollbackCommand(
         tenant_id=payload.tenant_id,
@@ -435,7 +451,8 @@ def process_decision(
     decisions: List[ApprovalDecision],
     reviewers: List[ReviewerContext],
     proposer_id: str,
-    current_policy_version: str
+    current_policy_version: str,
+    current_evidence_state: Dict[str, EvidenceRef]
 ) -> Union[RollbackCommand, ApprovalAuditEvent]:
     """
     First-class decision processing engine.
@@ -473,7 +490,7 @@ def process_decision(
 
     # If ALL are APPROVE, try to validate and yield command
     try:
-        cmd = validate_approval(payload, decisions, reviewers, proposer_id, current_policy_version)
+        cmd = validate_approval(payload, decisions, reviewers, proposer_id, current_policy_version, current_evidence_state)
         event = ApprovalAuditEvent(
             event_id=str(uuid.uuid4()), run_id=run_id, tenant_id=payload.tenant_id,
             proposal_digest=payload.digest, event_type=EventType.APPROVED, decision=DecisionType.APPROVE,
