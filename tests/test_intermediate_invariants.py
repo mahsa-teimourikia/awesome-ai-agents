@@ -1,5 +1,5 @@
 import pytest
-from datetime import datetime, timezone, timedelta, timedelta
+from datetime import datetime, timezone, timedelta
 import sys
 import os
 
@@ -845,7 +845,7 @@ def test_unknown_tool_blocked(base_context_04):
     assert "UNKNOWN_TOOL" in decision.reason
 
 def test_egress_wrong_tenant_blocked(authorized_context_04):
-    args = {"destination": "alerts@northstar.internal", "purpose": EgressPurpose_04.ALERTING.value, "sensitivity": Sensitivity_04.INTERNAL.value}
+    args = {"destination": "alerts@northstar.internal", "requested_purpose": EgressPurpose_04.ALERTING.value}
     digest = compute_digest_04("export_customer_records", "northstar", args)
     approval = ValidatedApprovalContext_04(action="export_customer_records", tenant="northstar", target_digest=digest, expiry=datetime.now(timezone.utc) + timedelta(minutes=10), policy_version="1.0")
     
@@ -856,12 +856,12 @@ def test_egress_wrong_tenant_blocked(authorized_context_04):
 
 def test_egress_invalid_purpose_blocked(authorized_context_04):
     # This shouldn't even pass pydantic validation for the ToolCall now
-    call = ToolCall_04(name="export_customer_records", arguments={"destination": "alerts@northstar.internal", "purpose": "exfiltration_test", "sensitivity": Sensitivity_04.INTERNAL.value})
+    call = ToolCall_04(name="export_customer_records", arguments={"destination": "alerts@northstar.internal", "requested_purpose": "exfiltration_test"})
     decision = validate_tool_call_04(call, authorized_context_04, validated_approval=None)
     assert decision.status == GuardrailStatus_04.REPAIRABLE
 
 def test_egress_restricted_data_blocked(authorized_context_04):
-    args = {"destination": "alerts@northstar.internal", "purpose": EgressPurpose_04.ALERTING.value, "sensitivity": Sensitivity_04.RESTRICTED.value}
+    args = {"destination": "alerts@northstar.internal", "requested_purpose": EgressPurpose_04.ALERTING.value}
     digest = compute_digest_04("export_customer_records", "northstar", args)
     approval = ValidatedApprovalContext_04(action="export_customer_records", tenant="northstar", target_digest=digest, expiry=datetime.now(timezone.utc) + timedelta(minutes=10), policy_version="1.0")
     
@@ -871,7 +871,7 @@ def test_egress_restricted_data_blocked(authorized_context_04):
     assert "Restricted data destination mismatch" in decision.reason
 
 def test_egress_restricted_data_to_vault_allowed(authorized_context_04):
-    args = {"destination": "secure-vault@northstar.internal", "purpose": EgressPurpose_04.ALERTING.value, "sensitivity": Sensitivity_04.RESTRICTED.value}
+    args = {"destination": "secure-vault@northstar.internal", "requested_purpose": EgressPurpose_04.ALERTING.value}
     digest = compute_digest_04("export_customer_records", "northstar", args)
     approval = ValidatedApprovalContext_04(action="export_customer_records", tenant="northstar", target_digest=digest, expiry=datetime.now(timezone.utc) + timedelta(minutes=10), policy_version="1.0")
     
@@ -879,13 +879,25 @@ def test_egress_restricted_data_to_vault_allowed(authorized_context_04):
     decision = validate_tool_call_04(call, authorized_context_04, validated_approval=approval)
     assert decision.status == GuardrailStatus_04.ALLOWED
 
-def test_egress_ordinary_reporting_allowed(authorized_context_04):
-    args = {"destination": "alerts@northstar.internal", "purpose": EgressPurpose_04.REPORTING.value, "sensitivity": Sensitivity_04.INTERNAL.value}
+
+def test_model_cannot_downgrade_sensitivity_to_bypass_vault(authorized_context_04):
+    args = {"destination": "alerts@northstar.internal", "requested_purpose": EgressPurpose_04.ALERTING.value}
     digest = compute_digest_04("export_customer_records", "northstar", args)
     approval = ValidatedApprovalContext_04(action="export_customer_records", tenant="northstar", target_digest=digest, expiry=datetime.now(timezone.utc) + timedelta(minutes=10), policy_version="1.0")
     
     call = ToolCall_04(name="export_customer_records", arguments=args)
-    decision = validate_tool_call_04(call, authorized_context_04, validated_approval=approval)
+    # Even if the model arguments look benign, the trusted resource sensitivity is passed as RESTRICTED
+    decision = validate_tool_call_04(call, authorized_context_04, validated_approval=approval, resource_sensitivity=Sensitivity_04.RESTRICTED)
+    assert decision.status == GuardrailStatus_04.BLOCKED
+    assert "Restricted data destination mismatch" in decision.reason
+
+def test_egress_ordinary_reporting_allowed(authorized_context_04):
+    args = {"destination": "alerts@northstar.internal", "requested_purpose": EgressPurpose_04.REPORTING.value}
+    digest = compute_digest_04("export_customer_records", "northstar", args)
+    approval = ValidatedApprovalContext_04(action="export_customer_records", tenant="northstar", target_digest=digest, expiry=datetime.now(timezone.utc) + timedelta(minutes=10), policy_version="1.0")
+    
+    call = ToolCall_04(name="export_customer_records", arguments=args)
+    decision = validate_tool_call_04(call, authorized_context_04, validated_approval=approval, resource_sensitivity=Sensitivity_04.INTERNAL)
     assert decision.status == GuardrailStatus_04.ALLOWED
 
 def test_tool_output_injection_is_untrusted():

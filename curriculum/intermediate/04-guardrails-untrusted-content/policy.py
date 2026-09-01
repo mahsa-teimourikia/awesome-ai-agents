@@ -139,8 +139,7 @@ class RestartServiceArgs(BaseModel):
 class ExportCustomerRecordsArgs(BaseModel):
     model_config = ConfigDict(extra="forbid")
     destination: str
-    purpose: EgressPurpose
-    sensitivity: Sensitivity
+    requested_purpose: EgressPurpose
 
 # --- Authoritative Tool Registry ---
 TOOL_REGISTRY: Dict[str, ToolDefinition] = {
@@ -299,7 +298,7 @@ def compute_digest(tool_name: str, tenant: str, arguments: dict) -> str:
     canonical = json.dumps(payload, sort_keys=True)
     return hashlib.sha256(canonical.encode()).hexdigest()
 
-def validate_tool_call(call: ToolCall, context: ExecutionContext, validated_approval: Optional[ValidatedApprovalContext] = None) -> ToolDecision:
+def validate_tool_call(call: ToolCall, context: ExecutionContext, validated_approval: Optional[ValidatedApprovalContext] = None, resource_sensitivity: Sensitivity = Sensitivity.RESTRICTED) -> ToolDecision:
     if call.name not in TOOL_REGISTRY:
         return ToolDecision(status=GuardrailStatus.BLOCKED, reason=f"UNKNOWN_TOOL: {call.name}")
         
@@ -353,8 +352,8 @@ def validate_tool_call(call: ToolCall, context: ExecutionContext, validated_appr
         egress_decision = validate_egress(
             destination=validated_args.destination,
             tenant=context.tenant_id,
-            sensitivity=validated_args.sensitivity,
-            purpose=validated_args.purpose,
+            sensitivity=resource_sensitivity,
+            purpose=validated_args.requested_purpose,
             context=context
         )
         if egress_decision.status != GuardrailStatus.ALLOWED:
