@@ -68,7 +68,7 @@ class TrajectoryStep(BaseModel):
     observed_at: Optional[float] = None
     expires_at: Optional[float] = None
     source_version: Optional[str] = None
-    execution_group: int = 0  # To model parallel vs sequential schedule
+    execution_group: Optional[int] = None  # To model parallel vs sequential schedule
 
 class Trajectory(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -317,8 +317,9 @@ def compute_metrics(trajectory: Trajectory, context: TrajectoryEvalContext) -> T
     # Observed Wall Clock Latency via execution groups
     # Group steps by execution_group
     groups = {}
-    for s in trajectory.steps:
-        groups.setdefault(s.execution_group, []).append(s)
+    for idx, s in enumerate(trajectory.steps):
+        group_id = s.execution_group if s.execution_group is not None else idx
+        groups.setdefault(group_id, []).append(s)
         
     observed_wall_clock = 0.0
     for g, steps_in_group in sorted(groups.items()):
@@ -446,16 +447,26 @@ def apply_optimization(trajectory: Trajectory, candidate: OptimizationCandidate)
     new_steps = []
     
     if candidate.optimization_type == OptimizationType.PARALLELIZE_READS:
-        # Get minimum execution group among affected steps
-        target_group = min((s.execution_group for s in trajectory.steps if s.step_id in candidate.affected_steps), default=0)
+        target_group = min((s.execution_group if s.execution_group is not None else i 
+                            for i, s in enumerate(trajectory.steps) if s.step_id in candidate.affected_steps), default=0)
         
+        last_call_affected = False
         for s in trajectory.steps:
-            if s.step_id in candidate.affected_steps:
-                # Merge into the same execution group
+            if s.step_type == StepType.TOOL_CALL:
+                if s.step_id in candidate.affected_steps:
+                    new_s = TrajectoryStep(**{**s.model_dump(), "execution_group": target_group})
+                    new_steps.append(new_s)
+                    last_call_affected = True
+                else:
+                    new_steps.append(s)
+                    last_call_affected = False
+            elif s.step_type == StepType.TOOL_RESULT and last_call_affected:
                 new_s = TrajectoryStep(**{**s.model_dump(), "execution_group": target_group})
                 new_steps.append(new_s)
+                last_call_affected = False
             else:
                 new_steps.append(s)
+                last_call_affected = False
     else:
         for s in trajectory.steps:
             if candidate.optimization_type == OptimizationType.REMOVE_DUPLICATE_READ:
