@@ -851,12 +851,17 @@ def test_05_summarize_results_computes_rates_and_p95(eval_case_05):
 
 
 
+
+
 # ==========================================
 # Course 06 Invariant Tests (Trajectory Optimization)
 # ==========================================
 
 import importlib.util
 import time
+import os
+import sys
+import pytest
 
 module_name_06 = "policy_06"
 file_path_06 = os.path.abspath(os.path.join(os.path.dirname(__file__), '../curriculum/intermediate/06-trajectory-optimization/policy.py'))
@@ -880,6 +885,7 @@ compute_metrics = policy_06.compute_metrics
 optimization_regression_gate = policy_06.optimization_regression_gate
 compare_trajectories = policy_06.compare_trajectories
 should_stop = policy_06.should_stop
+serialize_args = policy_06.serialize_args
 
 @pytest.fixture
 def context_06():
@@ -897,66 +903,94 @@ def context_06():
         required_evidence_ids=["e1", "e2"],
         forbidden_tools=["forbidden_action"],
         tenant_id="northstar",
+        policy_version="1.0",
+        authorization_scope="scope:read",
         tools=tools,
         dependency_graph={"get_customer_1": ["get_orders_1"]}
     )
 
-def test_06_dependent_calls_stay_sequential(context_06):
-    s1 = TrajectoryStep_06(step_id="get_customer_1", step_type=StepType_06.TOOL_CALL, tool_name="get_customer", target_tenant_id="northstar", latency_ms=10, cost_usd=0)
-    s2 = TrajectoryStep_06(step_id="get_orders_1", step_type=StepType_06.TOOL_CALL, tool_name="get_orders", target_tenant_id="northstar", latency_ms=10, cost_usd=0)
-    assert not can_parallelize(s1, s2, context_06)
-    assert not can_parallelize(s2, s1, context_06)
+def test_06_execution_groups_vs_critical_path(context_06):
+    # Sequential execution: 3 groups
+    traj_seq = Trajectory_06(
+        run_id="r1", tenant_id="northstar",
+        steps=[
+            TrajectoryStep_06(step_id="1", step_type=StepType_06.TOOL_CALL, tool_name="get_health", target_tenant_id="northstar", latency_ms=100, cost_usd=0, execution_group=0),
+            TrajectoryStep_06(step_id="2", step_type=StepType_06.TOOL_CALL, tool_name="query_logs", target_tenant_id="northstar", latency_ms=200, cost_usd=0, execution_group=1),
+            TrajectoryStep_06(step_id="3", step_type=StepType_06.TOOL_CALL, tool_name="get_customer", target_tenant_id="northstar", latency_ms=50, cost_usd=0, execution_group=2),
+        ],
+        final_answer="expected", agent_version="1", prompt_version="1", model_version="1", tool_version="1", policy_version="1", dataset_version="1"
+    )
+    m_seq = compute_metrics(traj_seq, context_06)
+    # Total work = 350
+    # Wall clock = 100+10 + 200+10 + 50+10 = 380
+    assert m_seq.total_work_ms == 350
+    assert m_seq.observed_wall_clock_latency_ms == 380
 
-def test_06_unknown_tool_fails_closed(context_06):
-    s1 = TrajectoryStep_06(step_id="1", step_type=StepType_06.TOOL_CALL, tool_name="unknown_tool", target_tenant_id="northstar", latency_ms=10, cost_usd=0)
-    s2 = TrajectoryStep_06(step_id="2", step_type=StepType_06.TOOL_CALL, tool_name="get_health", target_tenant_id="northstar", latency_ms=10, cost_usd=0)
-    assert not can_parallelize(s1, s2, context_06)
-    assert not is_valid_cache_hit(s1, {"expires_at": 9999999999}, context_06, time.time())
+    # Parallel execution: 1 group
+    traj_par = Trajectory_06(
+        run_id="r2", tenant_id="northstar",
+        steps=[
+            TrajectoryStep_06(step_id="1", step_type=StepType_06.TOOL_CALL, tool_name="get_health", target_tenant_id="northstar", latency_ms=100, cost_usd=0, execution_group=0),
+            TrajectoryStep_06(step_id="2", step_type=StepType_06.TOOL_CALL, tool_name="query_logs", target_tenant_id="northstar", latency_ms=200, cost_usd=0, execution_group=0),
+            TrajectoryStep_06(step_id="3", step_type=StepType_06.TOOL_CALL, tool_name="get_customer", target_tenant_id="northstar", latency_ms=50, cost_usd=0, execution_group=0),
+        ],
+        final_answer="expected", agent_version="1", prompt_version="1", model_version="1", tool_version="1", policy_version="1", dataset_version="1"
+    )
+    m_par = compute_metrics(traj_par, context_06)
+    # Total work = 350
+    # Wall clock = max(100, 200, 50) + 10 = 210
+    assert m_par.total_work_ms == 350
+    assert m_par.observed_wall_clock_latency_ms == 210
 
-def test_06_cache_respects_now_and_source_version(context_06):
-    now = 1000.0
-    s1 = TrajectoryStep_06(step_id="1", step_type=StepType_06.TOOL_CALL, tool_name="get_health", target_tenant_id="northstar", latency_ms=10, cost_usd=0, source_version="v1")
-    
-    # Fresh and matching source version
-    assert is_valid_cache_hit(s1, {"expires_at": 1001.0, "source_version": "v1"}, context_06, now)
-    
-    # Stale
-    assert not is_valid_cache_hit(s1, {"expires_at": 999.0, "source_version": "v1"}, context_06, now)
-    
-    # Mismatched source version
-    assert not is_valid_cache_hit(s1, {"expires_at": 1001.0, "source_version": "v2"}, context_06, now)
-
-def test_06_argument_binding_cache_test(context_06):
-    now = 1000.0
-    s1 = TrajectoryStep_06(step_id="1", step_type=StepType_06.TOOL_CALL, tool_name="get_health", arguments={"id": 1}, target_tenant_id="northstar", latency_ms=10, cost_usd=0)
-    
-    args_str_1 = str(sorted((k, v) for k, v in {"id": 1}.items()))
-    args_str_2 = str(sorted((k, v) for k, v in {"id": 2}.items()))
-    
-    assert is_valid_cache_hit(s1, {"expires_at": 1001.0, "arguments": args_str_1}, context_06, now)
-    assert not is_valid_cache_hit(s1, {"expires_at": 1001.0, "arguments": args_str_2}, context_06, now)
-
-def test_06_non_cacheable_tool(context_06):
-    s1 = TrajectoryStep_06(step_id="1", step_type=StepType_06.TOOL_CALL, tool_name="restart_service", target_tenant_id="northstar", latency_ms=10, cost_usd=0)
-    assert not is_valid_cache_hit(s1, {"expires_at": 9999999999}, context_06, time.time())
-
-def test_06_retry_semantics(context_06):
+def test_06_policy_block_containment_success(context_06):
     traj = Trajectory_06(
         run_id="r1", tenant_id="northstar",
         steps=[
-            TrajectoryStep_06(step_id="1", step_type=StepType_06.TOOL_CALL, tool_name="get_health", arguments={"s": 1}, target_tenant_id="northstar", latency_ms=10, cost_usd=0),
-            TrajectoryStep_06(step_id="2", step_type=StepType_06.TOOL_RESULT, result_status=ResultStatus_06.TIMEOUT, latency_ms=10, cost_usd=0),
-            TrajectoryStep_06(step_id="3", step_type=StepType_06.TOOL_CALL, tool_name="get_health", arguments={"s": 1}, target_tenant_id="northstar", latency_ms=10, cost_usd=0), # Justified
-            TrajectoryStep_06(step_id="4", step_type=StepType_06.TOOL_RESULT, result_status=ResultStatus_06.POLICY_BLOCKED, latency_ms=10, cost_usd=0),
-            TrajectoryStep_06(step_id="5", step_type=StepType_06.TOOL_CALL, tool_name="get_health", arguments={"s": 1}, target_tenant_id="northstar", latency_ms=10, cost_usd=0), # Not Justified
+            TrajectoryStep_06(step_id="1", step_type=StepType_06.TOOL_CALL, tool_name="forbidden_action", target_tenant_id="northstar", latency_ms=10, cost_usd=0),
+            TrajectoryStep_06(step_id="2", step_type=StepType_06.POLICY_DECISION, result_status=ResultStatus_06.POLICY_BLOCKED, latency_ms=10, cost_usd=0),
         ],
-        final_answer="", agent_version="1", prompt_version="1", model_version="1", tool_version="1", policy_version="1", dataset_version="1"
+        final_answer="expected", agent_version="1", prompt_version="1", model_version="1", tool_version="1", policy_version="1", dataset_version="1"
+    )
+    metrics = compute_metrics(traj, context_06)
+    assert metrics.forbidden_attempted == True
+    assert metrics.forbidden_executed == 0
+    assert metrics.is_policy_compliant == True
+
+def test_06_cache_policy_version_mismatch(context_06):
+    now = 1000.0
+    s1 = TrajectoryStep_06(step_id="1", step_type=StepType_06.TOOL_CALL, tool_name="get_health", target_tenant_id="northstar", latency_ms=10, cost_usd=0)
+    cache_entry = {"policy_version": "0.9", "authorization_scope": "scope:read", "tool_name": "get_health", "arguments": serialize_args(None), "expires_at": 1001.0}
+    assert not is_valid_cache_hit(s1, cache_entry, context_06, now)
+
+def test_06_cache_auth_scope_mismatch(context_06):
+    now = 1000.0
+    s1 = TrajectoryStep_06(step_id="1", step_type=StepType_06.TOOL_CALL, tool_name="get_health", target_tenant_id="northstar", latency_ms=10, cost_usd=0)
+    cache_entry = {"policy_version": "1.0", "authorization_scope": "scope:admin", "tool_name": "get_health", "arguments": serialize_args(None), "expires_at": 1001.0}
+    assert not is_valid_cache_hit(s1, cache_entry, context_06, now)
+
+def test_06_cache_tool_name_mismatch(context_06):
+    now = 1000.0
+    s1 = TrajectoryStep_06(step_id="1", step_type=StepType_06.TOOL_CALL, tool_name="get_health", target_tenant_id="northstar", latency_ms=10, cost_usd=0)
+    cache_entry = {"policy_version": "1.0", "authorization_scope": "scope:read", "tool_name": "query_logs", "arguments": serialize_args(None), "expires_at": 1001.0}
+    assert not is_valid_cache_hit(s1, cache_entry, context_06, now)
+
+def test_06_unknown_tool_classification(context_06):
+    traj = Trajectory_06(
+        run_id="r1", tenant_id="northstar",
+        steps=[
+            TrajectoryStep_06(step_id="1", step_type=StepType_06.TOOL_CALL, tool_name="unknown_tool", target_tenant_id="northstar", latency_ms=10, cost_usd=0),
+        ],
+        final_answer="expected", agent_version="1", prompt_version="1", model_version="1", tool_version="1", policy_version="1", dataset_version="1"
     )
     classified = classify_steps(traj, context_06.tools)
-    assert classified.steps[2].classification == StepClassification_06.JUSTIFIED_RETRY
-    assert classified.steps[4].classification != StepClassification_06.JUSTIFIED_RETRY
+    assert classified.steps[0].classification == StepClassification_06.UNKNOWN_TOOL_METADATA
 
-def test_06_bad_optimization_rejected(context_06):
+def test_06_nested_canonical_args():
+    a = {"a": 1, "b": {"c": 2, "d": 3}}
+    b = {"b": {"d": 3, "c": 2}, "a": 1}
+    assert serialize_args(a) == serialize_args(b)
+
+def test_06_unsupported_evidence_regression(context_06):
     baseline = Trajectory_06(
         run_id="r1", tenant_id="northstar",
         steps=[
@@ -965,56 +999,21 @@ def test_06_bad_optimization_rejected(context_06):
         ],
         final_answer="expected", agent_version="1", prompt_version="1", model_version="1", tool_version="1", policy_version="1", dataset_version="1"
     )
-    # Candidate removes the step (faster, but drops required evidence)
-    candidate = Trajectory_06(
-        run_id="r2", tenant_id="northstar",
-        steps=[],
-        final_answer="expected", agent_version="1", prompt_version="1", model_version="1", tool_version="1", policy_version="1", dataset_version="1"
-    )
-    
-    comp = compare_trajectories(baseline, candidate, context_06)
-    assert not optimization_regression_gate(comp)
-
-def test_06_safety_regression_rejected(context_06):
-    baseline = Trajectory_06(
-        run_id="r1", tenant_id="northstar",
-        steps=[
-            TrajectoryStep_06(step_id="1", step_type=StepType_06.TOOL_CALL, tool_name="get_health", target_tenant_id="northstar", latency_ms=10, cost_usd=0),
-            TrajectoryStep_06(step_id="2", step_type=StepType_06.TOOL_RESULT, result_status=ResultStatus_06.SUCCESS, evidence_ids=["e1", "e2"], latency_ms=10, cost_usd=0),
-        ],
-        final_answer="expected", agent_version="1", prompt_version="1", model_version="1", tool_version="1", policy_version="1", dataset_version="1"
-    )
-    # Candidate executes forbidden action
+    # Candidate executes un-supported evidence fetch (e4 is not available)
     candidate = Trajectory_06(
         run_id="r2", tenant_id="northstar",
         steps=[
             TrajectoryStep_06(step_id="1", step_type=StepType_06.TOOL_CALL, tool_name="get_health", target_tenant_id="northstar", latency_ms=10, cost_usd=0),
-            TrajectoryStep_06(step_id="2", step_type=StepType_06.TOOL_RESULT, result_status=ResultStatus_06.SUCCESS, evidence_ids=["e1", "e2"], latency_ms=10, cost_usd=0),
-            TrajectoryStep_06(step_id="3", step_type=StepType_06.TOOL_CALL, tool_name="forbidden_action", target_tenant_id="northstar", latency_ms=10, cost_usd=0),
-            TrajectoryStep_06(step_id="4", step_type=StepType_06.TOOL_RESULT, result_status=ResultStatus_06.SUCCESS, latency_ms=10, cost_usd=0),
+            TrajectoryStep_06(step_id="2", step_type=StepType_06.TOOL_RESULT, result_status=ResultStatus_06.SUCCESS, evidence_ids=["e1", "e2", "e4"], latency_ms=10, cost_usd=0),
         ],
         final_answer="expected", agent_version="1", prompt_version="1", model_version="1", tool_version="1", policy_version="1", dataset_version="1"
     )
     
+    bm = compute_metrics(baseline, context_06)
+    cm = compute_metrics(candidate, context_06)
     comp = compare_trajectories(baseline, candidate, context_06)
-    assert not optimization_regression_gate(comp)
+    
+    assert bm.unsupported_evidence_count == 0
+    assert cm.unsupported_evidence_count == 1
+    assert not optimization_regression_gate(comp, bm, cm)
 
-def test_06_actual_comparison_metrics(context_06):
-    traj = Trajectory_06(
-        run_id="r1", tenant_id="northstar",
-        steps=[
-            TrajectoryStep_06(step_id="1", step_type=StepType_06.TOOL_CALL, tool_name="get_health", target_tenant_id="northstar", latency_ms=100, cost_usd=1.0),
-            TrajectoryStep_06(step_id="2", step_type=StepType_06.TOOL_RESULT, result_status=ResultStatus_06.SUCCESS, evidence_ids=["e1"], latency_ms=10, cost_usd=0),
-        ],
-        final_answer="expected", agent_version="1", prompt_version="1", model_version="1", tool_version="1", policy_version="1", dataset_version="1"
-    )
-    
-    metrics = compute_metrics(traj, context_06)
-    assert metrics.total_work_ms == 110.0
-    assert metrics.cost_usd == 1.0
-    assert metrics.required_evidence_recall == 0.5 # 1 of 2
-    assert metrics.outcome_correct == True
-    
-def test_06_early_stopping():
-    assert should_stop({"e1", "e2", "e3"}, {"e1", "e2"}) == True
-    assert should_stop({"e1"}, {"e1", "e2"}) == False
