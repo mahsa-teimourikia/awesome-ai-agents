@@ -1375,3 +1375,226 @@ def test_write_recommendation_requires_policy():
     )
     decision = validate_investigation_response_04(response, {"valid_id_1"})
     assert decision.status == GuardrailStatus_04.POLICY_CHECK_REQUIRED
+
+
+# ============================
+# Course 08 Invariant Tests (Planning & Task Decomposition)
+# ============================
+import importlib.util
+import sys
+import os
+import pytest
+
+module_name_08 = "policy_08"
+file_path_08 = os.path.abspath(os.path.join(os.path.dirname(__file__), '../curriculum/intermediate/08-planning-task-decomposition/policy.py'))
+spec_08 = importlib.util.spec_from_file_location(module_name_08, file_path_08)
+policy_08 = importlib.util.module_from_spec(spec_08)
+sys.modules[module_name_08] = policy_08
+spec_08.loader.exec_module(policy_08)
+
+TaskStatus = policy_08.TaskStatus
+FailureCode = policy_08.FailureCode
+CheckpointStatus = policy_08.CheckpointStatus
+GoalContract = policy_08.GoalContract
+Task = policy_08.Task
+TaskState = policy_08.TaskState
+Plan = policy_08.Plan
+PlanPatch = policy_08.PlanPatch
+PolicyError = policy_08.PolicyError
+validate_dag = policy_08.validate_dag
+topological_layers = policy_08.topological_layers
+validate_plan_coverage = policy_08.validate_plan_coverage
+validate_plan = policy_08.validate_plan
+get_ready_tasks = policy_08.get_ready_tasks
+apply_plan_patch = policy_08.apply_plan_patch
+
+@pytest.fixture
+def contract_08():
+    return GoalContract(
+        goal_id="g1",
+        objective="Research adaptive RAG",
+        audience="Engineers",
+        required_deliverables=["report.md"],
+        required_sections=["security implications"],
+        required_evidence_types=["primary_paper", "implementation_guide"],
+        forbidden_actions=["deploy_code"],
+        max_tasks=10,
+        max_replans=2,
+        max_attempts_per_task=2,
+        max_total_cost_usd=5.0,
+        deadline_ms=60000.0,
+        allowed_capabilities=["read_paper", "compare_routes", "synthesize_report"]
+    )
+
+def test_08_valid_dag_accepted():
+    p = Plan(plan_id="p1", goal_id="g1", tasks=[
+        Task(task_id="t1", task_type="read_paper", objective="Read paper 1", expected_artifact_type="summary"),
+        Task(task_id="t2", task_type="compare_routes", objective="Compare routes", expected_artifact_type="report", dependencies=["t1"])
+    ])
+    validate_dag(p) # should not raise
+
+def test_08_duplicate_task_id_rejected():
+    p = Plan(plan_id="p1", goal_id="g1", tasks=[
+        Task(task_id="t1", task_type="read_paper", objective="Read paper 1", expected_artifact_type="summary"),
+        Task(task_id="t1", task_type="compare_routes", objective="Compare routes", expected_artifact_type="report")
+    ])
+    with pytest.raises(PolicyError, match="Duplicate task ID"):
+        validate_dag(p)
+
+def test_08_missing_dependency_rejected():
+    p = Plan(plan_id="p1", goal_id="g1", tasks=[
+        Task(task_id="t1", task_type="compare_routes", objective="Compare routes", expected_artifact_type="report", dependencies=["t2"])
+    ])
+    with pytest.raises(PolicyError, match="Missing dependency"):
+        validate_dag(p)
+
+def test_08_self_dependency_rejected():
+    p = Plan(plan_id="p1", goal_id="g1", tasks=[
+        Task(task_id="t1", task_type="read_paper", objective="Read paper 1", expected_artifact_type="summary", dependencies=["t1"])
+    ])
+    with pytest.raises(PolicyError, match="Self dependency"):
+        validate_dag(p)
+
+def test_08_cycle_rejected():
+    p = Plan(plan_id="p1", goal_id="g1", tasks=[
+        Task(task_id="t1", task_type="read_paper", objective="Read", expected_artifact_type="summary", dependencies=["t2"]),
+        Task(task_id="t2", task_type="compare_routes", objective="Compare", expected_artifact_type="report", dependencies=["t1"])
+    ])
+    with pytest.raises(PolicyError, match="Cycle detected"):
+        validate_dag(p)
+
+def test_08_independent_tasks_share_ready_layer():
+    p = Plan(plan_id="p1", goal_id="g1", tasks=[
+        Task(task_id="t1", task_type="read_paper", objective="Read 1", expected_artifact_type="summary"),
+        Task(task_id="t2", task_type="read_paper", objective="Read 2", expected_artifact_type="summary")
+    ])
+    layers = topological_layers(p)
+    assert len(layers) == 1
+    assert len(layers[0]) == 2
+    assert "t1" in [t.task_id for t in layers[0]]
+    assert "t2" in [t.task_id for t in layers[0]]
+
+def test_08_dependent_task_not_ready_early():
+    p = Plan(plan_id="p1", goal_id="g1", tasks=[
+        Task(task_id="t1", task_type="read_paper", objective="Read 1", expected_artifact_type="summary"),
+        Task(task_id="t2", task_type="compare", objective="Compare", expected_artifact_type="report", dependencies=["t1"])
+    ])
+    
+    # Empty states -> only t1 ready
+    ready = get_ready_tasks(p, {})
+    assert len(ready) == 1
+    assert ready[0].task_id == "t1"
+    
+    # t1 pending -> only t1 ready
+    ready = get_ready_tasks(p, {"t1": TaskState(task_id="t1", status=TaskStatus.PENDING)})
+    assert len(ready) == 1
+    
+    # t1 running -> nothing ready
+    ready = get_ready_tasks(p, {"t1": TaskState(task_id="t1", status=TaskStatus.RUNNING)})
+    assert len(ready) == 0
+    
+    # t1 succeeded -> t2 ready
+    ready = get_ready_tasks(p, {"t1": TaskState(task_id="t1", status=TaskStatus.SUCCEEDED)})
+    assert len(ready) == 1
+    assert ready[0].task_id == "t2"
+
+def test_08_unauthorized_tool_rejected(contract_08):
+    p = Plan(plan_id="p1", goal_id="g1", tasks=[
+        Task(task_id="t1", task_type="read_paper", objective="Read security implications", expected_artifact_type="summary", suggested_tools=["evil_tool"])
+    ])
+    with pytest.raises(PolicyError, match="Unauthorized tool requested"):
+        validate_plan(p, contract_08)
+
+def test_08_max_task_count_enforced(contract_08):
+    contract_08.max_tasks = 1
+    p = Plan(plan_id="p1", goal_id="g1", tasks=[
+        Task(task_id="t1", task_type="read", objective="Read security implications", expected_artifact_type="a"),
+        Task(task_id="t2", task_type="read", objective="Read more", expected_artifact_type="b")
+    ])
+    with pytest.raises(PolicyError, match="Max tasks exceeded"):
+        validate_plan(p, contract_08)
+
+def test_08_required_coverage_missing_rejected(contract_08):
+    p = Plan(plan_id="p1", goal_id="g1", tasks=[
+        Task(task_id="t1", task_type="read_paper", objective="Read adaptive RAG", expected_artifact_type="summary")
+    ])
+    with pytest.raises(PolicyError, match="Required coverage missing: security implications"):
+        validate_plan_coverage(p, contract_08)
+        
+    p.tasks.append(Task(task_id="t2", task_type="compare", objective="Analyze security implications", expected_artifact_type="summary"))
+    validate_plan_coverage(p, contract_08) # passes
+
+def test_08_replacement_patch_valid():
+    p = Plan(plan_id="p1", goal_id="g1", tasks=[
+        Task(task_id="t1", task_type="read", objective="Read A", expected_artifact_type="A"),
+        Task(task_id="t2", task_type="compare", objective="Compare", expected_artifact_type="report", dependencies=["t1"])
+    ])
+    
+    patch = PlanPatch(
+        add_tasks=[Task(task_id="t3", task_type="read", objective="Read B", expected_artifact_type="B")],
+        remove_edges=[("t1", "t2")],
+        add_edges=[("t3", "t2")],
+        reason="t1 failed, using t3 instead"
+    )
+    
+    p2 = apply_plan_patch(p, patch)
+    assert p2.version == 2
+    assert p2.parent_version == 1
+    assert "t1" not in [t for t in p2.tasks if t.task_id == "t2"][0].dependencies
+    assert "t3" in [t for t in p2.tasks if t.task_id == "t2"][0].dependencies
+    assert len(p2.tasks) == 3 # t1 remains in graph history
+
+def test_08_replacement_patch_introducing_cycle_rejected():
+    p = Plan(plan_id="p1", goal_id="g1", tasks=[
+        Task(task_id="t1", task_type="read", objective="A", expected_artifact_type="A"),
+        Task(task_id="t2", task_type="read", objective="B", expected_artifact_type="B", dependencies=["t1"])
+    ])
+    
+    patch = PlanPatch(
+        add_edges=[("t2", "t1")], # creates t1 -> t2 -> t1
+        reason="bad patch"
+    )
+    
+    with pytest.raises(PolicyError, match="Cycle detected"):
+        apply_plan_patch(p, patch)
+
+def test_08_plan_version_increments():
+    p = Plan(plan_id="p1", goal_id="g1", version=5, tasks=[
+        Task(task_id="t1", task_type="read", objective="A", expected_artifact_type="A")
+    ])
+    patch = PlanPatch(add_tasks=[], reason="noop")
+    p2 = apply_plan_patch(p, patch)
+    assert p2.version == 6
+    assert p2.parent_version == 5
+    assert p2.mutation_reason == "noop"
+
+def test_08_attempt_count_enforced(contract_08):
+    p = Plan(plan_id="p1", goal_id="g1", tasks=[
+        Task(task_id="t1", task_type="read", objective="security implications", expected_artifact_type="A", max_attempts=5)
+    ])
+    with pytest.raises(PolicyError, match="exceeds max attempts"):
+        validate_plan(p, contract_08)
+
+def test_08_failed_prerequisite_blocks_dependent_task():
+    p = Plan(plan_id="p1", goal_id="g1", tasks=[
+        Task(task_id="t1", task_type="read", objective="A", expected_artifact_type="A"),
+        Task(task_id="t2", task_type="read", objective="B", expected_artifact_type="B", dependencies=["t1"])
+    ])
+    
+    # t1 failed
+    ready = get_ready_tasks(p, {"t1": TaskState(task_id="t1", status=TaskStatus.FAILED)})
+    assert len(ready) == 0 # t2 is blocked because t1 is FAILED, not SUCCEEDED
+
+def test_08_empty_ready_queue_with_failure_not_completed():
+    p = Plan(plan_id="p1", goal_id="g1", tasks=[
+        Task(task_id="t1", task_type="read", objective="A", expected_artifact_type="A"),
+        Task(task_id="t2", task_type="read", objective="B", expected_artifact_type="B", dependencies=["t1"])
+    ])
+    states = {"t1": TaskState(task_id="t1", status=TaskStatus.FAILED)}
+    ready = get_ready_tasks(p, states)
+    
+    # the scheduler logic: if ready is empty, we must check if any task is PENDING.
+    pending = any(t.task_id not in states or states[t.task_id].status == TaskStatus.PENDING for t in p.tasks)
+    assert len(ready) == 0
+    assert pending == True # We are blocked, not completed!
+

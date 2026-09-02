@@ -1,8 +1,6 @@
-# 07 — Planning and task decomposition
+# 08 — Planning and task decomposition
 
 **Level:** Intermediate · **Primary lab:** **Notebook:** [`08_planning_task_decomposition.ipynb`](08_planning_task_decomposition.ipynb)
-
-**Scenario:** Northstar, a SaaS support team, is integrating this concept into their agentic workflow.
 
 Planning is the difference between a model that can select a tool and a system that can safely pursue a multi-step objective. A plan is not a chain-of-thought transcript. It is a **validated, bounded, inspectable proposal** for work: tasks, dependencies, constraints, milestones, and terminal conditions.
 
@@ -174,17 +172,17 @@ Set multiple terminal conditions: all required report sections are evidenced; an
 
 ## Watch For
 
-- **Assumption failure:** The model hallucinates an unsupported parameter.
-- **State leak:** Context is incorrectly preserved across runs.
-- **Timeout:** The tool takes too long and the agent loops.
-- **Auth bypass:** The agent attempts an action it shouldn't.
+- **Over-decomposition:** Creating a task for every function call instead of meaningful artifact boundaries.
+- **Missing dependencies:** Forgetting to explicitly link `synthesize` to `read_paper`.
+- **Cycles:** Designing a process where step A requires B, and B requires A.
+- **Unauthorized task creation:** The model granting itself tools via task generation.
+- **Stale plan:** Continuing a plan after a prerequisite fails instead of replanning.
+- **Unbounded replanning:** Retrying or replanning indefinitely without a budget.
+- **Failed prerequisite propagation:** Running a dependent task when its prerequisite failed.
+- **Premature completion:** Assuming an empty ready queue means success when tasks are actually blocked.
+- **Coverage gaps:** A plan completing without producing the required evidence.
+- **Planner metric gaming:** Planner splitting work into too many small chunks to inflate task counts.
 
-## Deep Dives & State of the Art
+## Further Deep Dives
 
-- **[Plan-and-Execute Architecture](DEEP_DIVE_PLAN_AND_EXECUTE.md)**
-
-
-## SOTA Deep Dives
-Explore industry-standard architectural patterns and enterprise implementation details:
-
-- [Plan And Execute](DEEP_DIVE_PLAN_AND_EXECUTE.md)
+- [Plan-and-Execute Architecture](DEEP_DIVE_PLAN_AND_EXECUTE.md)
