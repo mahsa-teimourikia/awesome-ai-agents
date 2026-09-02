@@ -12,7 +12,7 @@ Optimize unnecessary work while preserving the same safe, grounded outcome.
 
 The shortest run is not automatically the best run. A one-step answer that invents a diagnosis is worse than a three-step evidence path. Optimize cost, latency, and unnecessary work subject to hard constraints: safety, policy compliance, correct supported outcome, tenant scope, and recovery behavior.
 
-![Diagram](diagram.svg)
+![Diagram](assets/diagram.svg)
 
 ## What you learn
 
