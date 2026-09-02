@@ -847,3 +847,91 @@ def test_05_summarize_results_computes_rates_and_p95(eval_case_05):
     # Let's not assert exact ms because of the +10, just check it calculated a valid median/p95
     assert summary.p50_latency_ms >= 100
     assert summary.p95_latency_ms > summary.p50_latency_ms
+
+
+# ==========================================
+# Course 06 Invariant Tests (Trajectory Optimization)
+# ==========================================
+
+import importlib.util
+
+module_name_06 = "policy_06"
+file_path_06 = os.path.abspath(os.path.join(os.path.dirname(__file__), '../curriculum/intermediate/06-trajectory-optimization/policy.py'))
+spec_06 = importlib.util.spec_from_file_location(module_name_06, file_path_06)
+policy_06 = importlib.util.module_from_spec(spec_06)
+sys.modules[module_name_06] = policy_06
+spec_06.loader.exec_module(policy_06)
+
+StepType_06 = policy_06.StepType
+ResultStatus_06 = policy_06.ResultStatus
+ToolEffect_06 = policy_06.ToolEffect
+StepClassification_06 = policy_06.StepClassification
+ToolDefinition_06 = policy_06.ToolDefinition
+TrajectoryStep_06 = policy_06.TrajectoryStep
+Trajectory_06 = policy_06.Trajectory
+classify_steps = policy_06.classify_steps
+can_parallelize = policy_06.can_parallelize
+is_valid_cache_hit = policy_06.is_valid_cache_hit
+
+@pytest.fixture
+def tools_06():
+    return {
+        "get_health": ToolDefinition_06(name="get_health", effect=ToolEffect_06.READ, supports_parallel=True, cacheable=True),
+        "query_logs": ToolDefinition_06(name="query_logs", effect=ToolEffect_06.READ, supports_parallel=True, cacheable=True),
+        "restart_service": ToolDefinition_06(name="restart_service", effect=ToolEffect_06.WRITE, supports_parallel=False, cacheable=False)
+    }
+
+def test_06_duplicate_read_detected(tools_06):
+    traj = Trajectory_06(
+        run_id="r1", tenant_id="t1",
+        steps=[
+            TrajectoryStep_06(step_id="1", step_type=StepType_06.TOOL_CALL, tool_name="get_health", arguments={"s": 1}, target_tenant_id="t1", latency_ms=10, cost_usd=0),
+            TrajectoryStep_06(step_id="2", step_type=StepType_06.TOOL_CALL, tool_name="get_health", arguments={"s": 1}, target_tenant_id="t1", latency_ms=10, cost_usd=0)
+        ],
+        final_answer="", agent_version="1", prompt_version="1", model_version="1", tool_version="1", policy_version="1", dataset_version="1"
+    )
+    classified = classify_steps(traj, tools_06)
+    assert classified.steps[0].classification == StepClassification_06.REQUIRED_EVIDENCE
+    assert classified.steps[1].classification == StepClassification_06.DUPLICATE_READ
+
+def test_06_duplicate_write_not_treated_as_removable_read(tools_06):
+    traj = Trajectory_06(
+        run_id="r1", tenant_id="t1",
+        steps=[
+            TrajectoryStep_06(step_id="1", step_type=StepType_06.TOOL_CALL, tool_name="restart_service", arguments={"s": 1}, target_tenant_id="t1", latency_ms=10, cost_usd=0),
+            TrajectoryStep_06(step_id="2", step_type=StepType_06.TOOL_CALL, tool_name="restart_service", arguments={"s": 1}, target_tenant_id="t1", latency_ms=10, cost_usd=0)
+        ],
+        final_answer="", agent_version="1", prompt_version="1", model_version="1", tool_version="1", policy_version="1", dataset_version="1"
+    )
+    classified = classify_steps(traj, tools_06)
+    assert classified.steps[0].classification == StepClassification_06.SIDE_EFFECT
+    assert classified.steps[1].classification == StepClassification_06.SIDE_EFFECT
+
+def test_06_independent_reads_parallelizable(tools_06):
+    s1 = TrajectoryStep_06(step_id="1", step_type=StepType_06.TOOL_CALL, tool_name="get_health", target_tenant_id="t1", latency_ms=10, cost_usd=0)
+    s2 = TrajectoryStep_06(step_id="2", step_type=StepType_06.TOOL_CALL, tool_name="query_logs", target_tenant_id="t1", latency_ms=10, cost_usd=0)
+    assert can_parallelize(s1, s2, tools_06)
+
+def test_06_rate_limit_conflict_prevents_parallelization():
+    t_def = {
+        "t1": ToolDefinition_06(name="t1", effect=ToolEffect_06.READ, supports_parallel=True, cacheable=True, rate_limit_group="g1"),
+        "t2": ToolDefinition_06(name="t2", effect=ToolEffect_06.READ, supports_parallel=True, cacheable=True, rate_limit_group="g1")
+    }
+    s1 = TrajectoryStep_06(step_id="1", step_type=StepType_06.TOOL_CALL, tool_name="t1", target_tenant_id="t1", latency_ms=10, cost_usd=0)
+    s2 = TrajectoryStep_06(step_id="2", step_type=StepType_06.TOOL_CALL, tool_name="t2", target_tenant_id="t1", latency_ms=10, cost_usd=0)
+    assert not can_parallelize(s1, s2, t_def)
+
+def test_06_cache_respects_tenant_and_freshness():
+    s = TrajectoryStep_06(step_id="1", step_type=StepType_06.TOOL_CALL, tool_name="t1", target_tenant_id="northstar", latency_ms=10, cost_usd=0, observed_at=100)
+    
+    # Fresh and matching scope
+    assert is_valid_cache_hit(s, {"policy_version": "1.0", "expires_at": 200}, "northstar", "1.0")
+    
+    # Stale
+    assert not is_valid_cache_hit(s, {"policy_version": "1.0", "expires_at": 50}, "northstar", "1.0")
+    
+    # Cross tenant leak
+    assert not is_valid_cache_hit(s, {"policy_version": "1.0", "expires_at": 200}, "globex", "1.0")
+    
+    # Policy version mismatch
+    assert not is_valid_cache_hit(s, {"policy_version": "0.9", "expires_at": 200}, "northstar", "1.0")

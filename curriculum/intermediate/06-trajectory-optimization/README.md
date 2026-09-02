@@ -2,100 +2,65 @@
 
 **Level:** Intermediate · **Time:** 60 min · **Prerequisites:** None
 
-**Scenario:** Northstar, a SaaS support team, is integrating this concept into their agentic workflow.
+**Scenario:** Northstar investigates EU checkout latency.
 
 **Notebook:** [`06_trajectory_optimization.ipynb`](06_trajectory_optimization.ipynb) 
+**Policy Definitions:** [`policy.py`](policy.py)
 
-Northstar’s EU checkout investigator succeeds in both versions below. One takes
-nine steps, repeats search and log calls, costs more, and takes longer. The
-other gathers the minimum independent evidence and produces the same supported
-recommendation. Optimize the **full trajectory**, never token count in isolation.
+**Primary lesson:**
+Optimize unnecessary work while preserving the same safe, grounded outcome.
+
+The shortest run is not automatically the best run. A one-step answer that invents a diagnosis is worse than a three-step evidence path. Optimize cost, latency, and unnecessary work subject to hard constraints: safety, policy compliance, correct supported outcome, tenant scope, and recovery behavior.
 
 ![Diagram](diagram.svg)
 
 ## What you learn
 
-- Diagnose redundant model/tool calls, repeated retrieval, reflection loops,
-  poor routing, and unnecessary context.
-- Preserve grounding, policy compliance, recovery, and abstention while reducing
-  latency and cost.
+- Diagnose redundant model/tool calls, repeated retrieval, reflection loops, poor routing, and unnecessary context.
+- Distinguish total work vs critical-path wall-clock latency.
+- Preserve grounding, policy compliance, recovery, and abstention while reducing latency and cost.
 - Choose sequential versus parallel execution from dependencies and rate limits.
-- Set budgets, cache safely, and prevent optimization regressions with evals.
+- Set budgets, cache safely (respecting tenant, version, and policy scope).
+- Prevent optimization regressions with strict evaluation gates.
 
 ## 1. Define the objective correctly
 
-The shortest run is not automatically best. A one-step answer that invents a
-diagnosis is worse than a three-step evidence path. Optimize subject to hard
-constraints: safety/policy pass, correct supported outcome, tenant scope, and
-recovery behavior. Then compare latency, cost, calls, retries, and trajectory
-length. A useful operational metric is **cost per successful compliant task**.
+The best trajectory is the lowest-cost / lowest-latency path THAT STILL SATISFIES QUALITY, GROUNDING, POLICY, AND RECOVERY CONSTRAINTS.
 
 ## 2. Step-by-step method
 
-1. Instrument every model call, tool call, retries, cached result, decision,
-   latency, token/cost estimate, and policy block.
-2. Build a baseline on representative tasks; inspect traces rather than averages.
-3. Label each step as required evidence, justified recovery, duplicate,
-   speculative reflection, or side effect.
-4. Remove duplication, constrain tool choice, cache safe deterministic reads,
-   parallelize only independent allowed reads, and replace open-ended reflection
-   with an evaluator/threshold.
-5. Re-run outcome, trajectory, safety, and operations evals; roll back any
-   optimization that harms accuracy, grounding, or safety.
-
-## Experiments
-
-`lab.py` compares the nine-step wasteful trace with a three-step optimized
-trace. Add an extra `query_logs` call and observe duplicate cost; remove
-`query_logs` and observe that success fails because evidence is insufficient.
-Use `choose_parallel` to show why independent reads may run in parallel, while
-dependent calls and rate-limited systems must remain sequential.
-
-## Production practices
-
-- Cache only authorization-safe, freshness-bounded results; include tenant,
-  policy, and data version in cache keys.
-- Give each run step/tool/model budgets and a deadline; spend budget only on a
-  defined information gain or recovery condition.
-- Batch/parallelize independent reads cautiously; cap fan-out and respect rate
-  limits and downstream load.
-- Keep high-risk actions out of optimization loops; approval requirements never
-  disappear because a trajectory is “efficient.”
-- Compare candidate changes to a frozen baseline and canary release gate.
+1. Instrument every model call, tool call, retries, cached result, decision, latency, cost estimate, and policy block.
+2. Build a baseline on representative tasks.
+3. Classify each step as required evidence, justified recovery, duplicate read, speculative reflection, or side effect.
+4. Remove duplication, constrain tool choice, cache safe deterministic reads, parallelize only independent allowed reads, and replace open-ended reflection with an evaluator/threshold.
+5. Re-run outcome, trajectory, safety, and operations evals; reject any optimization that harms accuracy, grounding, or safety.
 
 ## Watch For
 
-- **Assumption failure:** The model hallucinates an unsupported parameter.
-- **State leak:** Context is incorrectly preserved across runs.
-- **Timeout:** The tool takes too long and the agent loops.
-- **Auth bypass:** The agent attempts an action it shouldn't.
+- premature stopping
+- over-parallelization
+- stale caching
+- duplicate retrieval
+- reflection loops
+- retry storms
+- optimizer metric gaming
+- removing safety controls
+- critical-path mismeasurement
+- cost/latency trade-offs
 
 ## Checkpoint
 
-**1. What is the primary purpose of this module?**
-- A) To understand the core concept.
-- B) To write complex boilerplate.
-- C) To ignore system errors.
-- D) To bypass security.
+1. Why isn't the shortest trajectory always best?
+2. Difference between total work and critical path?
+3. When may two tools run in parallel?
+4. What must safe cache keys bind?
+5. When is a repeated call a justified retry?
+6. Why can't an optimizer remove approval checks?
+7. How do you detect premature stopping?
+8. What is cost per successful compliant task?
+9. What is a Pareto-optimal trajectory?
+10. How should Course 05 evaluation gate Course 06 optimization?
 
-**2. How do we mitigate the primary failure mode?**
-- A) Retries.
-- B) Human approval.
-- C) Logging.
-- D) Idempotency keys.
+## Further Deep Dives
 
-## References
-
-- [Anthropic: Building effective agents](https://www.anthropic.com/engineering/building-effective-agents)
-- [OpenAI evaluation best practices](https://developers.openai.com/api/docs/guides/evaluation-best-practices)
-- [LangGraph workflows and agents](https://docs.langchain.com/oss/python/langgraph/workflows-agents)
-
-## Deep Dives & State of the Art
-
-- **[Few-Shot Prompting and DSPy](DEEP_DIVE_FEW_SHOT.md)**
-
-
-## SOTA Deep Dives
-Explore industry-standard architectural patterns and enterprise implementation details:
-
-- [Few Shot](DEEP_DIVE_FEW_SHOT.md)
+- **[DSPy & LM Program Optimization](DEEP_DIVE_FEW_SHOT.md)**
