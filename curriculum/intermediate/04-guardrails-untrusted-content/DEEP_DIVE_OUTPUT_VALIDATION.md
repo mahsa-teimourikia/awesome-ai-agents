@@ -1,54 +1,66 @@
 # Deep Dive: Post-LLM Output Validation
 
-Because LLMs are non-deterministic, probabilistic models, you cannot guarantee what text they will output. Even with the best system prompt in the world, an agent might:
-- Hallucinate a parameter format.
-- Output JSON with a trailing comma (breaking standard parsers).
-- Speak in a rude or aggressive tone.
-
-To deploy agents safely to production, you must build a "firewall" immediately after the LLM generates its text. This is **Output Validation**.
+Because LLMs are non-deterministic, probabilistic models, you cannot guarantee what text they will output. Output Validation is the process of building deterministic structural and semantic checks immediately after the LLM generates its text.
 
 ---
 
 ## 1. Structural Validation (JSON Enforcement)
 
-The most common failure point in agentic pipelines is malformed JSON.
-SOTA architectures (like Pydantic and LangChain Output Parsers) use robust, typed schemas.
+The most common failure point in agentic pipelines is malformed JSON or mismatched schemas. Modern architectures (like Pydantic and provider Structured Outputs) enforce robust, typed schemas.
 
 ```python
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel
 
-class SummaryOutput(BaseModel):
-    bullet_points: list[str]
-    sentiment_score: float # Must be a float
-
-# If the LLM outputs "sentiment_score": "high", Pydantic throws an error.
+class InvestigationResponse(BaseModel):
+    summary: str
+    evidence_ids: list[str]
+    recommended_action: Literal["restart", "export", "monitor", "escalate"]
+    confidence: float
 ```
 
-### The SOTA "Retry with Error" Loop
-When structural validation fails, you do not crash the program. You catch the `ValidationError`, pass the exact error message back into the LLM as a new user prompt, and ask it to fix the JSON. Models like GPT-4o have a near 100% success rate on the first retry.
+If the LLM hallucinates an unsupported `recommended_action`, structural validation catches it before execution.
 
 ---
 
-## 2. Semantic Guardrails (NeMo & NeGuard)
+## 2. Output Validation Taxonomy
 
-Structural validation ensures the data *fits*. Semantic validation ensures the data is *safe*.
+Valid Pydantic JSON does **not** mean the output is safe, grounded, or authorized. You must explicitly distinguish between different categories of failure:
 
-Frameworks like **NVIDIA NeMo Guardrails** or **Guardrails.ai** allow you to run secondary, deterministic checks on the LLM's output string before it reaches the user.
-
-### Examples of Semantic Checks:
-1. **Competitor Mentions:** Regex or lightweight NLP models check if the agent mentioned a rival company.
-2. **Toxicity/Tone:** Passing the output string through a cheap, fast model (like a locally hosted RoBERTa sentiment classifier) to ensure the agent isn't being rude.
-3. **Fact-Checking (Self-RAG):** Asking a secondary LLM, *"Does this output perfectly align with the retrieved context?"* to prevent hallucinations.
+| Failure Category | Example | System Action |
+| :--- | :--- | :--- |
+| **Schema/Structural Error** | Missing required field, malformed JSON. | **Repairable:** Sanitize error and ask model to retry. |
+| **Unsupported Evidence** | Citing an `evidence_id` that was never retrieved. | **Abstain/Escalate:** The model is hallucinating data. |
+| **Unauthorized Action** | Attempting a write action without the required roles. | **Deterministic Stop:** Block execution instantly. |
+| **Cross-Tenant Violation** | Attempting to access data for a different tenant ID. | **Deterministic Stop:** Block execution instantly. |
+| **Egress Denied** | Attempting to export records to an unapproved destination. | **Deterministic Stop:** Block execution instantly. |
+| **Policy Violation** | Violating internal business logic (e.g., restarting during a blackout window). | **Deterministic Stop:** Block execution instantly. |
 
 ---
 
-## 3. The "Abstain" Fallback
+## 3. Bounded Repair Loop
 
-What happens if the LLM output violates a semantic guardrail (e.g., it is overly aggressive), and it *fails* the retry loop 3 times in a row?
+For **schema/structural errors only**, you can implement a bounded repair loop:
 
-Enterprise architectures must implement the **Abstain Pattern**.
+1. Catch the schema failure (e.g., `ValidationError`).
+2. **Sanitize the validation feedback.** Do not send raw internal exceptions, database traces, or stack traces back to the model.
+3. Ask the model to fix the format (e.g., *"Your previous output was missing the 'confidence' field. Please provide the JSON with all required fields."*).
+4. Limit retries (e.g., maximum of 3 attempts). 
 
-If the output validation loop exhausts its retry budget, the agent must silently discard the bad output, halt the trajectory, and return a hardcoded, deterministic fallback string:
-> *"I apologize, but I am having trouble processing this request right now. Please contact a human support representative at support@company.com."*
+**Do NOT retry policy, authorization, tenant, or egress failures.** If a model attempts a cross-tenant data export, you do not ask it to try again—you halt the trajectory and alert security.
 
-By pairing strict Pydantic parsing with Semantic Guardrails and an Abstain Fallback, you prevent PR disasters and ensure the agent only ever takes safe actions.
+---
+
+## 4. Semantic Validation & Fallibility
+
+Semantic validation involves evaluating the *meaning* or *safety* of the output, often using secondary LLMs (e.g., "Does this output perfectly align with the retrieved context?").
+
+While these are useful signals for observability, **secondary LLM evaluators are fallible**. They can suffer from the same prompt injection and hallucination vulnerabilities as the primary model. Semantic validation is a defense-in-depth layer, but it does not replace deterministic application controls (like tenant scoping and tool authorization).
+
+---
+
+## 5. The "Abstain" Fallback
+
+If an output violates a semantic guardrail, hallucinates evidence, or exhausts its repair budget, the architecture must gracefully fallback.
+
+The agent should discard the bad output, halt the trajectory, and return a deterministic, hardcoded fallback string:
+> *"I apologize, but I am having trouble processing this request right now. I will escalate this to a human support representative."*

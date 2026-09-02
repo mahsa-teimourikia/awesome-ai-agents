@@ -2,9 +2,9 @@
 
 **Level:** Intermediate · **Time:** 60 min · **Prerequisites:** None
 
-**Scenario:** Northstar, a SaaS support team, is integrating this concept into their agentic workflow.
+**Primary lesson:** Detection can fail; deterministic containment must still prevent harmful actions.
 
-**Primary lesson:** **Notebook:** [`04_guardrails_untrusted_content.ipynb`](04_guardrails_untrusted_content.ipynb) 
+**Notebook:** [`04_guardrails_untrusted_content.ipynb`](04_guardrails_untrusted_content.ipynb) 
 
 ## Scenario: the poisoned checkout runbook
 
@@ -15,9 +15,13 @@ must keep the agent helpful—continue read-only investigation—while preventin
 the document from changing policy, accessing another tenant, or triggering a
 side effect.
 
-![Diagram](diagram.svg)
+![Diagram](assets/diagram.svg)
 
 ## Outcomes
+
+Detection signals can have false positives (e.g., "ignore policy" in an internal legitimate document).
+`REQUIRE_REVIEW` prevents heuristic detection from becoming an automatic authority decision, keeping humans in the loop for ambiguous cases.
+
 
 You will distinguish direct from indirect injection; model behavior from
 enforceable application controls; input, context, output, tool, and execution
@@ -68,18 +72,18 @@ high-risk actions, and adversarial testing.
 
 ## 3. The lab’s guardrails
 
-`lab.py` intentionally keeps detection simple and deterministic. It scans a
-poisoned runbook, quarantines it, emits no unsafe text into the model context,
-and blocks the document-requested restart at the tool boundary. The marker scan
+`policy.py` and the notebook intentionally keep detection simple and deterministic. They scan a
+poisoned runbook, quarantine it, emit no unsafe text into the model context,
+and block the document-requested restart at the tool boundary. The marker scan
 is a teaching device, **not** a complete prompt-injection defense: attackers can
 obfuscate, split, translate, or hide instructions in image/document content.
 
 ```python
-gate = classify_document(poisoned_document)
-context = build_context(poisoned_document, gate)
-tool_gate = validate_tool_call(restart_call, tenant_id="northstar", approved=False)
-assert not gate.allowed
-assert not tool_gate.allowed
+content_decision = classify_content(poisoned_document)
+# The application handles quarantine and builds safe context...
+tool_gate = validate_tool_call(restart_call, context, validated_approval=None)
+assert content_decision.disposition == ContentDisposition.QUARANTINE
+assert tool_gate.status == GuardrailStatus.APPROVAL_REQUIRED
 ```
 
 ## 4. Meaningful experiments
@@ -93,9 +97,9 @@ no detected marker.
 
 ### Experiment B — containment survives detector failure
 
-Temporarily remove an injection marker from `INJECTION_MARKERS`. The document
+Temporarily use an obfuscated payload that bypasses the injection detector. The document
 may enter context, but `validate_tool_call` still blocks `restart_service`
-without application-owned approval. This illustrates defense in depth: no text
+without application-owned validated approval. This illustrates defense in depth: no text
 classifier should be the sole permission boundary.
 
 ### Experiment C — scope and tool abuse
@@ -118,36 +122,31 @@ tenant boundary; the second is blocked because unknown tools default to deny.
 - Test direct/indirect, obfuscated, multilingual, split-payload, tool-output,
   cross-tenant, multimodal/OCR, and stale-memory attacks.
 
-## Exercises
-
-1. Add a confidence/uncertainty route that asks a human to classify a suspicious
-   document rather than silently trusting it.
-2. Add a strict Pydantic schema to the optional tool-call boundary.
-3. Add an egress policy that blocks a notification destination outside the
-   current tenant’s approved domains.
-4. Turn `adversarial_suite()` into a release gate with an attack success rate,
-   false-positive rate, and zero-tolerance harmful-action metric.
-
 ## Watch For
 
-- **Assumption failure:** The model hallucinates an unsupported parameter.
-- **State leak:** Context is incorrectly preserved across runs.
-- **Timeout:** The tool takes too long and the agent loops.
-- **Auth bypass:** The agent attempts an action it shouldn't.
+- Detector overconfidence
+- Indirect prompt injection
+- Tool-result poisoning
+- Cross-tenant access
+- Egress exfiltration
+- Unsafe token rehydration
+- PII false negatives
+- Validator false confidence
+- Retrying non-repairable policy failures
+- Poisoned memory/subagent output
 
 ## Checkpoint
 
-**1. What is the primary purpose of this module?**
-- A) To understand the core concept.
-- B) To write complex boilerplate.
-- C) To ignore system errors.
-- D) To bypass security.
-
-**2. How do we mitigate the primary failure mode?**
-- A) Retries.
-- B) Human approval.
-- C) Logging.
-- D) Idempotency keys.
+1. Does delimiting untrusted text prevent prompt injection?
+2. What happens if injection detection misses an attack?
+3. Why can retrieved content never authorize a tool?
+4. Detection vs containment: what is the difference?
+5. Why doesn't valid JSON mean an action is authorized?
+6. Which failures are repairable and retryable?
+7. Why must tenant scope come from trusted context?
+8. How do egress controls reduce exfiltration risk?
+9. What should happen to useful but untrusted evidence?
+10. Which metric matters more for safety: detection rate or harmful-action success rate?
 
 ## References
 
@@ -158,14 +157,7 @@ tenant boundary; the second is blocked because unknown tools default to deny.
 - [LangGraph interrupts](https://docs.langchain.com/oss/python/langgraph/interrupts)
 - [Indirect prompt injection research](https://arxiv.org/abs/2302.12173)
 
-## Deep Dives & State of the Art
+## Further Deep Dives
 
-- **[Pre-LLM Regex Scrubbing (PII Protection)](DEEP_DIVE_REGEX.md)**
-- **[Output Validation (Guardrails)](DEEP_DIVE_OUTPUT_VALIDATION.md)**
-
-
-## SOTA Deep Dives
-Explore industry-standard architectural patterns and enterprise implementation details:
-
-- [Output Validation](DEEP_DIVE_OUTPUT_VALIDATION.md)
-- [Regex](DEEP_DIVE_REGEX.md)
+- **[Data Protection Before Model Invocation](DEEP_DIVE_DATA_PROTECTION.md)**
+- **[Post-LLM Output Validation](DEEP_DIVE_OUTPUT_VALIDATION.md)**

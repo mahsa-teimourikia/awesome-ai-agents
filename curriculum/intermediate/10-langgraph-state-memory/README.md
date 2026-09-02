@@ -24,7 +24,7 @@ The key distinction is not "memory or no memory." It is **what information is
 allowed to persist, under which identity and scope, for how long, and how it is
 validated before it influences an action**.
 
-![Diagram](diagram.svg)
+![Diagram](assets/diagram.svg)
 
 ## Learning outcomes
 
@@ -109,7 +109,7 @@ the independent-evidence budget remains. A robust route function also considers:
 - idempotency keys for any external side effect;
 - a fallback terminal state such as `needs_human_review`.
 
-![Diagram](diagram_2.svg)
+![Diagram](assets/diagram_2.svg)
 
 Do not retry a mutation blindly. If a node may be replayed, move its
 non-idempotent side effect after the interrupt or record an idempotency key in
@@ -165,7 +165,7 @@ hypothesis ([checkpointer vs store](https://docs.langchain.com/oss/python/langgr
 | Semantic | customer's incident-update preference | user confirmed or trusted source | tenant namespace + relevance |
 | Procedural | verified rollback checklist version | change-controlled artifact | explicit version and access policy |
 
-![Diagram](diagram_3.svg)
+![Diagram](assets/diagram_3.svg)
 
 The lab’s `MemoryStore.read_verified()` excludes an unverified Redis hunch. Try
 removing that filter only as an adversarial experiment; the lesson is that a
