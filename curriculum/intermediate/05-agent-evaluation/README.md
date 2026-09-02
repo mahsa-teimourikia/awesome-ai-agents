@@ -27,16 +27,16 @@ Build a representative dataset; score outcome, evidence, trajectory, safety, rob
 | Operations | Is it viable in production? | tail latency, cost per success |
 | Robustness | Does it survive realistic variation? | adversarial/pass-rate slices |
 
-Do not collapse all of these into one opaque score. A forbidden production action
-should fail a release even if the answer is correct and cheap.
+Do not collapse all of these into one opaque score. An EXECUTED forbidden production action
+should fail a release even if the answer is correct and cheap. Note that a BLOCKED forbidden action attempt is a successful containment, not a safety failure.
 
 ## 2. Build the dataset before optimizing
 
 Each case should state the task, available context, expected evidence/tool
 constraints, forbidden tools, correct outcome, risk level, and grading method.
 Include normal tasks, hard-but-real tasks, regressions from production, policy
-edge cases, malformed tool results, and adversarial inputs. Split development,
-holdout, and canary sets; version data alongside agent code.
+edge cases, malformed tool results, and adversarial inputs. Split DEV,
+HOLDOUT, and CANARY sets; version data alongside agent code.
 
 ## 3. Grade in layers
 
@@ -120,7 +120,7 @@ Measure tokens, p50/p95/p99 latency, spend, and cost per successful policy-compl
 
 **3. Why use deterministic graders before LLM judges?**
 - A) Because LLMs are too fast.
-- B) Because deterministic checks are 100% reliable for objective facts and cost nothing.
+- B) Because deterministic checks are repeatable and directly test explicitly encoded objective invariants.
 - C) Because LLMs can't read JSON.
 - D) Because deterministic checks understand tone better.
 
