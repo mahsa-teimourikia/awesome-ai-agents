@@ -63,4 +63,4 @@ The best trajectory is the lowest-cost / lowest-latency path THAT STILL SATISFIE
 
 ## Further Deep Dives
 
-- **[DSPy & LM Program Optimization](DEEP_DIVE_FEW_SHOT.md)**
+- **[DSPy & LM Program Optimization](DEEP_DIVE_PROGRAM_OPTIMIZATION.md)**
