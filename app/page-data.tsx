@@ -826,32 +826,35 @@ export const curriculumData:Subject[] = [
   {
     "id": "i8",
     "level": "Intermediate",
-    "step": "07",
+    "step": "08",
     "title": "Planning & Task Decomposition",
-    "description": "Master the Plan-and-Execute architecture by isolating the Planner to generate static DAGs.",
-    "time": "45-60 min",
-    "outcome": "Ensure complex goals are broken down and executed in parallel.",
-    "lesson": "Plan-and-Execute architectures.",
-    "exercise": "Build a dynamic sub-task DAG.",
+    "description": "Design and execute a bounded Adaptive-RAG research DAG with application-owned policy, checkpoints, and atomic replanning.",
+    "time": "90-120 min",
+    "outcome": "Produce a cited report only after validated dependencies, evidence, and a completion checkpoint pass.",
+    "lesson": "Typed goal contracts, DAG scheduling, bounded plan patches, and completion gates.",
+    "exercise": "Inject a failed source and evidence conflict; inspect the validated plan versions and event trace.",
     "failures": [
-      "Assumption failure:: The model hallucinates an unsupported parameter.",
-      "State leak:: Context is incorrectly preserved across runs.",
-      "Timeout:: The tool takes too long and the agent loops.",
-      "Auth bypass:: The agent attempts an action it shouldn't."
+      "Invalid plan:: Duplicate IDs, missing dependencies, cycles, or incomplete coverage are rejected before execution.",
+      "Policy violation:: A planner-proposed tool is outside the application-owned capability policy.",
+      "Source failure:: A missing source triggers one evidence-backed, atomic plan patch.",
+      "Evidence conflict:: The checkpoint routes conflicting findings through reconciliation.",
+      "Budget exhaustion:: Attempt, replan, cost, and deadline limits terminate with a typed state."
     ],
     "notebook": "curriculum/intermediate/08-planning-task-decomposition/08_planning_task_decomposition.ipynb",
     "refs": [
       "curriculum/intermediate/08-planning-task-decomposition/README.md",
-      "curriculum/intermediate/08-planning-task-decomposition/08_planning_task_decomposition.ipynb"
+      "curriculum/intermediate/08-planning-task-decomposition/08_planning_task_decomposition.ipynb",
+      "curriculum/intermediate/08-planning-task-decomposition/lab.py",
+      "curriculum/intermediate/08-planning-task-decomposition/DEEP_DIVE_PLAN_AND_EXECUTE.md"
     ],
-    "code": "",
-    "goals": ["By the end, you can:\n\n1","Turn a vague objective into a goal contract and a hierarchy of verifiable deliverables","Represent independent and dependent work as a directed acyclic graph (DAG), identify parallel work, and reject cycles","Separate a planner that **proposes** typed tasks from an executor that enforces policy and runs them","Use milestones, quality checkpoints, constraints, budgets, and state snapshots for long-horizon work","Replan only from explicit evidence—missing coverage, a failed task, a conflict, or a changed constraint—not from an unbounded “try harder” instruction","Explain when a deterministic workflow is safer than an agentic plan, and when hierarchical or dynamic planning earns its complexity"],
+    "code": "curriculum/intermediate/08-planning-task-decomposition/lab.py",
+    "goals": ["Translate a vague request into a bounded goal contract.","Validate task IDs, dependencies, acyclicity, coverage, capability use, and budgets before execution.","Schedule ready tasks from immutable definitions and separate mutable runtime state.","Apply evidence-backed plan patches atomically without mutating the parent plan.","Require typed provenance and a passing checkpoint before declaring completion.","Compare DAG, manager-specialist, and handoff orchestration patterns."],
     "quiz": []
   },
   {
     "id": "i9",
     "level": "Intermediate",
-    "step": "08",
+    "step": "09",
     "title": "Agentic RAG",
     "description": "Upgrade standard RAG with Semantic Routing to select domain-specific vector stores.",
     "time": "45-60 min",
@@ -876,7 +879,7 @@ export const curriculumData:Subject[] = [
   {
     "id": "i10",
     "level": "Intermediate",
-    "step": "09",
+    "step": "10",
     "title": "State & Memory (LangGraph)",
     "description": "Design durable memory systems using native Checkpointers.",
     "time": "45-60 min",

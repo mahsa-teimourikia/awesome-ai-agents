@@ -1,6 +1,6 @@
 # Deep Dive: Plan-and-Execute Architectures
 
-Standard ReAct agents suffer from state accumulation. If a user provides a complex, long-horizon goal, a standard agent attempts to solve it dynamically step-by-step. By step 12, the context window is bloated with unrelated web search results, and the agent forgets the original goal, resulting in infinite loops or hallucinated completion.
+Long-running reactive loops can accumulate irrelevant context, duplicate work, and lose track of constraints unless state and progress are explicitly managed. This is distinct from long-context attention degradation: the engineering problem is that an unbounded loop has no durable task contract, milestone, or termination proof.
 
 One useful architecture to mitigate this is **Task Decomposition**, commonly implemented as the **Plan-and-Execute** architecture.
 
@@ -21,15 +21,15 @@ The Scheduler sits in application code. It computes topological layers and ensur
 - **Readiness:** Only moves a task to `READY` when all prerequisites are `SUCCEEDED`.
 
 ### C. The Worker (The Executor)
-The Worker is an agent whose context window is heavily restricted to the current task.
-- **Input:** *Exactly one* sub-task from the Planner.
+The Worker is an agent whose context is scoped to the current task.
+- **Input:** One task contract plus the parent goal constraints, authorized capability, required dependency artifacts, and selected prior state.
 - **Execution:** It runs a tight loop to solve just that sub-task, utilizing tools.
-- **Output:** A concise string or typed artifact summarizing the result of the sub-task.
+- **Output:** A typed, immutable artifact with provenance, execution identity, and a result hash.
 
 ### D. The Evaluator / Checkpoint
 As the Worker completes tasks, the Evaluator verifies the result against the `GoalContract`. If an artifact is missing required sections or evidence, the Checkpoint fails. 
 
-**Why it's useful:** This architecture bounds the context window. The Worker never gets overwhelmed because its context is limited to the current task, while the application durably stores completed artifacts.
+**Why it's useful:** This architecture bounds task context while the application durably stores completed artifacts. A successful task normally advances the existing plan; replanning runs only after explicit failure, evidence conflict, missing coverage, or changed constraints.
 
 ---
 
@@ -63,18 +63,35 @@ class Task(BaseModel):
     task_id: str
     task_type: str
     dependencies: List[str]
+    expected_artifact_type: str
+
+class TaskState(BaseModel):
+    task_id: str
     status: str = "PENDING"
 
 class PlanPatch(BaseModel):
     add_tasks: List[Task]
     remove_tasks: List[str]
-    add_edges: List[tuple]
-    remove_edges: List[tuple]
-    reason: str
+    add_edges: List[tuple[str, str]]
+    remove_edges: List[tuple[str, str]]
+    reason: str  # a bounded enum in the executable lab
 ```
 
-## 4. Enterprise Considerations
+Task definitions remain immutable; runtime state records attempts and status separately. A patch is applied to a deep copy, then the full graph, coverage, capability, attempt, cost, and deadline policy is revalidated before the plan version changes.
 
-- **Latency and Cost:** Plan-and-Execute is significantly slower and more expensive than standard ReAct because of the overhead of Planner, Evaluator, and Replanner nodes. Use it *only* for complex, multi-step goals.
-- **Model Selection:** The Planner requires extremely high reasoning capabilities (e.g., Claude 3.5 Sonnet, GPT-4o). However, the Worker can often be a cheaper, faster model (e.g., Gemini Flash) because its task scope is so narrow. This is known as **Model Cascading** and is a key driver of cost-efficiency in enterprise agents.
+## 4. Explicit DAGs versus manager/specialist delegation
+
+| Pattern | What stays explicit | Best fit |
+| --- | --- | --- |
+| Validated DAG | dependencies, artifacts, ready sets, plan versions | auditable research and analysis with known joins |
+| Manager with specialists | manager retains ownership and chooses specialists dynamically | delegation depends on observations |
+| Handoff | conversation ownership transfers to a specialist | a specialist should directly continue the interaction |
+
+The [OpenAI Agents SDK comparison](https://developers.openai.com/api/docs/guides/agents#compare-the-responses-api-and-agents-sdk) documents agents-as-tools and handoffs as multi-agent options. They do not replace application-owned authorization or deterministic plan validation.
+
+## 5. Evaluation and enterprise considerations
+
+- **Latency and cost:** Measure planner cost + worker cost + replan cost + coordination overhead per successful, policy-compliant result. Plan-and-execute can reduce duplicate work, but extra calls can also cost more than a fixed workflow or bounded reactive loop.
+- **Model selection:** Match planner capability to decomposition complexity and benchmark the planner separately from workers. A higher-capability planner with lower-cost workers is one hypothesis to evaluate, not an automatic saving.
+- **Plan evaluation:** Track valid-plan rate, structured coverage, dependency correctness, unauthorized-tool rejection, unnecessary tasks, parallelism opportunity, replan rate, checkpoint failures, and cost per success.
 - **Durable State:** Always persist the `Plan`, `PlanPatch` history, and `TaskState`s to a database. If the execution is interrupted, you must be able to resume without starting from scratch.

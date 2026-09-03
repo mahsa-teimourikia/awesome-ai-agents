@@ -2041,17 +2041,17 @@ export const questions = [
   {
     "id": "chkpt-planning_task_decomposition",
     "category": "Planning",
-    "prompt": "Why does the Plan-and-Execute architecture perform better than standard ReAct on long, complex tasks?",
+    "prompt": "Why can an explicit Plan-and-Execute DAG help on some long, complex tasks?",
     "options": [
       "It uses a more expensive model.",
-      "It forces the LLM to separate the \"thinking/planning\" phase from the \"doing\" phase, preventing it from getting distracted by intermediate tool outputs.",
+      "It separates bounded planning from policy-controlled execution, exposes dependencies and artifacts, and makes progress and checkpoints inspectable.",
       "It allows the LLM to skip tools entirely.",
       "It runs on a quantum computer."
     ],
     "correct": [
       1
     ],
-    "explanation": "Refer to the notebook for the detailed explanation.",
+    "explanation": "An explicit DAG can improve inspectability and coordination when dependencies matter, but it is not universally better than ReAct; the correct pattern depends on task shape and evaluation results.",
     "source": {
       "label": "Notebook Checkpoint",
       "url": "curriculum/intermediate/08-planning-task-decomposition/08_planning_task_decomposition.ipynb"
@@ -2222,17 +2222,17 @@ export const questions = [
   {
     "id": "sota-plan-and-execute",
     "category": "Planning",
-    "prompt": "In a Plan-and-Execute architectural pattern, what is the strict role of the 'Planner' node?",
+    "prompt": "In a policy-controlled Plan-and-Execute system, what is the planner's strict role?",
     "options": [
       "To execute all tools asynchronously in a single massive prompt",
-      "To generate a static list or DAG of sub-tasks, assign them to worker nodes, and strictly wait for all workers to return before executing a final synthesis",
+      "To propose bounded, typed tasks and dependencies for application validation; it does not authorize or execute tools",
       "To constantly rewrite the codebase to accommodate new requirements",
       "To bypass authorization restrictions to accelerate task completion"
     ],
     "correct": [
       1
     ],
-    "explanation": "Plan-and-Execute architectures isolate the planning phase (generating a DAG of tasks) from the execution phase, ensuring complex goals are broken down into parallel, verifiable steps.",
+    "explanation": "The planner proposes structure. Application code validates capabilities, dependencies, budgets, and coverage before restricted executors run any task; checkpoints then control replanning and completion.",
     "source": {
       "label": "Deep Dive: Plan and Execute",
       "url": "curriculum/intermediate/08-planning-task-decomposition/DEEP_DIVE_PLAN_AND_EXECUTE.md"
