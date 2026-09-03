@@ -100,6 +100,16 @@ class ReplanReason(str, Enum):
     CONSTRAINT_CHANGED = "CONSTRAINT_CHANGED"
 
 
+class RuntimeAction(str, Enum):
+    CONTINUE = "CONTINUE"
+    RETRY = "RETRY"
+    REPAIR = "REPAIR"
+    REPLAN = "REPLAN"
+    RECONCILE = "RECONCILE"
+    STOP = "STOP"
+    ESCALATE = "ESCALATE"
+
+
 class PolicyError(ValueError):
     """A deterministic planning or execution-policy violation."""
 
@@ -175,7 +185,7 @@ class Task(FrozenModel):
     output_schema: tuple[tuple[str, str], ...] = ()
     max_attempts: int = Field(default=1, gt=0, le=10)
     timeout_ms: float = Field(default=30_000.0, gt=0)
-    estimated_cost_usd: float = Field(default=0.0, ge=0)
+    estimated_cost_usd: float = Field(default=0.05, ge=0)
     risk: str = Field(default="low", pattern=r"^(low|medium|high)$")
 
     @field_validator("dependencies", "suggested_tools")
@@ -264,6 +274,31 @@ class PlanPatch(FrozenModel):
         if not (self.add_tasks or self.remove_tasks or self.add_edges or self.remove_edges):
             raise ValueError("Plan patch must contain at least one mutation")
         return self
+
+    def canonical_digest(self) -> str:
+        """Return a stable audit ID derived from normalized patch content."""
+
+        normalized = {
+            "add_tasks": sorted(
+                (task.model_dump(mode="json") for task in self.add_tasks),
+                key=lambda task: task["task_id"],
+            ),
+            "remove_tasks": sorted(self.remove_tasks),
+            "add_edges": sorted(
+                (edge.model_dump(mode="json") for edge in self.add_edges),
+                key=lambda edge: (edge["prerequisite"], edge["dependent"]),
+            ),
+            "remove_edges": sorted(
+                (edge.model_dump(mode="json") for edge in self.remove_edges),
+                key=lambda edge: (edge["prerequisite"], edge["dependent"]),
+            ),
+            "reason": self.reason.value,
+            "evidence_task_id": self.evidence_task_id,
+        }
+        payload = json.dumps(
+            normalized, sort_keys=True, separators=(",", ":")
+        )
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
 class CheckpointResult(FrozenModel):
@@ -373,11 +408,15 @@ def validate_plan_coverage(plan: Plan, contract: GoalContract) -> tuple[float, f
     missing_evidence = sorted(set(contract.required_evidence_types) - evidence_types)
     missing_deliverables = sorted(set(contract.required_deliverables) - deliverables)
     if missing_sections:
-        raise PolicyError(f"MISSING_SECTION_COVERAGE: {', '.join(missing_sections)}")
+        raise PolicyError(f"PLAN_COVERAGE_MISSING: {', '.join(missing_sections)}")
     if missing_evidence:
-        raise PolicyError(f"MISSING_EVIDENCE_COVERAGE: {', '.join(missing_evidence)}")
+        raise PolicyError(
+            f"REQUIRED_EVIDENCE_TYPE_MISSING: {', '.join(missing_evidence)}"
+        )
     if missing_deliverables:
-        raise PolicyError(f"MISSING_DELIVERABLE: {', '.join(missing_deliverables)}")
+        raise PolicyError(
+            f"REQUIRED_DELIVERABLE_MISSING: {', '.join(missing_deliverables)}"
+        )
 
     section_rate = len(sections & set(contract.required_sections)) / len(
         contract.required_sections
@@ -554,9 +593,43 @@ def validate_replan_budget(replan_count: int, contract: GoalContract) -> None:
         )
 
 
-def _patch_digest(patch: PlanPatch) -> str:
-    payload = json.dumps(patch.model_dump(mode="json"), sort_keys=True, separators=(",", ":"))
-    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+def can_attempt(task: Task, task_state: TaskState, contract: GoalContract) -> bool:
+    """Return whether another dispatch is allowed by task and contract limits."""
+
+    allowed_attempts = min(task.max_attempts, contract.max_attempts_per_task)
+    return task_state.attempt < allowed_attempts
+
+
+def failure_action(failure_code: FailureCode, attempt_available: bool) -> RuntimeAction:
+    """Map typed execution failures to deterministic retry/replan policy."""
+
+    if failure_code == FailureCode.TIMEOUT:
+        return RuntimeAction.RETRY if attempt_available else RuntimeAction.ESCALATE
+    if failure_code == FailureCode.INVALID_OUTPUT:
+        return RuntimeAction.REPAIR if attempt_available else RuntimeAction.ESCALATE
+    if failure_code == FailureCode.SOURCE_UNAVAILABLE:
+        return RuntimeAction.REPLAN
+    if failure_code == FailureCode.CONFLICTING_EVIDENCE:
+        return RuntimeAction.RECONCILE
+    if failure_code in {
+        FailureCode.AUTH_DENIED,
+        FailureCode.POLICY_BLOCKED,
+        FailureCode.BUDGET_EXCEEDED,
+    }:
+        return RuntimeAction.STOP
+    return RuntimeAction.ESCALATE
+
+
+def checkpoint_action(status: CheckpointStatus) -> RuntimeAction:
+    """Map checkpoint outcomes to completion, replanning, or terminal handling."""
+
+    return {
+        CheckpointStatus.PASS: RuntimeAction.CONTINUE,
+        CheckpointStatus.MISSING_EVIDENCE: RuntimeAction.REPLAN,
+        CheckpointStatus.CONFLICT: RuntimeAction.RECONCILE,
+        CheckpointStatus.BUDGET_EXHAUSTED: RuntimeAction.STOP,
+        CheckpointStatus.NEEDS_REVIEW: RuntimeAction.ESCALATE,
+    }[status]
 
 
 def apply_plan_patch(
@@ -622,7 +695,7 @@ def apply_plan_patch(
         created_at=plan.created_at,
         parent_version=plan.version,
         mutation_reason=patch.reason,
-        patch_digest=_patch_digest(patch),
+        patch_digest=patch.canonical_digest(),
     )
     validate_plan(new_plan, contract, capability_policy)
     return new_plan

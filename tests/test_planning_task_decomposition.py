@@ -262,6 +262,16 @@ def test_plan_cost_budget_enforced(plan, contract, capability_policy):
         policy.validate_plan(expensive, contract, capability_policy)
 
 
+def test_task_without_cost_uses_conservative_fixture_estimate():
+    task = policy.Task(
+        task_id="estimated-task",
+        task_type="read-source",
+        objective="Use the documented fallback estimate.",
+        expected_artifact_type="evidence-bundle",
+    )
+    assert task.estimated_cost_usd > 0
+
+
 def test_total_attempt_budget_enforced(plan, contract, capability_policy):
     constrained = contract.model_copy(update={"max_total_attempts": 6})
     with pytest.raises(policy.PolicyError, match="TOTAL_ATTEMPT_BUDGET_EXCEEDED"):
@@ -297,7 +307,7 @@ def test_missing_required_section_rejected(plan, contract, capability_policy):
         for task in plan.tasks
     )
     invalid = plan.model_copy(update={"tasks": tasks}, deep=True)
-    with pytest.raises(policy.PolicyError, match="MISSING_SECTION_COVERAGE"):
+    with pytest.raises(policy.PolicyError, match="PLAN_COVERAGE_MISSING"):
         policy.validate_plan(invalid, contract, capability_policy)
 
 
@@ -316,7 +326,7 @@ def test_missing_required_evidence_rejected(plan, contract, capability_policy):
         for task in plan.tasks
     )
     invalid = plan.model_copy(update={"tasks": tasks}, deep=True)
-    with pytest.raises(policy.PolicyError, match="MISSING_EVIDENCE_COVERAGE"):
+    with pytest.raises(policy.PolicyError, match="REQUIRED_EVIDENCE_TYPE_MISSING"):
         policy.validate_plan(invalid, contract, capability_policy)
 
 
@@ -324,7 +334,7 @@ def test_missing_deliverable_rejected(plan, contract, capability_policy):
     invalid_contract = contract.model_copy(
         update={"required_deliverables": ("missing-deliverable",)}
     )
-    with pytest.raises(policy.PolicyError, match="MISSING_DELIVERABLE"):
+    with pytest.raises(policy.PolicyError, match="REQUIRED_DELIVERABLE_MISSING"):
         policy.validate_plan(plan, invalid_contract, capability_policy)
 
 
@@ -340,6 +350,7 @@ def test_checkpoint_reports_missing_evidence(contract):
 def test_replacement_patch_versions_without_mutating_parent(
     plan, contract, capability_policy
 ):
+    original_plan = plan.model_dump_json()
     original_dependencies = next(
         task.dependencies for task in plan.tasks if task.task_id == "compare-routes"
     )
@@ -349,12 +360,104 @@ def test_replacement_patch_versions_without_mutating_parent(
     assert patched.version == 2
     assert patched.parent_version == 1
     assert patched.patch_digest and len(patched.patch_digest) == 64
+    assert plan.model_dump_json() == original_plan
     assert next(
         task.dependencies for task in plan.tasks if task.task_id == "compare-routes"
     ) == original_dependencies
     assert "read-replacement-guidance" in next(
         task.dependencies for task in patched.tasks if task.task_id == "compare-routes"
     )
+
+
+def test_patch_digest_is_public_stable_and_content_addressed():
+    patch = lab.source_replacement_patch()
+    changed = patch.model_copy(update={"reason": policy.ReplanReason.TASK_FAILURE})
+    multi_operation = lab.conflict_reconciliation_patch()
+    reordered = multi_operation.model_copy(
+        update={"add_tasks": tuple(reversed(multi_operation.add_tasks))}
+    )
+    assert len(patch.canonical_digest()) == 64
+    assert patch.canonical_digest() == lab.source_replacement_patch().canonical_digest()
+    assert patch.canonical_digest() != changed.canonical_digest()
+    assert multi_operation.canonical_digest() == reordered.canonical_digest()
+
+
+@pytest.mark.parametrize(
+    "patch",
+    [
+        policy.PlanPatch(
+            add_edges=(
+                policy.DependencyEdge(
+                    prerequisite="missing-task", dependent="compare-routes"
+                ),
+            ),
+            reason=policy.ReplanReason.TASK_FAILURE,
+            evidence_task_id="compare-routes",
+        ),
+        policy.PlanPatch(
+            add_edges=(
+                policy.DependencyEdge(
+                    prerequisite="compare-routes", dependent="missing-task"
+                ),
+            ),
+            reason=policy.ReplanReason.TASK_FAILURE,
+            evidence_task_id="compare-routes",
+        ),
+        policy.PlanPatch(
+            remove_tasks=("missing-task",),
+            reason=policy.ReplanReason.TASK_FAILURE,
+            evidence_task_id="compare-routes",
+        ),
+    ],
+)
+def test_malformed_patch_operations_are_rejected_atomically(
+    plan, contract, capability_policy, patch
+):
+    original = plan.model_dump(mode="json")
+    with pytest.raises(policy.PolicyError):
+        policy.apply_plan_patch(plan, patch, contract, capability_policy)
+    assert plan.model_dump(mode="json") == original
+
+
+def test_patch_rejects_duplicate_added_task_atomically(
+    plan, contract, capability_policy
+):
+    original = plan.model_dump(mode="json")
+    patch = policy.PlanPatch(
+        add_tasks=(plan.tasks[0],),
+        reason=policy.ReplanReason.TASK_FAILURE,
+        evidence_task_id="compare-routes",
+    )
+    with pytest.raises(policy.PolicyError, match="PATCH_DUPLICATE_TASK_ID"):
+        policy.apply_plan_patch(plan, patch, contract, capability_policy)
+    assert plan.model_dump(mode="json") == original
+
+
+def test_patch_rejects_dangling_dependency_after_task_removal(
+    plan, contract, capability_policy
+):
+    original = plan.model_dump(mode="json")
+    patch = policy.PlanPatch(
+        remove_tasks=("read-adaptive-rag-primary",),
+        reason=policy.ReplanReason.TASK_FAILURE,
+        evidence_task_id="compare-routes",
+    )
+    with pytest.raises(policy.PolicyError, match="MISSING_DEPENDENCY"):
+        policy.apply_plan_patch(plan, patch, contract, capability_policy)
+    assert plan.model_dump(mode="json") == original
+
+
+def test_patch_exceeding_task_budget_is_rejected(
+    plan, contract, capability_policy
+):
+    constrained = contract.model_copy(update={"max_tasks": len(plan.tasks)})
+    with pytest.raises(policy.PolicyError, match="PLAN_TOO_LARGE"):
+        policy.apply_plan_patch(
+            plan,
+            lab.source_replacement_patch(),
+            constrained,
+            capability_policy,
+        )
 
 
 def test_rejected_cycle_patch_does_not_mutate_parent(plan, contract, capability_policy):
@@ -406,9 +509,59 @@ def test_replan_budget_enforced(contract):
         policy.validate_replan_budget(contract.max_replans, contract)
 
 
+def test_runtime_attempt_policy_reports_available_and_exhausted(plan, contract):
+    task = plan.tasks[0]
+    state = policy.TaskState(task_id=task.task_id, attempt=task.max_attempts - 1)
+    assert policy.can_attempt(task, state, contract)
+    state.attempt = task.max_attempts
+    assert not policy.can_attempt(task, state, contract)
+
+
+@pytest.mark.parametrize(
+    ("failure_code", "attempt_available", "expected"),
+    [
+        (policy.FailureCode.TIMEOUT, True, policy.RuntimeAction.RETRY),
+        (policy.FailureCode.TIMEOUT, False, policy.RuntimeAction.ESCALATE),
+        (policy.FailureCode.INVALID_OUTPUT, True, policy.RuntimeAction.REPAIR),
+        (policy.FailureCode.INVALID_OUTPUT, False, policy.RuntimeAction.ESCALATE),
+        (policy.FailureCode.SOURCE_UNAVAILABLE, False, policy.RuntimeAction.REPLAN),
+        (policy.FailureCode.AUTH_DENIED, True, policy.RuntimeAction.STOP),
+        (policy.FailureCode.POLICY_BLOCKED, True, policy.RuntimeAction.STOP),
+        (policy.FailureCode.BUDGET_EXCEEDED, True, policy.RuntimeAction.STOP),
+        (
+            policy.FailureCode.CONFLICTING_EVIDENCE,
+            False,
+            policy.RuntimeAction.RECONCILE,
+        ),
+    ],
+)
+def test_failure_codes_have_explicit_runtime_policy(
+    failure_code, attempt_available, expected
+):
+    assert policy.failure_action(failure_code, attempt_available) == expected
+
+
+@pytest.mark.parametrize(
+    ("status", "expected"),
+    [
+        (policy.CheckpointStatus.PASS, policy.RuntimeAction.CONTINUE),
+        (policy.CheckpointStatus.MISSING_EVIDENCE, policy.RuntimeAction.REPLAN),
+        (policy.CheckpointStatus.CONFLICT, policy.RuntimeAction.RECONCILE),
+        (policy.CheckpointStatus.BUDGET_EXHAUSTED, policy.RuntimeAction.STOP),
+        (policy.CheckpointStatus.NEEDS_REVIEW, policy.RuntimeAction.ESCALATE),
+    ],
+)
+def test_checkpoint_statuses_have_explicit_runtime_policy(status, expected):
+    assert policy.checkpoint_action(status) == expected
+
+
 def test_default_run_replans_and_completes():
     state = lab.run_research_plan()
-    assert state.status == policy.RunStatus.COMPLETED
+    assert state.terminal_status == policy.RunStatus.COMPLETED
+    assert state.run_id == "adaptive-rag-run"
+    assert state.plan_id == state.plan.plan_id
+    assert state.current_plan_version == state.plan.version
+    assert state.started_at == lab.FIXED_TIME
     assert state.plan.version == 2
     assert state.replan_count == 1
     assert state.checkpoint.status == policy.CheckpointStatus.PASS
@@ -430,7 +583,11 @@ def test_failed_source_remains_in_audit_history():
 
 def test_completion_requires_checkpoint_and_deliverable(contract):
     plan = lab.build_initial_plan()
-    state = lab.RunState(
+    state = lab.PlanningRunState(
+        run_id="test-run",
+        plan_id=plan.plan_id,
+        current_plan_version=plan.version,
+        started_at=lab.FIXED_TIME,
         plan=plan,
         task_states={
             task.task_id: policy.TaskState(
@@ -440,12 +597,42 @@ def test_completion_requires_checkpoint_and_deliverable(contract):
         },
     )
     assert policy.get_ready_tasks(plan, state.task_states) == []
-    assert lab.evaluate_completion(state, contract) == policy.RunStatus.BLOCKED
+    assert lab.evaluate_run_status(state, contract) == policy.RunStatus.BLOCKED
+
+
+def test_checkpoint_pass_is_required_even_after_deliverable_exists(contract):
+    state = lab.run_research_plan()
+    state.terminal_status = policy.RunStatus.RUNNING
+    state.checkpoint = None
+    assert any(output.artifact_type == "technical-report" for output in state.outputs)
+    assert lab.evaluate_run_status(state, contract) == policy.RunStatus.BLOCKED
+
+
+def test_empty_ready_queue_with_failed_dependency_is_not_completed(contract):
+    plan = lab.build_initial_plan()
+    task_states = {
+        task.task_id: policy.TaskState(task_id=task.task_id) for task in plan.tasks
+    }
+    task_states["read-implementation-guidance"].status = policy.TaskStatus.FAILED
+    for task in policy.get_blocked_tasks(plan, task_states):
+        task_states[task.task_id].status = policy.TaskStatus.BLOCKED
+    task_states["read-adaptive-rag-primary"].status = policy.TaskStatus.CANCELLED
+    task_states["read-rag-foundation"].status = policy.TaskStatus.CANCELLED
+    state = lab.PlanningRunState(
+        run_id="blocked-run",
+        plan_id=plan.plan_id,
+        current_plan_version=plan.version,
+        started_at=lab.FIXED_TIME,
+        plan=plan,
+        task_states=task_states,
+    )
+    assert policy.get_ready_tasks(plan, task_states) == []
+    assert lab.evaluate_run_status(state, contract) == policy.RunStatus.BLOCKED
 
 
 def test_conflicting_evidence_triggers_bounded_reconciliation():
     state = lab.run_research_plan(lab.RunOptions(inject_conflict=True))
-    assert state.status == policy.RunStatus.COMPLETED
+    assert state.terminal_status == policy.RunStatus.COMPLETED
     assert state.plan.version == 3
     assert state.replan_count == 2
     assert state.task_states["quality-checkpoint"].attempt == 2
@@ -456,12 +643,25 @@ def test_conflicting_evidence_triggers_bounded_reconciliation():
     )
 
 
+def test_missing_evidence_checkpoint_triggers_bounded_repair_patch():
+    state = lab.run_research_plan(lab.RunOptions(inject_missing_evidence=True))
+    assert state.terminal_status == policy.RunStatus.COMPLETED
+    assert state.current_plan_version == 3
+    assert state.replan_count == 2
+    assert "read-missing-evidence" in state.task_states
+    assert any(
+        event.event_type == policy.PlanEventType.CHECKPOINT_FAILED
+        and "missing" in event.detail.lower()
+        for event in state.events
+    )
+
+
 def test_replan_exhaustion_escalates_instead_of_looping():
     state = lab.run_research_plan(
         lab.RunOptions(inject_conflict=True),
         contract=lab.build_goal_contract(max_replans=1),
     )
-    assert state.status == policy.RunStatus.ESCALATED
+    assert state.terminal_status == policy.RunStatus.ESCALATED
     assert state.replan_count == 1
     assert "REPLAN_BUDGET_EXCEEDED" in state.events[-1].detail
 
@@ -470,12 +670,27 @@ def test_transient_timeout_retries_once_then_completes():
     state = lab.run_research_plan(
         lab.RunOptions(transient_timeout_task="read-adaptive-rag-primary")
     )
-    assert state.status == policy.RunStatus.COMPLETED
+    assert state.terminal_status == policy.RunStatus.COMPLETED
     assert state.task_states["read-adaptive-rag-primary"].attempt == 2
     assert sum(
         event.event_type == policy.PlanEventType.TASK_RETRIED
         for event in state.events
     ) == 1
+
+
+def test_invalid_output_gets_one_bounded_repair_then_completes():
+    state = lab.run_research_plan(
+        lab.RunOptions(
+            transient_invalid_output_task="read-adaptive-rag-primary"
+        )
+    )
+    assert state.terminal_status == policy.RunStatus.COMPLETED
+    assert state.task_states["read-adaptive-rag-primary"].attempt == 2
+    assert any(
+        event.event_type == policy.PlanEventType.TASK_RETRIED
+        and event.detail == "bounded invalid-output repair"
+        for event in state.events
+    )
 
 
 def test_outputs_are_immutable_and_preserve_provenance():

@@ -24,6 +24,7 @@ from policy import (
     PolicyError,
     ReplanReason,
     RunStatus,
+    RuntimeAction,
     SourceRef,
     StrictModel,
     Task,
@@ -33,6 +34,9 @@ from policy import (
     ToolDefinition,
     ToolEffect,
     apply_plan_patch,
+    can_attempt,
+    checkpoint_action,
+    failure_action,
     get_blocked_tasks,
     get_ready_tasks,
     make_execution_key,
@@ -58,23 +62,33 @@ class ExecutionResult(FrozenModel):
     elapsed_ms: float = Field(default=0.0, ge=0)
 
 
-class RunState(StrictModel):
+class PlanningRunState(StrictModel):
+    run_id: str = Field(min_length=1, max_length=64)
+    plan_id: str = Field(min_length=1, max_length=64)
+    current_plan_version: int = Field(gt=0)
+    started_at: str = Field(min_length=1, max_length=64)
+    terminal_status: RunStatus = RunStatus.RUNNING
     plan: Plan
     task_states: dict[str, TaskState]
     outputs: tuple[TaskOutput, ...] = ()
     events: tuple[PlanEvent, ...] = ()
     checkpoint: CheckpointResult | None = None
-    status: RunStatus = RunStatus.RUNNING
     replan_count: int = Field(default=0, ge=0)
     total_attempts: int = Field(default=0, ge=0)
     total_cost_usd: float = Field(default=0.0, ge=0)
     elapsed_ms: float = Field(default=0.0, ge=0)
 
 
+# Backwards-compatible name used by the existing notebook and external learners.
+RunState = PlanningRunState
+
+
 @dataclass(frozen=True)
 class RunOptions:
     inject_conflict: bool = False
+    inject_missing_evidence: bool = False
     transient_timeout_task: str | None = None
+    transient_invalid_output_task: str | None = None
 
 
 def build_capability_policy() -> CapabilityPolicy:
@@ -305,6 +319,34 @@ def conflict_reconciliation_patch() -> PlanPatch:
     )
 
 
+def missing_evidence_patch() -> PlanPatch:
+    repair = _task(
+        "read-missing-evidence",
+        "read-source",
+        "Read controlled official guidance to repair the checkpoint evidence gap.",
+        "evidence-bundle",
+        "source-library",
+        coverage_tags=("security-implications",),
+        evidence_types=("official-documentation",),
+    )
+    recheck = _task(
+        "quality-checkpoint",
+        "quality-checkpoint",
+        "Verify repaired evidence coverage, provenance, and remaining conflicts.",
+        "checkpoint-result",
+        "quality-check",
+        dependencies=("compare-routes", "read-missing-evidence"),
+        required_inputs=("route-comparison", "evidence-bundle"),
+        max_attempts=2,
+    )
+    return PlanPatch(
+        add_tasks=(repair, recheck),
+        remove_tasks=("quality-checkpoint",),
+        reason=ReplanReason.MISSING_COVERAGE,
+        evidence_task_id="quality-checkpoint",
+    )
+
+
 def _source(
     source_id: str, source_url: str, source_version: str, trust_level: str
 ) -> SourceRef:
@@ -327,6 +369,7 @@ class DeterministicExecutor:
     def __init__(self, options: RunOptions = RunOptions()) -> None:
         self.options = options
         self.timeout_injected: set[str] = set()
+        self.invalid_output_injected: set[str] = set()
         self.receipts: dict[str, ExecutionResult] = {}
 
     def execute(
@@ -350,6 +393,18 @@ class DeterministicExecutor:
                 failure_code=FailureCode.TIMEOUT,
                 cost_usd=0.005,
                 elapsed_ms=100,
+            )
+
+        if (
+            self.options.transient_invalid_output_task == task.task_id
+            and task.task_id not in self.invalid_output_injected
+        ):
+            self.invalid_output_injected.add(task.task_id)
+            return ExecutionResult(
+                succeeded=False,
+                failure_code=FailureCode.INVALID_OUTPUT,
+                cost_usd=0.005,
+                elapsed_ms=30,
             )
 
         if task.task_id == "read-implementation-guidance":
@@ -398,14 +453,15 @@ class DeterministicExecutor:
                 elapsed_ms=55,
             )
         elif task.task_id == "read-replacement-guidance":
+            missing_evidence = self.options.inject_missing_evidence
             result = ExecutionResult(
                 succeeded=True,
                 content=(
                     "Official orchestration guidance keeps retrieved content as data "
                     "and places policy checks in application code."
                 ),
-                evidence_types=("official-documentation",),
-                coverage_tags=("security-implications",),
+                evidence_types=() if missing_evidence else ("official-documentation",),
+                coverage_tags=() if missing_evidence else ("security-implications",),
                 source_refs=(
                     _source(
                         "langgraph-workflows",
@@ -416,6 +472,23 @@ class DeterministicExecutor:
                 ),
                 cost_usd=0.02,
                 elapsed_ms=50,
+            )
+        elif task.task_id == "read-missing-evidence":
+            result = ExecutionResult(
+                succeeded=True,
+                content="Controlled official guidance fills the recorded evidence gap.",
+                evidence_types=("official-documentation",),
+                coverage_tags=("security-implications",),
+                source_refs=(
+                    _source(
+                        "controlled-security-guidance",
+                        "fixture://adaptive-rag/security-guidance",
+                        "v1",
+                        "controlled_fixture",
+                    ),
+                ),
+                cost_usd=0.02,
+                elapsed_ms=40,
             )
         elif task.task_type == "compare-routes":
             conflict = " [CONFLICT] Iterative retrieval costs vary by benchmark scope."
@@ -531,7 +604,7 @@ def evaluate_checkpoint(
 
 
 def _append_event(
-    state: RunState,
+    state: PlanningRunState,
     event_type: PlanEventType,
     detail: str,
     task_id: str | None = None,
@@ -552,7 +625,7 @@ def _inputs_for(task: Task, outputs: tuple[TaskOutput, ...]) -> tuple[TaskOutput
 
 
 def _record_success(
-    state: RunState,
+    state: PlanningRunState,
     task: Task,
     task_state: TaskState,
     result: ExecutionResult,
@@ -596,7 +669,7 @@ def _record_success(
 
 
 def _apply_patch(
-    state: RunState,
+    state: PlanningRunState,
     patch: PlanPatch,
     contract: GoalContract,
     capability_policy: CapabilityPolicy,
@@ -605,6 +678,7 @@ def _apply_patch(
     _append_event(state, PlanEventType.REPLAN_TRIGGERED, patch.reason.value)
     _append_event(state, PlanEventType.PLAN_PATCH_PROPOSED, patch.reason.value)
     state.plan = apply_plan_patch(state.plan, patch, contract, capability_policy)
+    state.current_plan_version = state.plan.version
     state.replan_count += 1
     for task in state.plan.tasks:
         state.task_states.setdefault(task.task_id, TaskState(task_id=task.task_id))
@@ -615,8 +689,30 @@ def _apply_patch(
     )
 
 
-def evaluate_completion(state: RunState, contract: GoalContract) -> RunStatus:
+def evaluate_run_status(
+    state: PlanningRunState, contract: GoalContract
+) -> RunStatus:
+    """Evaluate verified completion separately from scheduler queue state."""
+
+    if state.terminal_status in {
+        RunStatus.INVALID_PLAN,
+        RunStatus.BUDGET_EXHAUSTED,
+        RunStatus.ESCALATED,
+        RunStatus.CANCELLED,
+    }:
+        return state.terminal_status
     if not state.checkpoint or state.checkpoint.status != CheckpointStatus.PASS:
+        return RunStatus.BLOCKED
+    if any(
+        task_state.status
+        in {
+            TaskStatus.PENDING,
+            TaskStatus.READY,
+            TaskStatus.RUNNING,
+            TaskStatus.BLOCKED,
+        }
+        for task_state in state.task_states.values()
+    ):
         return RunStatus.BLOCKED
     deliverables = [
         output
@@ -633,16 +729,24 @@ def evaluate_completion(state: RunState, contract: GoalContract) -> RunStatus:
     return RunStatus.COMPLETED
 
 
+# Compatibility alias for learners who used the first PR revision.
+evaluate_completion = evaluate_run_status
+
+
 def run_research_plan(
     options: RunOptions = RunOptions(),
     contract: GoalContract | None = None,
     capability_policy: CapabilityPolicy | None = None,
-) -> RunState:
+) -> PlanningRunState:
     contract = contract or build_goal_contract()
     capability_policy = capability_policy or build_capability_policy()
     plan = build_initial_plan()
     validate_plan(plan, contract, capability_policy)
-    state = RunState(
+    state = PlanningRunState(
+        run_id="adaptive-rag-run",
+        plan_id=plan.plan_id,
+        current_plan_version=plan.version,
+        started_at=FIXED_TIME,
         plan=plan,
         task_states={task.task_id: TaskState(task_id=task.task_id) for task in plan.tasks},
     )
@@ -661,8 +765,8 @@ def run_research_plan(
                     "terminal prerequisite did not succeed",
                     task.task_id,
                 )
-            completion = evaluate_completion(state, contract)
-            state.status = completion
+            completion = evaluate_run_status(state, contract)
+            state.terminal_status = completion
             _append_event(
                 state,
                 PlanEventType.RUN_COMPLETED
@@ -679,11 +783,11 @@ def run_research_plan(
             _append_event(state, PlanEventType.TASK_READY, "dependencies satisfied", task.task_id)
 
             if state.total_attempts >= contract.max_total_attempts:
-                state.status = RunStatus.BUDGET_EXHAUSTED
+                state.terminal_status = RunStatus.BUDGET_EXHAUSTED
                 _append_event(state, PlanEventType.RUN_ESCALATED, "attempt budget exhausted")
                 return state
-            if task_state.attempt >= task.max_attempts:
-                state.status = RunStatus.BUDGET_EXHAUSTED
+            if not can_attempt(task, task_state, contract):
+                state.terminal_status = RunStatus.BUDGET_EXHAUSTED
                 _append_event(
                     state,
                     PlanEventType.RUN_ESCALATED,
@@ -692,7 +796,7 @@ def run_research_plan(
                 )
                 return state
             if state.total_cost_usd + task.estimated_cost_usd > contract.max_total_cost_usd:
-                state.status = RunStatus.BUDGET_EXHAUSTED
+                state.terminal_status = RunStatus.BUDGET_EXHAUSTED
                 _append_event(state, PlanEventType.RUN_ESCALATED, "cost budget exhausted")
                 return state
 
@@ -707,7 +811,7 @@ def run_research_plan(
             try:
                 validate_task_inputs(task, inputs)
             except PolicyError as error:
-                state.status = RunStatus.ESCALATED
+                state.terminal_status = RunStatus.ESCALATED
                 _append_event(state, PlanEventType.RUN_ESCALATED, str(error), task.task_id)
                 return state
 
@@ -721,11 +825,11 @@ def run_research_plan(
             state.total_cost_usd = round(state.total_cost_usd + result.cost_usd, 6)
             state.elapsed_ms += result.elapsed_ms
             if state.total_cost_usd > contract.max_total_cost_usd:
-                state.status = RunStatus.BUDGET_EXHAUSTED
+                state.terminal_status = RunStatus.BUDGET_EXHAUSTED
                 _append_event(state, PlanEventType.RUN_ESCALATED, "cost budget exhausted")
                 return state
             if state.elapsed_ms > contract.deadline_ms:
-                state.status = RunStatus.BUDGET_EXHAUSTED
+                state.terminal_status = RunStatus.BUDGET_EXHAUSTED
                 _append_event(state, PlanEventType.RUN_ESCALATED, "deadline exhausted")
                 return state
 
@@ -750,25 +854,41 @@ def run_research_plan(
                     task.task_id,
                 )
 
-            if (
-                result.failure_code == FailureCode.TIMEOUT
-                and task_state.attempt < task.max_attempts
-            ):
+            action = (
+                checkpoint_action(result.checkpoint.status)
+                if result.checkpoint
+                else failure_action(
+                    result.failure_code or FailureCode.UNKNOWN,
+                    can_attempt(task, task_state, contract),
+                )
+            )
+
+            if action in {RuntimeAction.RETRY, RuntimeAction.REPAIR}:
                 task_state.status = TaskStatus.PENDING
                 _append_event(
                     state,
                     PlanEventType.TASK_RETRIED,
-                    "bounded transient retry",
+                    "bounded transient retry"
+                    if action == RuntimeAction.RETRY
+                    else "bounded invalid-output repair",
                     task.task_id,
                 )
                 continue
 
             try:
-                if result.failure_code == FailureCode.SOURCE_UNAVAILABLE:
-                    _apply_patch(state, source_replacement_patch(), contract, capability_policy)
+                if action == RuntimeAction.REPLAN:
+                    patch = (
+                        source_replacement_patch()
+                        if result.failure_code == FailureCode.SOURCE_UNAVAILABLE
+                        else missing_evidence_patch()
+                    )
+                    _apply_patch(state, patch, contract, capability_policy)
+                    if result.checkpoint:
+                        state.task_states["quality-checkpoint"].status = TaskStatus.PENDING
+                        state.task_states["quality-checkpoint"].error_code = None
                     patch_applied = True
                     break
-                if result.failure_code == FailureCode.CONFLICTING_EVIDENCE:
+                if action == RuntimeAction.RECONCILE:
                     _apply_patch(
                         state,
                         conflict_reconciliation_patch(),
@@ -780,26 +900,41 @@ def run_research_plan(
                     patch_applied = True
                     break
             except PolicyError as error:
-                state.status = RunStatus.ESCALATED
+                state.terminal_status = RunStatus.ESCALATED
                 _append_event(state, PlanEventType.RUN_ESCALATED, str(error))
                 return state
 
-            state.status = RunStatus.ESCALATED
-            _append_event(state, PlanEventType.RUN_ESCALATED, "non-retryable failure")
+            budget_stop = (
+                result.failure_code == FailureCode.BUDGET_EXCEEDED
+                or result.checkpoint is not None
+                and result.checkpoint.status == CheckpointStatus.BUDGET_EXHAUSTED
+            )
+            state.terminal_status = (
+                RunStatus.BUDGET_EXHAUSTED
+                if budget_stop
+                else RunStatus.ESCALATED
+            )
+            _append_event(
+                state,
+                PlanEventType.RUN_ESCALATED,
+                "non-retryable failure"
+                if action == RuntimeAction.STOP
+                else "failure requires escalation",
+            )
             return state
 
         if patch_applied:
             continue
 
-    state.status = RunStatus.ESCALATED
+    state.terminal_status = RunStatus.ESCALATED
     _append_event(state, PlanEventType.RUN_ESCALATED, "scheduler iteration limit")
     return state
 
 
-def summarize_run(state: RunState) -> dict[str, object]:
+def summarize_run(state: PlanningRunState) -> dict[str, object]:
     return {
-        "status": state.status.value,
-        "plan_version": state.plan.version,
+        "status": state.terminal_status.value,
+        "plan_version": state.current_plan_version,
         "replans": state.replan_count,
         "attempts": state.total_attempts,
         "cost_usd": state.total_cost_usd,

@@ -122,7 +122,7 @@ GoalContract(
 
 Use milestones/checkpoints at natural decision boundaries: after source collection, after comparison, before an external action, and before final publication. A checkpoint should return a structured result such as `PASS`, `missing_primary_evidence`, `unresolved_conflict`, or `budget_exhausted`; a vague “looks good” cannot drive a reliable replan.
 
-For long-horizon work, persist: the goal contract, plan version, task states, source handles, output hashes, retry count, cost/time budget, and the reason for each graph mutation. Compact older context into source-backed summaries rather than appending every raw observation to the model context.
+The lab keeps these runtime values in a separate `PlanningRunState`: run and plan IDs, current plan version, start time, replan and attempt counters, observed cost, outputs, events, and typed terminal status. Tasks without an explicit estimate receive a conservative fixture estimate rather than bypassing cost validation. For production, persist this state transactionally and compact older context into source-backed summaries rather than appending every raw observation to the model context.
 
 ## Step 7 — Failure recovery and stopping conditions
 
