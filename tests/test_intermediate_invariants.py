@@ -1375,3 +1375,4 @@ def test_write_recommendation_requires_policy():
     )
     decision = validate_investigation_response_04(response, {"valid_id_1"})
     assert decision.status == GuardrailStatus_04.POLICY_CHECK_REQUIRED
+

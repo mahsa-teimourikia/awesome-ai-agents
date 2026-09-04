@@ -1,12 +1,12 @@
-# 07 — Planning and task decomposition
+# 08 — Planning and task decomposition
 
-**Level:** Intermediate · **Primary lab:** **Notebook:** [`08_planning_task_decomposition.ipynb`](08_planning_task_decomposition.ipynb)
-
-**Scenario:** Northstar, a SaaS support team, is integrating this concept into their agentic workflow.
+**Level:** Intermediate · **Notebook:** [`08_planning_task_decomposition.ipynb`](08_planning_task_decomposition.ipynb) · **Reusable lab:** [`lab.py`](lab.py)
 
 Planning is the difference between a model that can select a tool and a system that can safely pursue a multi-step objective. A plan is not a chain-of-thought transcript. It is a **validated, bounded, inspectable proposal** for work: tasks, dependencies, constraints, milestones, and terminal conditions.
 
 This module builds a research agent for the request: **“Research adaptive RAG and produce a technical report.”** It starts with a static task graph, detects an unavailable source, creates a bounded replacement task, revalidates the graph, and produces a cited report. The default lab uses deterministic fixtures so every learner can run it locally without model credentials or live web access.
+
+**Success criteria:** a typed `technical-report` artifact covers foundations, routing strategies, and security implications; cites primary and official evidence; and passes a coded quality checkpoint. **Non-goals:** live web research, production deployment, and hidden model reasoning. The lab never performs an external side effect.
 
 ## Outcomes
 
@@ -23,7 +23,7 @@ By the end, you can:
 
 Complete [the agent loop](../../beginner/02-agent-loop/README.md), [workflow or agent](../../beginner/03-workflow-or-agent/README.md), and [tool engineering](../01-tool-engineering/README.md) first. This lesson assumes a planner may use an LLM, but it deliberately keeps authorization, validation, scheduling, retries, and termination in application code.
 
-![Diagram](assets/diagram.svg)
+![Adaptive RAG research plan with policy validation, parallel evidence tasks, a quality checkpoint, bounded replanning, and a cited report](assets/planning-task-decomposition.svg)
 
 ## Step 1 — Convert a request into a goal contract
 
@@ -38,7 +38,7 @@ Complete [the agent loop](../../beginner/02-agent-loop/README.md), [workflow or 
 | Constraints | Maximum tasks, replan budget, allowed tools, citation policy, deadline/cost limit. |
 | Stop rule | Required sections are supported, the checkpoint passes, or the system escalates a known gap. |
 
-This contract is a constraint-satisfaction problem. A plan that uses an unauthorized browser tool, has no evidence task for a required section, exceeds its budget, or contains a dependency cycle is invalid even if it sounds plausible. The application must validate it before anything runs.
+This contract is a constraint-satisfaction problem. A plan that uses an unauthorized browser tool, has no evidence task for a required section, exceeds its budget, or contains a dependency cycle is invalid even if it sounds plausible. The application must validate it before anything runs. An allowed `WRITE` tool that requires approval is different: the task remains a valid proposal and is marked approval-gated, but the executor must block it until it receives an approval bound to the current plan version, task, tool, and policy version. **Planning permission to propose an action is not execution authorization.**
 
 ## Step 2 — Decompose goals without pretending every task is independent
 
@@ -73,7 +73,7 @@ A task graph has directed edges from a prerequisite to a dependent task. A DAG i
 | Cycle | Unschedulable mutual dependency | report needs review; review needs final report |
 | Join | A task consumes several artifacts | comparison reconciles sources |
 
-The lab uses Kahn-style topological layers to reject cycles. In production, keep the graph and all task outputs in durable state; a retry after a worker crash must not silently re-run a side effect.
+The lab uses Kahn-style topological layers to reject cycles. It also distinguishes **accumulated work** from **wall-clock time**. Three independent ready tasks taking 60 ms, 55 ms, and 80 ms represent 195 ms of work but only 80 ms of conceptual parallel wall time; a dependent task starts after that 80 ms boundary. Production wall time still depends on worker capacity, queueing, and tool latency. Keep the graph and all task outputs in durable state; a retry after a worker crash must not silently re-run a side effect.
 
 ## Step 4 — Choose a planning architecture
 
@@ -86,7 +86,7 @@ The lab uses Kahn-style topological layers to reject cycles. In production, keep
 | Dynamic/replanning agent | plan changes after observations | a failed source or evidence conflict changes the next best action | runaway expansion and repeated work |
 | Plan-and-reflect | executor plus structured evaluator | quality can be tested against clear criteria | self-critique without an external rubric |
 
-The **planner/executor separation** is a safety and engineering boundary. The planner can propose `Task` records. The executor validates task identity, dependencies, tool permissions, attempt limits, idempotency key, and result schema. A model should not grant itself tools, erase checkpoints, or turn a retrieval failure into a production action.
+The **planner/executor separation** is a safety and engineering boundary. The planner can propose `Task` records, including legitimate approval-gated actions. Plan validation checks that the task/tool combination is allowed and reports which tasks need approval; it does not pretend approval has already happened. At dispatch, the executor validates task identity, dependencies, tool permissions, bound approval where required, attempt limits, idempotency, and result schema. The lab’s `ValidatedApproval` is a stand-in for an already-validated result emitted by trusted application policy—not a field a planner or model may self-issue. This follows Course 03’s separation of authentication, authorization, approval, and execution. A model should not grant itself tools, erase checkpoints, or turn a retrieval failure into a production action.
 
 ## Step 5 — Plan-and-execute, hierarchical planning, and dynamic replanning
 
@@ -102,24 +102,31 @@ Plan-and-execute follows a simple loop:
 
 Hierarchical planning places stable intent at the top and volatile work at the leaves. For the scenario, the top-level plan commits to a cited technical report; a workstream owns evidence; individual retrieval tasks can be swapped when a source is unavailable. This avoids re-planning the entire goal for a single failed source.
 
-In the lab, `implementation-guidance` deliberately fails. The replanner adds `replacement-guidance`, rewires only the comparison dependency, resets downstream tasks, and validates the new graph. It does not add tasks forever, retry an unavailable source indefinitely, or erase the failure trace.
+In the lab, `read-implementation-guidance` deliberately fails. The replanner adds `read-replacement-guidance`, rewires only the comparison dependency, preserves unaffected state, and fully validates the new graph. It does not add tasks forever, retry an unavailable source indefinitely, or erase the failure trace.
 
 ## Step 6 — Constraints, dependencies, and milestones
 
 Constraints make planning operational rather than rhetorical.
 
 ```python
-Constraints(
-    allowed_tools=("source_library", "compare", "synthesize"),
+GoalContract(
+    allowed_capabilities=("source-library", "compare-evidence", "quality-check", "synthesize-report"),
     max_tasks=10,
     max_replans=2,
     max_attempts_per_task=2,
+    max_total_attempts=16,
+    max_total_cost_usd=1.0,
+    deadline_ms=60_000,
 )
 ```
 
 Use milestones/checkpoints at natural decision boundaries: after source collection, after comparison, before an external action, and before final publication. A checkpoint should return a structured result such as `PASS`, `missing_primary_evidence`, `unresolved_conflict`, or `budget_exhausted`; a vague “looks good” cannot drive a reliable replan.
 
-For long-horizon work, persist: the goal contract, plan version, task states, source handles, output hashes, retry count, cost/time budget, and the reason for each graph mutation. Compact older context into source-backed summaries rather than appending every raw observation to the model context.
+`Task.required_inputs` currently names required **artifact types**. It does not express cardinality: two dependencies may both produce `evidence-bundle`, but `required_inputs=("evidence-bundle",)` does not distinguish or require two semantically different bundles. Use dependency IDs plus a richer input-slot/cardinality contract when that distinction matters.
+
+The lab keeps runtime values in a separate `PlanningRunState`: run and plan IDs, current plan version, start time, replan and attempt counters, observed cost, accumulated work, parallel wall-clock time, outputs, events, and typed terminal status. `estimated_cost_usd` is used before execution for admission and budget reservation; the returned `result.cost_usd` is used for actual runtime accounting. Tasks without an explicit estimate receive a conservative fixture estimate rather than bypassing admission. Production systems may need larger conservative reserves, or a mid-run stop/reapproval policy, when actual cost can exceed the estimate.
+
+For production, persist this state transactionally and compact older context into source-backed summaries rather than appending every raw observation to the model context.
 
 ## Step 7 — Failure recovery and stopping conditions
 
@@ -135,9 +142,13 @@ For long-horizon work, persist: the goal contract, plan version, task states, so
 
 Set multiple terminal conditions: all required report sections are evidenced; an evaluator accepts the report; a policy blocks a task; no ready task exists; task/replan/cost/time budget is exhausted; or a human stops the run. “Keep researching until certain” is not a valid terminal condition.
 
+The fixture’s `coverage_tags` are deterministic test metadata, not trustworthy self-attestation. For a report produced by an LLM, an independent evaluator/checkpoint must inspect the artifact and supporting evidence instead of accepting coverage labels declared by the producing model.
+
+The fixture’s attempt-specific execution keys are appropriate for its `READ` and `ANALYZE` work. For consequential `WRITE` tasks, keep the logical idempotency identity stable across retries while retaining a unique attempt ID for tracing. Reuse the side-effect and approval patterns from [Course 01 tool engineering](../01-tool-engineering/README.md) and [Course 03 human approval and permissions](../03-human-approval-permissions/README.md) rather than rebuilding that subsystem inside this planning lesson.
+
 ## Guided lab
 
-1. Open `08_planning_task_decomposition.ipynb` from this folder. The first run simulates a missing implementation source and shows the event trace.
+1. Open `08_planning_task_decomposition.ipynb` from this folder. It imports the tested implementation in `lab.py`, simulates a missing implementation source, and shows the typed event trace.
 2. Open the notebook and inspect the initial topological layers. Which source tasks can run in parallel?
 3. Run the dynamic scenario. Identify the exact observation that triggered a replan and the dependency edge that changed.
 4. Add a required section such as “security implications.” Observe why a valid graph alone is not enough: the checkpoint must verify coverage.
@@ -162,29 +173,37 @@ Set multiple terminal conditions: all required report sections are evidenced; an
 - [Adaptive-RAG](https://arxiv.org/abs/2403.14403) — the scenario’s primary source on routing retrieval strategies by question complexity.
 - [LangGraph workflows and agents](https://docs.langchain.com/oss/python/langgraph/workflows-agents) — official patterns for predetermined workflows, dynamic agents, parallelization, routing, and evaluator-optimizer flows.
 - [LangGraph persistence](https://docs.langchain.com/oss/python/langgraph/persistence) — official guidance for checkpoints, durable execution, and thread state.
+- [OpenAI Structured Outputs](https://developers.openai.com/api/docs/guides/structured-outputs) — optional Pydantic-structured plan proposals; deterministic validation still decides whether a proposal may run.
+- [OpenAI Agents SDK and Responses API comparison](https://developers.openai.com/api/docs/guides/agents#compare-the-responses-api-and-agents-sdk) — manager-style agents-as-tools, handoffs, state, approvals, and tracing as an optional orchestration comparison.
 
 ## Checkpoint questions
 
-1. Why is a DAG better than a linear checklist for independent evidence gathering?
-2. Which component is allowed to propose a new task, and which component is allowed to run it?
-3. What evidence justifies a replan in this lab?
-4. When would a fixed workflow be preferable to this dynamic planner?
+1. Why is task identity different from execution order?
+2. What exact conditions make a task `READY`?
+3. Why can an acyclic graph still be an invalid plan?
+4. Which evidence justifies replanning in this lab?
+5. Why patch the smallest affected graph region instead of regenerating the plan?
+6. What happens to downstream tasks when a prerequisite fails?
+7. Why does an empty ready queue not prove completion?
+8. Which plan properties must be checked deterministically before dispatch?
+9. Why version plans and preserve immutable task outputs?
+10. When is a fixed workflow preferable to an LLM-generated plan?
 
 
 
 ## Watch For
 
-- **Assumption failure:** The model hallucinates an unsupported parameter.
-- **State leak:** Context is incorrectly preserved across runs.
-- **Timeout:** The tool takes too long and the agent loops.
-- **Auth bypass:** The agent attempts an action it shouldn't.
+- **Over-decomposition:** Creating a task for every function call instead of meaningful artifact boundaries.
+- **Missing dependencies:** Forgetting to explicitly link `synthesize` to `read_paper`.
+- **Cycles:** Designing a process where step A requires B, and B requires A.
+- **Unauthorized task creation:** The model granting itself tools via task generation.
+- **Stale plan:** Continuing a plan after a prerequisite fails instead of replanning.
+- **Unbounded replanning:** Retrying or replanning indefinitely without a budget.
+- **Failed prerequisite propagation:** Running a dependent task when its prerequisite failed.
+- **Premature completion:** Assuming an empty ready queue means success when tasks are actually blocked.
+- **Coverage gaps:** A plan completing without producing the required evidence.
+- **Planner metric gaming:** Planner splitting work into too many small chunks to inflate task counts.
 
-## Deep Dives & State of the Art
+## Further Deep Dives
 
-- **[Plan-and-Execute Architecture](DEEP_DIVE_PLAN_AND_EXECUTE.md)**
-
-
-## SOTA Deep Dives
-Explore industry-standard architectural patterns and enterprise implementation details:
-
-- [Plan And Execute](DEEP_DIVE_PLAN_AND_EXECUTE.md)
+- [Plan-and-Execute Architecture](DEEP_DIVE_PLAN_AND_EXECUTE.md)

@@ -156,7 +156,7 @@ export const learningPath = [
   {
     "id": "i8",
     "title": "Planning & Task Decomposition",
-    "description": "Master the Plan-and-Execute architecture. Isolate the Planner to generate static DAGs of sub-tasks, ensuring complex goals are broken down and executed in parallel by restricted workers.",
+    "description": "Build a bounded research DAG with typed contracts, application-owned capability checks, atomic replanning, provenance, and checkpoint-gated completion.",
     "material": "../curriculum/intermediate/08-planning-task-decomposition/README.md",
     "notebook": "../curriculum/intermediate/08-planning-task-decomposition/08_planning_task_decomposition.ipynb",
     "category": "Intermediate - Planning & Task Decomposition",
@@ -164,7 +164,7 @@ export const learningPath = [
     "technologies": [
       "Python",
       "Pydantic",
-      "LangGraph"
+      "Validated DAG scheduling"
     ]
   },
   {
