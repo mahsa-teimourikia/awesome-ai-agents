@@ -7,8 +7,10 @@ and keeps mitigation proposals separate from execution authorization.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import datetime, timezone
 from enum import Enum
+import json
 from typing import Any
 from urllib.parse import urlparse
 
@@ -108,6 +110,11 @@ class ProposalPolicyStatus(str, Enum):
     DENIED = "DENIED"
 
 
+class MitigationGroundingStatus(str, Enum):
+    GROUNDED = "GROUNDED"
+    UNSUPPORTED_PROPOSAL = "UNSUPPORTED_PROPOSAL"
+
+
 class DataClassification(str, Enum):
     PUBLIC = "PUBLIC"
     INTERNAL = "INTERNAL"
@@ -197,13 +204,14 @@ class EvidenceItem(FrozenModel):
     metadata: tuple[tuple[str, str], ...] = ()
     raw_artifact_handle: str = Field(min_length=1, max_length=200)
     supports_claims: tuple[str, ...] = ()
+    supports_actions: tuple[str, ...] = ()
     evidence_role: str = Field(min_length=1, max_length=64, pattern=IDENTIFIER_PATTERN)
 
-    @field_validator("supports_claims")
+    @field_validator("supports_claims", "supports_actions")
     @classmethod
-    def unique_claims(cls, values: tuple[str, ...]) -> tuple[str, ...]:
+    def unique_gold_labels(cls, values: tuple[str, ...]) -> tuple[str, ...]:
         if len(values) != len(set(values)):
-            raise ValueError("Evidence claim support IDs must be unique")
+            raise ValueError("Evidence gold-label IDs must be unique")
         return values
 
 
@@ -247,8 +255,10 @@ class RetrievalBudget(StrictModel):
     used_queries: int = Field(default=0, ge=0)
     used_hops: int = Field(default=0, ge=0)
     used_web_queries: int = Field(default=0, ge=0)
-    spent_cost_usd: float = Field(default=0, ge=0)
-    elapsed_ms: float = Field(default=0, ge=0)
+    reserved_cost_usd: float = Field(default=0, ge=0)
+    reserved_latency_ms: float = Field(default=0, ge=0)
+    actual_cost_usd: float = Field(default=0, ge=0)
+    actual_latency_ms: float = Field(default=0, ge=0)
 
     @classmethod
     def from_context(cls, context: RetrievalContext) -> "RetrievalBudget":
@@ -275,6 +285,74 @@ class RouteDecision(FrozenModel):
     route_type: RouteType
     proposed_sources: tuple[SourceType, ...] = ()
     reason: str = Field(min_length=1, max_length=300)
+
+
+class RoutingEvaluationCase(FrozenModel):
+    case_id: str = Field(min_length=1, max_length=64, pattern=IDENTIFIER_PATTERN)
+    query: RetrievalQuery
+    expected_route_type: RouteType
+    expected_sources: tuple[SourceType, ...] = ()
+
+    @field_validator("expected_sources")
+    @classmethod
+    def unique_expected_sources(
+        cls, values: tuple[SourceType, ...]
+    ) -> tuple[SourceType, ...]:
+        if len(values) != len(set(values)):
+            raise ValueError("Expected route sources must be unique")
+        return values
+
+    @model_validator(mode="after")
+    def route_shape_matches_outcome(self) -> "RoutingEvaluationCase":
+        count = len(self.expected_sources)
+        if self.expected_route_type == RouteType.KNOWN_ROUTE and count != 1:
+            raise ValueError("KNOWN_ROUTE requires exactly one expected source")
+        if self.expected_route_type == RouteType.MULTI_ROUTE and count < 2:
+            raise ValueError("MULTI_ROUTE requires at least two expected sources")
+        if self.expected_route_type in {RouteType.UNKNOWN, RouteType.AMBIGUOUS} and count:
+            raise ValueError("UNKNOWN and AMBIGUOUS cases cannot declare a source")
+        return self
+
+
+class RoutingQualityMetrics(FrozenModel):
+    exact_route_accuracy: float = Field(ge=0, le=1)
+    multi_route_source_precision: float = Field(ge=0, le=1)
+    multi_route_source_recall: float = Field(ge=0, le=1)
+    unknown_ambiguous_accuracy: float = Field(ge=0, le=1)
+
+
+class RetrievalEvaluationCase(FrozenModel):
+    case_id: str = Field(min_length=1, max_length=64, pattern=IDENTIFIER_PATTERN)
+    relevant_evidence_ids: tuple[str, ...] = Field(min_length=1)
+    required_evidence_ids: tuple[str, ...] = Field(min_length=1)
+
+    @field_validator("relevant_evidence_ids", "required_evidence_ids")
+    @classmethod
+    def unique_evidence_labels(cls, values: tuple[str, ...]) -> tuple[str, ...]:
+        if len(values) != len(set(values)):
+            raise ValueError("Evaluation evidence labels must be unique")
+        return values
+
+    @model_validator(mode="after")
+    def required_is_relevant(self) -> "RetrievalEvaluationCase":
+        if not set(self.required_evidence_ids).issubset(self.relevant_evidence_ids):
+            raise ValueError("Required evidence must also be labeled relevant")
+        return self
+
+
+class RetrievalQualityMetrics(FrozenModel):
+    retrieval_precision: float = Field(ge=0, le=1)
+    retrieval_recall: float = Field(ge=0, le=1)
+    required_evidence_recall: float = Field(ge=0, le=1)
+
+
+class SafetyCounters(StrictModel):
+    """Observable attempted and executed boundary violations."""
+
+    tenant_violation_attempts: int = Field(default=0, ge=0)
+    tenant_violation_executions: int = Field(default=0, ge=0)
+    unsafe_action_attempts: int = Field(default=0, ge=0)
+    unsafe_action_executions: int = Field(default=0, ge=0)
 
 
 class Claim(FrozenModel):
@@ -316,18 +394,40 @@ class CitationReport(FrozenModel):
 
 class GroundedAnswer(FrozenModel):
     summary: str = Field(min_length=1, max_length=2000)
-    claims: tuple[Claim, ...]
+    candidate_claims: tuple[Claim, ...]
+    verified_claims: tuple[Claim, ...]
     citations: tuple[Citation, ...]
     confidence_label: ConfidenceLabel
     stop_reason: StopReason
     missing_evidence: tuple[str, ...] = ()
+
+    @model_validator(mode="after")
+    def verified_output_is_a_supported_subset(self) -> "GroundedAnswer":
+        candidate_ids = {claim.claim_id for claim in self.candidate_claims}
+        verified_ids = {claim.claim_id for claim in self.verified_claims}
+        if not verified_ids.issubset(candidate_ids):
+            raise ValueError("Verified claims must be a subset of candidate claims")
+        if any(citation.claim_id not in verified_ids for citation in self.citations):
+            raise ValueError("Citations may be exposed only for verified claims")
+        return self
 
 
 class MitigationProposal(FrozenModel):
     action: str = Field(min_length=1, max_length=100, pattern=IDENTIFIER_PATTERN)
     target: str = Field(min_length=1, max_length=200)
     evidence_ids: tuple[str, ...] = Field(min_length=1)
+    grounding_status: MitigationGroundingStatus
     policy_status: ProposalPolicyStatus
+
+    @model_validator(mode="after")
+    def unsupported_is_never_authorized(self) -> "MitigationProposal":
+        if (
+            self.grounding_status
+            == MitigationGroundingStatus.UNSUPPORTED_PROPOSAL
+            and self.policy_status != ProposalPolicyStatus.DENIED
+        ):
+            raise ValueError("An unsupported proposal must be denied")
+        return self
 
 
 class RetrievalTrace(FrozenModel):
@@ -355,6 +455,9 @@ class ControllerRun(FrozenModel):
 
 class EvaluationMetrics(FrozenModel):
     route_accuracy: float = Field(ge=0, le=1)
+    multi_route_source_precision: float = Field(ge=0, le=1)
+    multi_route_source_recall: float = Field(ge=0, le=1)
+    unknown_ambiguous_accuracy: float = Field(ge=0, le=1)
     retrieval_precision: float = Field(ge=0, le=1)
     retrieval_recall: float = Field(ge=0, le=1)
     required_evidence_recall: float = Field(ge=0, le=1)
@@ -364,8 +467,10 @@ class EvaluationMetrics(FrozenModel):
     query_count: int = Field(ge=0)
     cost_usd: float = Field(ge=0)
     latency_ms: float = Field(ge=0)
-    tenant_violations: int = Field(ge=0)
-    unsafe_action_rate: float = Field(ge=0, le=1)
+    tenant_violation_attempts: int = Field(ge=0)
+    tenant_violation_executions: int = Field(ge=0)
+    unsafe_action_attempts: int = Field(ge=0)
+    unsafe_action_executions: int = Field(ge=0)
 
 
 def build_source_registry() -> dict[SourceType, SourceDefinition]:
@@ -488,6 +593,80 @@ def route_query(query: RetrievalQuery) -> RouteDecision:
     )
 
 
+def evaluate_routing_quality(
+    cases: tuple[RoutingEvaluationCase, ...],
+    *,
+    router: Callable[[RetrievalQuery], RouteDecision] = route_query,
+) -> RoutingQualityMetrics:
+    """Score exact route outcomes and source sets against labeled cases."""
+
+    if not cases:
+        raise PolicyError("ROUTING_EVALUATION_DATASET_REQUIRED")
+    exact = 0
+    multi_true_positive = 0
+    multi_false_positive = 0
+    multi_false_negative = 0
+    uncertain_correct = 0
+    uncertain_total = 0
+    for case in cases:
+        decision = router(case.query)
+        predicted_sources = set(decision.proposed_sources)
+        expected_sources = set(case.expected_sources)
+        if (
+            decision.route_type == case.expected_route_type
+            and predicted_sources == expected_sources
+        ):
+            exact += 1
+        if case.expected_route_type == RouteType.MULTI_ROUTE:
+            multi_true_positive += len(predicted_sources & expected_sources)
+            multi_false_positive += len(predicted_sources - expected_sources)
+            multi_false_negative += len(expected_sources - predicted_sources)
+        if case.expected_route_type in {RouteType.UNKNOWN, RouteType.AMBIGUOUS}:
+            uncertain_total += 1
+            if (
+                decision.route_type == case.expected_route_type
+                and not predicted_sources
+            ):
+                uncertain_correct += 1
+    source_precision_denominator = multi_true_positive + multi_false_positive
+    source_recall_denominator = multi_true_positive + multi_false_negative
+    return RoutingQualityMetrics(
+        exact_route_accuracy=exact / len(cases),
+        multi_route_source_precision=(
+            multi_true_positive / source_precision_denominator
+            if source_precision_denominator
+            else 1.0
+        ),
+        multi_route_source_recall=(
+            multi_true_positive / source_recall_denominator
+            if source_recall_denominator
+            else 1.0
+        ),
+        unknown_ambiguous_accuracy=(
+            uncertain_correct / uncertain_total if uncertain_total else 1.0
+        ),
+    )
+
+
+def evaluate_retrieval_quality(
+    bundle: EvidenceBundle,
+    case: RetrievalEvaluationCase,
+) -> RetrievalQualityMetrics:
+    """Score retrieved IDs against explicit relevance and requirement labels."""
+
+    retrieved_ids = {item.evidence_id for item in bundle.items}
+    relevant_ids = set(case.relevant_evidence_ids)
+    required_ids = set(case.required_evidence_ids)
+    relevant_retrieved = retrieved_ids & relevant_ids
+    return RetrievalQualityMetrics(
+        retrieval_precision=(
+            len(relevant_retrieved) / len(retrieved_ids) if retrieved_ids else 0.0
+        ),
+        retrieval_recall=len(relevant_retrieved) / len(relevant_ids),
+        required_evidence_recall=len(retrieved_ids & required_ids) / len(required_ids),
+    )
+
+
 def choose_retrieval_mode(question: str) -> RetrievalMode:
     text = question.lower().strip()
     if text in {"hello", "hi", "thanks", "thank you"}:
@@ -589,18 +768,36 @@ def admit_retrieval(
         and budget.used_web_queries + 1 > budget.max_web_queries
     ):
         raise PolicyError("WEB_QUERY_BUDGET_EXCEEDED")
-    if budget.spent_cost_usd + definition.estimated_cost_usd > budget.max_cost_usd:
+    committed_cost = max(budget.reserved_cost_usd, budget.actual_cost_usd)
+    committed_latency = max(budget.reserved_latency_ms, budget.actual_latency_ms)
+    if committed_cost + definition.estimated_cost_usd > budget.max_cost_usd:
         raise PolicyError("COST_BUDGET_EXCEEDED")
-    if budget.elapsed_ms + definition.estimated_latency_ms > budget.deadline_ms:
+    if committed_latency + definition.estimated_latency_ms > budget.deadline_ms:
         raise PolicyError("DEADLINE_EXCEEDED")
     budget.used_queries += 1
     budget.used_hops = max(budget.used_hops, hop)
     if definition.source_type == SourceType.WEB_SEARCH:
         budget.used_web_queries += 1
-    budget.spent_cost_usd = round(
-        budget.spent_cost_usd + definition.estimated_cost_usd, 6
+    budget.reserved_cost_usd = round(
+        committed_cost + definition.estimated_cost_usd, 6
     )
-    budget.elapsed_ms += definition.estimated_latency_ms
+    budget.reserved_latency_ms = (
+        committed_latency + definition.estimated_latency_ms
+    )
+
+
+def account_retrieval_result(
+    budget: RetrievalBudget,
+    result: RetrievalResult,
+) -> None:
+    """Record actual result cost/latency separately from admission estimates."""
+
+    budget.actual_cost_usd = round(budget.actual_cost_usd + result.cost_usd, 6)
+    budget.actual_latency_ms += result.latency_ms
+    if budget.actual_cost_usd > budget.max_cost_usd:
+        raise PolicyError("ACTUAL_COST_BUDGET_EXCEEDED")
+    if budget.actual_latency_ms > budget.deadline_ms:
+        raise PolicyError("ACTUAL_DEADLINE_EXCEEDED")
 
 
 def build_request(
@@ -614,10 +811,13 @@ def build_request(
     outbound_query: str | None = None,
     target_domain: str | None = None,
     internal_sources_exhausted: bool = False,
+    safety_counters: SafetyCounters | None = None,
 ) -> RetrievalRequest:
     registry = build_source_registry()
     definition = validate_source(source, context, registry)
     if query.proposed_tenant_id and query.proposed_tenant_id != context.tenant_id:
+        if safety_counters is not None:
+            safety_counters.tenant_violation_attempts += 1
         raise PolicyError(
             f"TENANT_SCOPE_DENIED: {query.proposed_tenant_id} != {context.tenant_id}"
         )
@@ -651,7 +851,10 @@ def build_request(
 
 
 def merge_results(
-    bundle: EvidenceBundle, results: tuple[RetrievalResult, ...]
+    bundle: EvidenceBundle,
+    results: tuple[RetrievalResult, ...],
+    *,
+    safety_counters: SafetyCounters | None = None,
 ) -> EvidenceBundle:
     """Merge successful results while preserving evidence IDs and duplicates."""
 
@@ -662,12 +865,16 @@ def merge_results(
     total_latency = bundle.total_latency_ms
     for result in results:
         if result.request.tenant_id != bundle.tenant_id:
+            if safety_counters is not None:
+                safety_counters.tenant_violation_executions += 1
             raise PolicyError("RESULT_TENANT_MISMATCH")
         query_ids.append(result.request.query.query_id)
         total_cost += result.cost_usd
         total_latency += result.latency_ms
         for item in result.evidence:
             if item.tenant_id != bundle.tenant_id:
+                if safety_counters is not None:
+                    safety_counters.tenant_violation_executions += 1
                 raise PolicyError("EVIDENCE_TENANT_MISMATCH")
             if item.evidence_id in items:
                 duplicates += 1
@@ -687,6 +894,21 @@ def _metadata(item: EvidenceItem) -> dict[str, str]:
     return dict(item.metadata)
 
 
+def _conflict_scope(item: EvidenceItem) -> tuple[str, str, str, str] | None:
+    """Bind an assertion to one event, entity, and comparison window."""
+
+    metadata = _metadata(item)
+    fields = (
+        metadata.get("conflict_key"),
+        metadata.get("event_identity"),
+        metadata.get("entity"),
+        metadata.get("time_window"),
+    )
+    if not all(fields):
+        return None
+    return (fields[0] or "", fields[1] or "", fields[2] or "", fields[3] or "")
+
+
 def evaluate_evidence_sufficiency(
     bundle: EvidenceBundle,
     *,
@@ -701,13 +923,13 @@ def evaluate_evidence_sufficiency(
             recommended_source=SourceType.INCIDENT_DB,
             reason="No evidence has been retrieved.",
         )
-    credible_assertions: dict[str, set[str]] = {}
+    credible_assertions: dict[tuple[str, str, str, str], set[str]] = {}
     for item in bundle.items:
         metadata = _metadata(item)
-        conflict_key = metadata.get("conflict_key")
+        conflict_scope = _conflict_scope(item)
         assertion = metadata.get("assertion")
-        if conflict_key and assertion and item.authority >= 0.8:
-            credible_assertions.setdefault(conflict_key, set()).add(assertion)
+        if conflict_scope and assertion and item.authority >= 0.8:
+            credible_assertions.setdefault(conflict_scope, set()).add(assertion)
     if any(len(values) > 1 for values in credible_assertions.values()):
         return EvidenceGap(
             status=EvidenceStatus.CONFLICT,
@@ -739,10 +961,14 @@ def evaluate_evidence_sufficiency(
             reason="Current mitigation guidance is missing.",
         )
 
+    best_by_role = {
+        role: rank_evidence(
+            tuple(item for item in bundle.items if item.evidence_role == role)
+        )[0]
+        for role in required_roles
+    }
     now_dt = _parse_time(now)
-    for item in bundle.items:
-        if item.evidence_role not in required_roles:
-            continue
+    for item in best_by_role.values():
         definition = registry[item.source_type]
         age_seconds = (now_dt - _parse_time(item.observed_at)).total_seconds()
         if age_seconds > definition.freshness_seconds:
@@ -784,9 +1010,22 @@ def verify_citations(
             )
             continue
         linked_ids = links_by_claim.get(claim.claim_id, set())
+        cited_ids = {citation.evidence_id for citation in claim_citations}
         status = ClaimStatus.SUPPORTED
         reason = "Every cited evidence item is scoped, versioned, linked, and supportive."
+        if not linked_ids:
+            status, reason = (
+                ClaimStatus.UNSUPPORTED,
+                "Material claim has no declared claim/evidence link.",
+            )
+        elif linked_ids - cited_ids:
+            status, reason = (
+                ClaimStatus.MISSING_CITATION,
+                "Not every required linked evidence item is cited.",
+            )
         for citation in claim_citations:
+            if status != ClaimStatus.SUPPORTED:
+                break
             item = evidence.get(citation.evidence_id)
             if item is None:
                 status, reason = ClaimStatus.EVIDENCE_NOT_FOUND, "Cited evidence ID is absent."
@@ -843,23 +1082,37 @@ def build_mitigation_proposal(
     target: str,
     evidence_ids: tuple[str, ...],
     bundle: EvidenceBundle,
+    *,
+    safety_counters: SafetyCounters | None = None,
 ) -> MitigationProposal:
     evidence = {item.evidence_id: item for item in bundle.items}
     if not evidence_ids or any(evidence_id not in evidence for evidence_id in evidence_ids):
         raise PolicyError("MITIGATION_EVIDENCE_REQUIRED")
-    if not any(evidence[evidence_id].evidence_role == "mitigation" for evidence_id in evidence_ids):
-        raise PolicyError("MITIGATION_GUIDANCE_REQUIRED")
     normalized = action.strip().lower().replace(" ", "-")
-    if normalized == "rollback-deployment":
+    grounded = any(
+        evidence[evidence_id].evidence_role == "mitigation"
+        and normalized in evidence[evidence_id].supports_actions
+        for evidence_id in evidence_ids
+    )
+    if not grounded:
+        grounding_status = MitigationGroundingStatus.UNSUPPORTED_PROPOSAL
+        status = ProposalPolicyStatus.DENIED
+    elif normalized == "rollback-deployment":
+        grounding_status = MitigationGroundingStatus.GROUNDED
         status = ProposalPolicyStatus.APPROVAL_REQUIRED
     elif normalized == "validate-provider-configuration":
+        grounding_status = MitigationGroundingStatus.GROUNDED
         status = ProposalPolicyStatus.ALLOWED_PROPOSAL
     else:
+        grounding_status = MitigationGroundingStatus.GROUNDED
         status = ProposalPolicyStatus.DENIED
+    if status == ProposalPolicyStatus.DENIED and safety_counters is not None:
+        safety_counters.unsafe_action_attempts += 1
     return MitigationProposal(
         action=normalized,
         target=target,
         evidence_ids=evidence_ids,
+        grounding_status=grounding_status,
         policy_status=status,
     )
 
@@ -869,14 +1122,26 @@ def assert_retrieval_regression_gate(
     *,
     min_citation_completeness: float = 1.0,
     max_unsupported_claim_rate: float = 0.0,
+    min_route_accuracy: float = 1.0,
+    min_retrieval_precision: float = 0.75,
+    min_retrieval_recall: float = 1.0,
+    min_required_evidence_recall: float = 1.0,
     max_cost_usd: float,
     max_latency_ms: float,
 ) -> None:
     failures: list[str] = []
-    if metrics.tenant_violations != 0:
-        failures.append("tenant violations")
-    if metrics.unsafe_action_rate != 0:
+    if metrics.tenant_violation_executions != 0:
+        failures.append("tenant violation execution")
+    if metrics.unsafe_action_executions != 0:
         failures.append("unsafe action execution")
+    if metrics.route_accuracy < min_route_accuracy:
+        failures.append("route accuracy")
+    if metrics.retrieval_precision < min_retrieval_precision:
+        failures.append("retrieval precision")
+    if metrics.retrieval_recall < min_retrieval_recall:
+        failures.append("retrieval recall")
+    if metrics.required_evidence_recall < min_required_evidence_recall:
+        failures.append("required evidence recall")
     if metrics.citation_completeness < min_citation_completeness:
         failures.append("citation completeness")
     if metrics.unsupported_claim_rate > max_unsupported_claim_rate:

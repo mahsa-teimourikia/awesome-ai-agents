@@ -83,6 +83,46 @@ def test_route_outcomes_include_unknown_and_ambiguous():
     assert ambiguous.route_type == policy.RouteType.AMBIGUOUS
 
 
+def test_wrong_route_decreases_measured_accuracy():
+    baseline = policy.evaluate_routing_quality(lab.routing_evaluation_dataset())
+
+    def wrong_route(query):
+        if query.query_id == "eval-incident":
+            return policy.RouteDecision(
+                route_type=policy.RouteType.UNKNOWN,
+                reason="Injected routing regression.",
+            )
+        return policy.route_query(query)
+
+    regressed = policy.evaluate_routing_quality(
+        lab.routing_evaluation_dataset(), router=wrong_route
+    )
+    assert baseline.exact_route_accuracy == 1
+    assert regressed.exact_route_accuracy < baseline.exact_route_accuracy
+
+
+def test_wrong_multi_route_source_changes_precision_and_recall():
+    baseline = policy.evaluate_routing_quality(lab.routing_evaluation_dataset())
+
+    def wrong_source(query):
+        if query.query_id == "eval-dependency":
+            return policy.RouteDecision(
+                route_type=policy.RouteType.MULTI_ROUTE,
+                proposed_sources=(
+                    policy.SourceType.DEPENDENCY_GRAPH,
+                    policy.SourceType.INCIDENT_DB,
+                ),
+                reason="Injected source-set regression.",
+            )
+        return policy.route_query(query)
+
+    regressed = policy.evaluate_routing_quality(
+        lab.routing_evaluation_dataset(), router=wrong_source
+    )
+    assert regressed.multi_route_source_precision < baseline.multi_route_source_precision
+    assert regressed.multi_route_source_recall < baseline.multi_route_source_recall
+
+
 def test_unknown_source_rejected(context):
     query = lab.build_retrieval_plan().queries[0]
     with pytest.raises(policy.PolicyError, match="UNKNOWN_SOURCE"):
@@ -95,6 +135,7 @@ def test_unknown_source_rejected(context):
 
 
 def test_wrong_tenant_blocked(context):
+    counters = policy.SafetyCounters()
     query = lab.build_retrieval_plan().queries[0].model_copy(
         update={"proposed_tenant_id": "globex"}, deep=True
     )
@@ -105,7 +146,34 @@ def test_wrong_tenant_blocked(context):
             context,
             policy.RetrievalBudget.from_context(context),
             structured_parameters=lab.incident_parameters(),
+            safety_counters=counters,
         )
+    assert counters.tenant_violation_attempts == 1
+    assert counters.tenant_violation_executions == 0
+
+
+def test_wrong_tenant_result_increases_execution_counter(context):
+    budget = policy.RetrievalBudget.from_context(context)
+    request = policy.build_request(
+        lab.build_retrieval_plan().queries[0],
+        policy.SourceType.INCIDENT_DB,
+        context,
+        budget,
+        structured_parameters=lab.incident_parameters(),
+    )
+    wrong_tenant_result = lab.execute_fixture_retrieval(request).model_copy(
+        update={"request": request.model_copy(update={"tenant_id": "globex"})}
+    )
+    counters = policy.SafetyCounters()
+
+    with pytest.raises(policy.PolicyError, match="RESULT_TENANT_MISMATCH"):
+        policy.merge_results(
+            policy.EvidenceBundle(tenant_id="northstar"),
+            (wrong_tenant_result,),
+            safety_counters=counters,
+        )
+    assert counters.tenant_violation_attempts == 0
+    assert counters.tenant_violation_executions == 1
 
 
 def test_query_budget_enforced():
@@ -119,6 +187,27 @@ def test_hop_budget_enforced():
     run = lab.run_agentic_controller(lab.build_context(max_hops=0))
     assert run.answer.stop_reason == policy.StopReason.BUDGET_EXHAUSTED
     assert run.gap.status == policy.EvidenceStatus.MISSING_DEPENDENCY
+
+
+def test_budget_separates_reservation_from_actual_accounting(context):
+    budget = policy.RetrievalBudget.from_context(context)
+    request = policy.build_request(
+        lab.build_retrieval_plan().queries[0],
+        policy.SourceType.INCIDENT_DB,
+        context,
+        budget,
+        structured_parameters=lab.incident_parameters(),
+    )
+    assert budget.reserved_cost_usd == 0.01
+    assert budget.actual_cost_usd == 0
+    result = lab.execute_fixture_retrieval(request).model_copy(
+        update={"cost_usd": 0.02, "latency_ms": 25}
+    )
+    policy.account_retrieval_result(budget, result)
+    assert budget.reserved_cost_usd == 0.01
+    assert budget.actual_cost_usd == 0.02
+    assert budget.reserved_latency_ms == 18
+    assert budget.actual_latency_ms == 25
 
 
 def test_missing_dependency_triggers_one_bounded_graph_retrieval(completed_run):
@@ -158,6 +247,82 @@ def test_old_incident_ranks_below_current_incident(context):
     assert result.evidence[0].evidence_id == "incident-eu-2026"
     assert result.evidence[1].evidence_id == "incident-eu-2024"
     assert result.evidence[0].relevance_score == result.evidence[1].relevance_score
+
+
+def test_irrelevant_evidence_decreases_retrieval_precision(completed_run):
+    baseline = policy.evaluate_retrieval_quality(
+        completed_run.bundle, lab.incident_retrieval_gold()
+    )
+    noisy_bundle = completed_run.bundle.model_copy(
+        update={
+            "items": (*completed_run.bundle.items, lab.malicious_web_evidence())
+        }
+    )
+    regressed = policy.evaluate_retrieval_quality(
+        noisy_bundle, lab.incident_retrieval_gold()
+    )
+    assert regressed.retrieval_precision < baseline.retrieval_precision
+
+
+def test_empty_retrieval_does_not_receive_perfect_precision():
+    metrics = policy.evaluate_retrieval_quality(
+        policy.EvidenceBundle(tenant_id="northstar"),
+        lab.incident_retrieval_gold(),
+    )
+
+    assert metrics.retrieval_precision == 0.0
+    assert metrics.retrieval_recall == 0.0
+    assert metrics.required_evidence_recall == 0.0
+
+
+def test_missing_required_evidence_decreases_retrieval_recall(completed_run):
+    baseline = policy.evaluate_retrieval_quality(
+        completed_run.bundle, lab.incident_retrieval_gold()
+    )
+    incomplete = lab.run_agentic_controller(include_dependency=False)
+    regressed = policy.evaluate_retrieval_quality(
+        incomplete.bundle, lab.incident_retrieval_gold()
+    )
+    assert regressed.retrieval_recall < baseline.retrieval_recall
+    assert regressed.required_evidence_recall < baseline.required_evidence_recall
+
+
+def test_stale_inferior_duplicate_does_not_invalidate_fresh_role(completed_run):
+    current = next(
+        item
+        for item in completed_run.bundle.items
+        if item.evidence_id == "incident-eu-2026"
+    )
+    stale_duplicate = current.model_copy(
+        update={
+            "evidence_id": "incident-eu-stale-copy",
+            "source_version": "1",
+            "observed_at": "2020-01-01T00:00:00+00:00",
+            "event_time": "2020-01-01T00:00:00+00:00",
+            "authority": 0.2,
+            "relevance_score": 0.8,
+        }
+    )
+    bundle = completed_run.bundle.model_copy(
+        update={"items": (*completed_run.bundle.items, stale_duplicate)}
+    )
+    assert (
+        policy.evaluate_evidence_sufficiency(bundle).status
+        == policy.EvidenceStatus.SUFFICIENT
+    )
+
+
+def test_historical_incident_outside_conflict_scope_is_not_a_conflict(completed_run):
+    historical = next(
+        item
+        for item in completed_run.bundle.items
+        if item.evidence_id == "incident-eu-2024"
+    )
+    assert dict(historical.metadata)["conflict_key"] == "failure-cause"
+    assert (
+        policy.evaluate_evidence_sufficiency(completed_run.bundle).status
+        == policy.EvidenceStatus.SUFFICIENT
+    )
 
 
 def test_conflicting_credible_sources_are_not_silently_selected(completed_run, context):
@@ -350,10 +515,39 @@ def test_duplicate_retrieval_detected(context):
     request = policy.build_request(
         query, policy.SourceType.RUNBOOK_SEARCH, context, budget
     )
-    seen: set[tuple[str, policy.SourceType, str]] = set()
+    seen: set[str] = set()
     lab.ensure_not_duplicate(request, seen)
     with pytest.raises(policy.PolicyError, match="DUPLICATE_RETRIEVAL"):
         lab.ensure_not_duplicate(request, seen)
+
+
+def test_duplicate_identity_distinguishes_structured_time_windows(context):
+    query = lab.build_retrieval_plan().queries[0]
+    budget = policy.RetrievalBudget.from_context(context)
+    first = policy.build_request(
+        query,
+        policy.SourceType.INCIDENT_DB,
+        context,
+        budget,
+        structured_parameters=lab.incident_parameters(),
+    )
+    second_parameters = lab.incident_parameters().model_copy(
+        update={"start_time": "2026-01-15T09:00:00+00:00"}
+    )
+    second = policy.build_request(
+        query,
+        policy.SourceType.INCIDENT_DB,
+        context,
+        budget,
+        structured_parameters=second_parameters,
+    )
+    seen: set[str] = set()
+    lab.ensure_not_duplicate(first, seen)
+    lab.ensure_not_duplicate(second, seen)
+    assert len(seen) == 2
+    assert lab.canonical_retrieval_identity(first) != lab.canonical_retrieval_identity(
+        second
+    )
 
 
 def test_insufficient_evidence_abstains():
@@ -362,6 +556,11 @@ def test_insufficient_evidence_abstains():
     assert run.answer.stop_reason == policy.StopReason.INSUFFICIENT_EVIDENCE
     assert "dependency" in run.answer.missing_evidence
     assert run.answer.summary.startswith("INSUFFICIENT_EVIDENCE")
+    candidate_ids = {claim.claim_id for claim in run.answer.candidate_claims}
+    verified_ids = {claim.claim_id for claim in run.answer.verified_claims}
+    assert "claim-2" in candidate_ids
+    assert "claim-2" not in verified_ids
+    assert {citation.claim_id for citation in run.answer.citations} <= verified_ids
 
 
 def test_mitigation_proposal_requires_evidence(completed_run):
@@ -378,17 +577,59 @@ def test_grounded_mitigation_is_proposal_only(completed_run):
         ("incident-eu-2026", "runbook-v7"),
         completed_run.bundle,
     )
+    assert (
+        proposal.grounding_status
+        == policy.MitigationGroundingStatus.GROUNDED
+    )
     assert proposal.policy_status == policy.ProposalPolicyStatus.ALLOWED_PROPOSAL
 
 
-def test_rollback_remains_approval_gated(completed_run):
+def test_unrelated_mitigation_does_not_ground_rollback(completed_run):
+    runbook = next(
+        item for item in completed_run.bundle.items if item.evidence_id == "runbook-v7"
+    )
+    unrelated = runbook.model_copy(
+        update={
+            "evidence_id": "runbook-unrelated",
+            "supports_actions": ("page-oncall",),
+        }
+    )
+    bundle = completed_run.bundle.model_copy(
+        update={"items": (*completed_run.bundle.items, unrelated)}
+    )
+    proposal = policy.build_mitigation_proposal(
+        "rollback-deployment",
+        "checkout-eu",
+        ("runbook-unrelated",),
+        bundle,
+    )
+    assert (
+        proposal.grounding_status
+        == policy.MitigationGroundingStatus.UNSUPPORTED_PROPOSAL
+    )
+    assert proposal.policy_status == policy.ProposalPolicyStatus.DENIED
+
+
+def test_grounded_rollback_remains_approval_gated(completed_run):
     proposal = policy.build_mitigation_proposal(
         "rollback-deployment",
         "checkout-eu",
         ("incident-eu-2026", "runbook-v7"),
         completed_run.bundle,
     )
+    assert (
+        proposal.grounding_status
+        == policy.MitigationGroundingStatus.GROUNDED
+    )
     assert proposal.policy_status == policy.ProposalPolicyStatus.APPROVAL_REQUIRED
+
+
+def test_safety_metrics_count_blocked_attempts_not_executions(completed_run):
+    counters = lab.run_safety_evaluation(completed_run.bundle)
+    assert counters.tenant_violation_attempts == 1
+    assert counters.tenant_violation_executions == 0
+    assert counters.unsafe_action_attempts == 1
+    assert counters.unsafe_action_executions == 0
 
 
 def test_trace_records_observable_retrieval_decisions(completed_run):
@@ -412,10 +653,32 @@ def test_fixed_vs_agentic_comparison_has_no_universal_winner():
 
 def test_default_retrieval_regression_gate_passes():
     metrics = lab.validate_default_regression_gate()
-    assert metrics.tenant_violations == 0
-    assert metrics.unsafe_action_rate == 0
+    assert metrics.route_accuracy == 1
+    assert metrics.multi_route_source_precision == 1
+    assert metrics.multi_route_source_recall == 1
+    assert metrics.retrieval_precision == 0.75
+    assert metrics.retrieval_recall == 1
+    assert metrics.tenant_violation_attempts == 1
+    assert metrics.tenant_violation_executions == 0
+    assert metrics.unsafe_action_attempts == 1
+    assert metrics.unsafe_action_executions == 0
     assert metrics.citation_completeness == 1
     assert metrics.unsupported_claim_rate == 0
+
+
+@pytest.mark.parametrize(
+    "execution_field",
+    ("tenant_violation_executions", "unsafe_action_executions"),
+)
+def test_regression_gate_uses_executions_not_blocked_attempts(execution_field):
+    metrics = lab.validate_default_regression_gate()
+    failed = metrics.model_copy(update={execution_field: 1})
+    with pytest.raises(policy.PolicyError, match="execution"):
+        policy.assert_retrieval_regression_gate(
+            failed,
+            max_cost_usd=0.08,
+            max_latency_ms=100,
+        )
 
 
 def test_budget_model_forbids_planner_owned_limits(context):

@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+import json
+
 from policy import (
     Claim,
     ClaimEvidenceLink,
+    ClaimStatus,
     Citation,
     CitationReport,
     ConfidenceLabel,
@@ -20,6 +24,7 @@ from policy import (
     PolicyError,
     RetrievalBudget,
     RetrievalContext,
+    RetrievalEvaluationCase,
     RetrievalMode,
     RetrievalPlan,
     RetrievalQuery,
@@ -27,15 +32,21 @@ from policy import (
     RetrievalResult,
     RetrievalStatus,
     RetrievalTrace,
+    RouteDecision,
+    RoutingEvaluationCase,
     RouteType,
+    SafetyCounters,
     SourceType,
     StopReason,
     TrustLevel,
+    account_retrieval_result,
     assert_retrieval_regression_gate,
     build_mitigation_proposal,
     build_request,
     choose_retrieval_mode,
     evaluate_evidence_sufficiency,
+    evaluate_retrieval_quality,
+    evaluate_routing_quality,
     merge_results,
     minimize_public_query,
     rank_evidence,
@@ -151,7 +162,13 @@ def _incident_current() -> EvidenceItem:
             "EU checkout payment failures began at 10:42 UTC after payment-provider "
             "configuration version 42 was activated; error signature CONFIG_REGION_MISMATCH."
         ),
-        metadata=(("conflict_key", "failure-cause"), ("assertion", "config-mismatch")),
+        metadata=(
+            ("conflict_key", "failure-cause"),
+            ("event_identity", "eu-checkout-2026-01-15"),
+            ("entity", "checkout-eu"),
+            ("time_window", "2026-01-15t1040z/2026-01-15t1100z"),
+            ("assertion", "config-mismatch"),
+        ),
         raw_artifact_handle="artifact://incident-db/incident-eu-2026/v42",
         supports_claims=("claim-1", "claim-2"),
         evidence_role="current-incident",
@@ -171,7 +188,13 @@ def _incident_old() -> EvidenceItem:
         authority=0.90,
         relevance_score=0.99,
         content="An older EU checkout incident involved a certificate expiry.",
-        metadata=(("conflict_key", "historical-cause"), ("assertion", "certificate-expiry")),
+        metadata=(
+            ("conflict_key", "failure-cause"),
+            ("event_identity", "eu-checkout-2024-07-03"),
+            ("entity", "checkout-eu"),
+            ("time_window", "2024-07-03t0900z/2024-07-03t0930z"),
+            ("assertion", "certificate-expiry"),
+        ),
         raw_artifact_handle="artifact://incident-db/incident-eu-2024/v7",
         supports_claims=(),
         evidence_role="historical-incident",
@@ -197,6 +220,10 @@ def runbook_evidence() -> EvidenceItem:
         metadata=(("procedure", "validate-provider-configuration"),),
         raw_artifact_handle="artifact://runbooks/eu-payments/v7",
         supports_claims=("claim-3",),
+        supports_actions=(
+            "validate-provider-configuration",
+            "rollback-deployment",
+        ),
         evidence_role="mitigation",
     )
 
@@ -243,7 +270,13 @@ def _provider_status(*, conflict: bool = False) -> EvidenceItem:
         authority=0.97,
         relevance_score=0.96,
         content=content,
-        metadata=(("conflict_key", "failure-cause"), ("assertion", assertion)),
+        metadata=(
+            ("conflict_key", "failure-cause"),
+            ("event_identity", "eu-checkout-2026-01-15"),
+            ("entity", "checkout-eu"),
+            ("time_window", "2026-01-15t1040z/2026-01-15t1100z"),
+            ("assertion", assertion),
+        ),
         raw_artifact_handle="artifact://provider-status/2026-01-15/v1",
         supports_claims=(() if conflict else ("claim-2",)),
         evidence_role="dependency",
@@ -347,6 +380,7 @@ def fixed_rag_baseline(
         structured_parameters=incident_parameters(),
     )
     result = execute_fixture_retrieval(request)
+    account_retrieval_result(budget, result)
     bundle = merge_results(EvidenceBundle(tenant_id=context.tenant_id), (result,))
     gap = evaluate_evidence_sufficiency(bundle)
     answer = build_grounded_answer(bundle, gap, StopReason.FIXED_BASELINE_COMPLETE)
@@ -373,19 +407,36 @@ def fixed_rag_baseline(
     )
 
 
-def _retrieval_identity(request: RetrievalRequest) -> tuple[str, SourceType, str]:
-    return (
-        request.query.question.strip().lower(),
-        request.source_type,
-        request.tenant_id,
-    )
+def _normalized_text(value: str | None) -> str | None:
+    return " ".join(value.split()).casefold() if value is not None else None
+
+
+def canonical_retrieval_identity(request: RetrievalRequest) -> str:
+    """Serialize every execution-affecting retrieval field deterministically."""
+
+    payload = {
+        "tenant_id": request.tenant_id,
+        "source_type": request.source_type.value,
+        "normalized_query": _normalized_text(request.query.question),
+        "structured_parameters": (
+            request.structured_parameters.model_dump(mode="json")
+            if request.structured_parameters
+            else None
+        ),
+        "outbound_query": _normalized_text(request.outbound_query),
+        "target_domain": (
+            request.target_domain.casefold() if request.target_domain else None
+        ),
+        "policy_version": request.policy_version,
+    }
+    return json.dumps(payload, sort_keys=True, separators=(",", ":"))
 
 
 def ensure_not_duplicate(
     request: RetrievalRequest,
-    seen: set[tuple[str, SourceType, str]],
+    seen: set[str],
 ) -> None:
-    identity = _retrieval_identity(request)
+    identity = canonical_retrieval_identity(request)
     if identity in seen:
         raise PolicyError("DUPLICATE_RETRIEVAL")
     seen.add(identity)
@@ -430,7 +481,7 @@ def run_agentic_controller(
     budget = RetrievalBudget.from_context(context)
     bundle = EvidenceBundle(tenant_id=context.tenant_id)
     traces: list[RetrievalTrace] = []
-    seen: set[tuple[str, SourceType, str]] = set()
+    seen: set[str] = set()
 
     initial = (
         (plan.queries[0], SourceType.INCIDENT_DB, incident_parameters()),
@@ -448,6 +499,7 @@ def run_agentic_controller(
             )
             ensure_not_duplicate(request, seen)
             result = execute_fixture_retrieval(request)
+            account_retrieval_result(budget, result)
             bundle = merge_results(bundle, (result,))
             gap = evaluate_evidence_sufficiency(bundle)
             _trace(traces, query, source, result, gap, hop=0)
@@ -469,6 +521,7 @@ def run_agentic_controller(
             )
             ensure_not_duplicate(request, seen)
             result = execute_fixture_retrieval(request)
+            account_retrieval_result(budget, result)
             bundle = merge_results(bundle, (result,))
             corrective_retrievals += 1
             gap = evaluate_evidence_sufficiency(bundle)
@@ -571,9 +624,24 @@ def build_grounded_answer(
     gap: EvidenceGap,
     stop_reason: StopReason,
 ) -> GroundedAnswer:
-    claims = material_claims()
-    citations = citations_for_bundle(bundle)
-    report = verify_citations(claims, claim_links(), citations, bundle)
+    candidate_claims = material_claims()
+    candidate_citations = citations_for_bundle(bundle)
+    report = verify_citations(
+        candidate_claims, claim_links(), candidate_citations, bundle
+    )
+    supported_claim_ids = {
+        verification.claim_id
+        for verification in report.verifications
+        if verification.status == ClaimStatus.SUPPORTED
+    }
+    verified_claims = tuple(
+        claim for claim in candidate_claims if claim.claim_id in supported_claim_ids
+    )
+    verified_citations = tuple(
+        citation
+        for citation in candidate_citations
+        if citation.claim_id in supported_claim_ids
+    )
     if gap.status == EvidenceStatus.CONFLICT:
         confidence = ConfidenceLabel.CONFLICTED
     elif gap.status != EvidenceStatus.SUFFICIENT:
@@ -591,8 +659,9 @@ def build_grounded_answer(
     )
     return GroundedAnswer(
         summary=summary,
-        claims=claims,
-        citations=citations,
+        candidate_claims=candidate_claims,
+        verified_claims=verified_claims,
+        citations=verified_citations,
         confidence_label=confidence,
         stop_reason=stop_reason,
         missing_evidence=gap.missing_evidence,
@@ -618,6 +687,7 @@ def add_provider_evidence(
         hop=1,
     )
     result = execute_fixture_retrieval(request, conflicting_provider=conflict)
+    account_retrieval_result(budget, result)
     return merge_results(bundle, (result,))
 
 
@@ -697,27 +767,138 @@ def citation_report_for_run(run: ControllerRun) -> CitationReport:
     )
 
 
-def evaluation_metrics(run: ControllerRun) -> EvaluationMetrics:
+def routing_evaluation_dataset() -> tuple[RoutingEvaluationCase, ...]:
+    """Gold route labels for known, multi, unknown, and ambiguous outcomes."""
+
+    return (
+        RoutingEvaluationCase(
+            case_id="route-incident",
+            query=RetrievalQuery(
+                query_id="eval-incident",
+                question="What incident caused EU checkout failures?",
+                intent="incident-facts",
+            ),
+            expected_route_type=RouteType.KNOWN_ROUTE,
+            expected_sources=(SourceType.INCIDENT_DB,),
+        ),
+        RoutingEvaluationCase(
+            case_id="route-mitigation",
+            query=RetrievalQuery(
+                query_id="eval-mitigation",
+                question="Which runbook mitigation applies?",
+                intent="runbook-mitigation",
+            ),
+            expected_route_type=RouteType.KNOWN_ROUTE,
+            expected_sources=(SourceType.RUNBOOK_SEARCH,),
+        ),
+        RoutingEvaluationCase(
+            case_id="route-dependency",
+            query=RetrievalQuery(
+                query_id="eval-dependency",
+                question="Which dependency or provider is involved?",
+                intent="dependency-provider",
+            ),
+            expected_route_type=RouteType.MULTI_ROUTE,
+            expected_sources=(
+                SourceType.DEPENDENCY_GRAPH,
+                SourceType.PROVIDER_STATUS,
+            ),
+        ),
+        RoutingEvaluationCase(
+            case_id="route-unknown",
+            query=RetrievalQuery(
+                query_id="eval-unknown",
+                question="Tell me a joke",
+                intent="chitchat",
+            ),
+            expected_route_type=RouteType.UNKNOWN,
+        ),
+        RoutingEvaluationCase(
+            case_id="route-ambiguous",
+            query=RetrievalQuery(
+                query_id="eval-ambiguous",
+                question="What is the status?",
+                intent="status",
+            ),
+            expected_route_type=RouteType.AMBIGUOUS,
+        ),
+    )
+
+
+def incident_retrieval_gold() -> RetrievalEvaluationCase:
+    """Case-level relevance labels; the older incident is intentionally irrelevant."""
+
+    required = ("incident-eu-2026", "graph-checkout-provider", "runbook-v7")
+    return RetrievalEvaluationCase(
+        case_id="northstar-eu-checkout",
+        relevant_evidence_ids=required,
+        required_evidence_ids=required,
+    )
+
+
+def run_safety_evaluation(bundle: EvidenceBundle) -> SafetyCounters:
+    """Exercise blocked tenant and unsafe-action attempts without executing either."""
+
+    counters = SafetyCounters()
+    context = build_context()
+    wrong_tenant_query = build_retrieval_plan().queries[0].model_copy(
+        update={"proposed_tenant_id": "globex"}, deep=True
+    )
+    try:
+        build_request(
+            wrong_tenant_query,
+            SourceType.INCIDENT_DB,
+            context,
+            RetrievalBudget.from_context(context),
+            structured_parameters=incident_parameters(),
+            safety_counters=counters,
+        )
+    except PolicyError:
+        pass
+    build_mitigation_proposal(
+        "restart-every-production-service",
+        "production",
+        ("runbook-v7",),
+        bundle,
+        safety_counters=counters,
+    )
+    return counters
+
+
+def evaluation_metrics(
+    run: ControllerRun,
+    *,
+    router: Callable[[RetrievalQuery], RouteDecision] = route_query,
+    retrieval_case: RetrievalEvaluationCase | None = None,
+    safety_counters: SafetyCounters | None = None,
+) -> EvaluationMetrics:
     report = citation_report_for_run(run)
-    required_roles = {"current-incident", "dependency", "mitigation"}
-    present_roles = {item.evidence_role for item in run.bundle.items}
-    required_recall = len(required_roles & present_roles) / len(required_roles)
+    routing = evaluate_routing_quality(routing_evaluation_dataset(), router=router)
+    retrieval = evaluate_retrieval_quality(
+        run.bundle, retrieval_case or incident_retrieval_gold()
+    )
+    safety = safety_counters or SafetyCounters()
     query_count = run.budget.used_queries
     return EvaluationMetrics(
-        route_accuracy=1.0,
-        retrieval_precision=(3 / len(run.bundle.items) if run.bundle.items else 0.0),
-        retrieval_recall=required_recall,
-        required_evidence_recall=required_recall,
+        route_accuracy=routing.exact_route_accuracy,
+        multi_route_source_precision=routing.multi_route_source_precision,
+        multi_route_source_recall=routing.multi_route_source_recall,
+        unknown_ambiguous_accuracy=routing.unknown_ambiguous_accuracy,
+        retrieval_precision=retrieval.retrieval_precision,
+        retrieval_recall=retrieval.retrieval_recall,
+        required_evidence_recall=retrieval.required_evidence_recall,
         citation_completeness=report.citation_completeness,
         unsupported_claim_rate=report.unsupported_claim_rate,
         duplicate_retrieval_rate=(
             run.bundle.duplicate_retrievals / query_count if query_count else 0.0
         ),
         query_count=query_count,
-        cost_usd=run.bundle.total_cost_usd,
-        latency_ms=run.bundle.total_latency_ms,
-        tenant_violations=0,
-        unsafe_action_rate=0.0,
+        cost_usd=run.budget.actual_cost_usd,
+        latency_ms=run.budget.actual_latency_ms,
+        tenant_violation_attempts=safety.tenant_violation_attempts,
+        tenant_violation_executions=safety.tenant_violation_executions,
+        unsafe_action_attempts=safety.unsafe_action_attempts,
+        unsafe_action_executions=safety.unsafe_action_executions,
     )
 
 
@@ -726,6 +907,9 @@ def fixed_vs_agentic_comparison() -> tuple[dict[str, object], ...]:
 
     fixed_incident = fixed_rag_baseline()
     agentic_incident = run_agentic_controller()
+    gold = incident_retrieval_gold()
+    fixed_quality = evaluate_retrieval_quality(fixed_incident.bundle, gold)
+    agentic_quality = evaluate_retrieval_quality(agentic_incident.bundle, gold)
     return (
         {
             "case": "simple-faq",
@@ -744,14 +928,20 @@ def fixed_vs_agentic_comparison() -> tuple[dict[str, object], ...]:
             "agentic_cost_usd": agentic_incident.bundle.total_cost_usd,
             "fixed_latency_ms": fixed_incident.bundle.total_latency_ms,
             "agentic_latency_ms": agentic_incident.bundle.total_latency_ms,
-            "fixed_required_evidence_recall": 1 / 3,
-            "agentic_required_evidence_recall": 1.0,
+            "fixed_required_evidence_recall": (
+                fixed_quality.required_evidence_recall
+            ),
+            "agentic_required_evidence_recall": (
+                agentic_quality.required_evidence_recall
+            ),
         },
     )
 
 
 def validate_default_regression_gate() -> EvaluationMetrics:
-    metrics = evaluation_metrics(run_agentic_controller())
+    run = run_agentic_controller()
+    safety = run_safety_evaluation(run.bundle)
+    metrics = evaluation_metrics(run, safety_counters=safety)
     assert_retrieval_regression_gate(
         metrics,
         min_citation_completeness=1.0,
