@@ -84,6 +84,82 @@ def test_valid_plan_returns_quality_metrics(plan, contract, capability_policy):
     assert metrics.parallel_task_count == 2
     assert metrics.section_coverage_rate == 1.0
     assert metrics.evidence_coverage_rate == 1.0
+    assert metrics.approval_gated_task_ids == ()
+
+
+def test_approval_gated_write_is_valid_but_requires_bound_execution_approval(
+    plan, contract, capability_policy
+):
+    tools = tuple(
+        tool.model_copy(
+            update={"effect": policy.ToolEffect.WRITE, "requires_approval": True}
+        )
+        if tool.name == "synthesize-report"
+        else tool
+        for tool in capability_policy.tools
+    )
+    gated_policy = capability_policy.model_copy(update={"tools": tools}, deep=True)
+    task = next(task for task in plan.tasks if task.task_id == "synthesize-report")
+
+    metrics = policy.validate_plan(plan, contract, gated_policy)
+    assert metrics.approval_gated_task_ids == ("synthesize-report",)
+
+    with pytest.raises(policy.PolicyError, match="APPROVAL_REQUIRED"):
+        policy.validate_execution_approval(plan, task, gated_policy)
+
+    approval = policy.ValidatedApproval(
+        plan_id=plan.plan_id,
+        plan_version=plan.version,
+        task_id=task.task_id,
+        tool_name="synthesize-report",
+        policy_version=gated_policy.policy_version,
+        approval_digest="a" * 64,
+    )
+    assert policy.validate_execution_approval(
+        plan, task, gated_policy, (approval,)
+    ) == ("synthesize-report",)
+    stale_approval = approval.model_copy(update={"plan_version": plan.version + 1})
+    with pytest.raises(policy.PolicyError, match="APPROVAL_REQUIRED"):
+        policy.validate_execution_approval(
+            plan, task, gated_policy, (stale_approval,)
+        )
+
+    blocked_run = lab.run_research_plan(capability_policy=gated_policy)
+    assert blocked_run.terminal_status == policy.RunStatus.ESCALATED
+    assert (
+        blocked_run.task_states["synthesize-report"].status
+        == policy.TaskStatus.BLOCKED
+    )
+
+    runtime_approval = approval.model_copy(update={"plan_version": 2})
+    approved_run = lab.run_research_plan(
+        options=lab.RunOptions(validated_approvals=(runtime_approval,)),
+        capability_policy=gated_policy,
+    )
+    assert approved_run.terminal_status == policy.RunStatus.COMPLETED
+
+
+def test_parallel_batch_tracks_work_separately_from_wall_clock(plan):
+    state = lab.PlanningRunState(
+        run_id="timing-run",
+        plan_id=plan.plan_id,
+        current_plan_version=plan.version,
+        started_at=lab.FIXED_TIME,
+        plan=plan,
+        task_states={},
+    )
+    batch_started_at_ms = state.wall_clock_ms
+    for elapsed_ms in (60, 55, 80):
+        lab.record_parallel_task_timing(state, elapsed_ms, batch_started_at_ms)
+
+    assert state.accumulated_work_ms == 195
+    assert state.wall_clock_ms == 80
+
+    dependent_batch_started_at_ms = state.wall_clock_ms
+    assert dependent_batch_started_at_ms == 80
+    lab.record_parallel_task_timing(state, 40, dependent_batch_started_at_ms)
+    assert state.accumulated_work_ms == 235
+    assert state.wall_clock_ms == 120
 
 
 def test_duplicate_task_id_rejected(plan):
@@ -565,6 +641,7 @@ def test_default_run_replans_and_completes():
     assert state.plan.version == 2
     assert state.replan_count == 1
     assert state.checkpoint.status == policy.CheckpointStatus.PASS
+    assert state.accumulated_work_ms > state.wall_clock_ms > 0
     assert any(output.artifact_type == "technical-report" for output in state.outputs)
 
 

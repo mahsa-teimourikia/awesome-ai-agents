@@ -33,6 +33,7 @@ from policy import (
     TaskStatus,
     ToolDefinition,
     ToolEffect,
+    ValidatedApproval,
     apply_plan_patch,
     can_attempt,
     checkpoint_action,
@@ -41,6 +42,7 @@ from policy import (
     get_ready_tasks,
     make_execution_key,
     make_output_hash,
+    validate_execution_approval,
     validate_plan,
     validate_replan_budget,
     validate_task_inputs,
@@ -76,7 +78,8 @@ class PlanningRunState(StrictModel):
     replan_count: int = Field(default=0, ge=0)
     total_attempts: int = Field(default=0, ge=0)
     total_cost_usd: float = Field(default=0.0, ge=0)
-    elapsed_ms: float = Field(default=0.0, ge=0)
+    accumulated_work_ms: float = Field(default=0.0, ge=0)
+    wall_clock_ms: float = Field(default=0.0, ge=0)
 
 
 # Backwards-compatible name used by the existing notebook and external learners.
@@ -89,6 +92,18 @@ class RunOptions:
     inject_missing_evidence: bool = False
     transient_timeout_task: str | None = None
     transient_invalid_output_task: str | None = None
+    validated_approvals: tuple[ValidatedApproval, ...] = ()
+
+
+def record_parallel_task_timing(
+    state: PlanningRunState, elapsed_ms: float, batch_started_at_ms: float
+) -> None:
+    """Account work by sum and conceptual parallel wall time by batch maximum."""
+
+    if elapsed_ms < 0 or batch_started_at_ms < 0:
+        raise ValueError("Timing values must be non-negative")
+    state.accumulated_work_ms += elapsed_ms
+    state.wall_clock_ms = max(state.wall_clock_ms, batch_started_at_ms + elapsed_ms)
 
 
 def build_capability_policy() -> CapabilityPolicy:
@@ -777,6 +792,7 @@ def run_research_plan(
             return state
 
         patch_applied = False
+        batch_started_at_ms = state.wall_clock_ms
         for task in ready:
             task_state = state.task_states[task.task_id]
             task_state.status = TaskStatus.READY
@@ -798,6 +814,31 @@ def run_research_plan(
             if state.total_cost_usd + task.estimated_cost_usd > contract.max_total_cost_usd:
                 state.terminal_status = RunStatus.BUDGET_EXHAUSTED
                 _append_event(state, PlanEventType.RUN_ESCALATED, "cost budget exhausted")
+                return state
+
+            try:
+                validate_execution_approval(
+                    state.plan,
+                    task,
+                    capability_policy,
+                    options.validated_approvals,
+                )
+            except PolicyError as error:
+                task_state.status = TaskStatus.BLOCKED
+                task_state.error_code = FailureCode.AUTH_DENIED
+                state.terminal_status = RunStatus.ESCALATED
+                _append_event(
+                    state,
+                    PlanEventType.TASK_BLOCKED,
+                    str(error),
+                    task.task_id,
+                )
+                _append_event(
+                    state,
+                    PlanEventType.RUN_ESCALATED,
+                    "approval-gated execution blocked",
+                    task.task_id,
+                )
                 return state
 
             task_state.attempt += 1
@@ -823,12 +864,16 @@ def run_research_plan(
                 contract,
             )
             state.total_cost_usd = round(state.total_cost_usd + result.cost_usd, 6)
-            state.elapsed_ms += result.elapsed_ms
+            record_parallel_task_timing(
+                state,
+                result.elapsed_ms,
+                batch_started_at_ms,
+            )
             if state.total_cost_usd > contract.max_total_cost_usd:
                 state.terminal_status = RunStatus.BUDGET_EXHAUSTED
                 _append_event(state, PlanEventType.RUN_ESCALATED, "cost budget exhausted")
                 return state
-            if state.elapsed_ms > contract.deadline_ms:
+            if state.wall_clock_ms > contract.deadline_ms:
                 state.terminal_status = RunStatus.BUDGET_EXHAUSTED
                 _append_event(state, PlanEventType.RUN_ESCALATED, "deadline exhausted")
                 return state
@@ -938,6 +983,8 @@ def summarize_run(state: PlanningRunState) -> dict[str, object]:
         "replans": state.replan_count,
         "attempts": state.total_attempts,
         "cost_usd": state.total_cost_usd,
+        "accumulated_work_ms": state.accumulated_work_ms,
+        "wall_clock_ms": state.wall_clock_ms,
         "checkpoint": state.checkpoint.status.value if state.checkpoint else None,
         "failed_tasks": [
             task_id

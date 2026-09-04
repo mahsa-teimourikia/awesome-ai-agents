@@ -137,6 +137,22 @@ class CapabilityPolicy(FrozenModel):
         return {tool.name: tool for tool in self.tools}
 
 
+class ValidatedApproval(FrozenModel):
+    """Application-validated authority bound to one planned tool execution.
+
+    Course 03 owns the full human-review lifecycle. Course 08 accepts only its
+    already-validated result and still verifies that the scope matches the
+    current plan version, task, tool, and capability-policy version.
+    """
+
+    plan_id: str = Field(min_length=1, max_length=64, pattern=TASK_ID_PATTERN.pattern)
+    plan_version: int = Field(gt=0)
+    task_id: str = Field(min_length=1, max_length=64, pattern=TASK_ID_PATTERN.pattern)
+    tool_name: str = Field(min_length=1, max_length=64, pattern=TASK_ID_PATTERN.pattern)
+    policy_version: str = Field(min_length=1, max_length=32)
+    approval_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
 class GoalContract(FrozenModel):
     goal_id: str = Field(min_length=1, max_length=64, pattern=TASK_ID_PATTERN.pattern)
     objective: str = Field(min_length=1, max_length=500)
@@ -178,14 +194,24 @@ class Task(FrozenModel):
         min_length=1, max_length=64, pattern=TASK_ID_PATTERN.pattern
     )
     dependencies: tuple[str, ...] = ()
-    required_inputs: tuple[str, ...] = ()
+    required_inputs: tuple[str, ...] = Field(
+        default=(),
+        description="Required artifact types; this contract does not encode cardinality.",
+    )
     suggested_tools: tuple[str, ...] = ()
-    coverage_tags: tuple[str, ...] = ()
+    coverage_tags: tuple[str, ...] = Field(
+        default=(),
+        description="Deterministic plan metadata, not model-attested artifact coverage.",
+    )
     evidence_types: tuple[str, ...] = ()
     output_schema: tuple[tuple[str, str], ...] = ()
     max_attempts: int = Field(default=1, gt=0, le=10)
     timeout_ms: float = Field(default=30_000.0, gt=0)
-    estimated_cost_usd: float = Field(default=0.05, ge=0)
+    estimated_cost_usd: float = Field(
+        default=0.05,
+        ge=0,
+        description="Conservative pre-execution admission and reservation estimate.",
+    )
     risk: str = Field(default="low", pattern=r"^(low|medium|high)$")
 
     @field_validator("dependencies", "suggested_tools")
@@ -239,7 +265,9 @@ class TaskOutput(FrozenModel):
     content: str = Field(min_length=1)
     output_hash: str = Field(min_length=64, max_length=64)
     created_at: str = Field(min_length=1, max_length=64)
-    cost_usd: float = Field(ge=0)
+    cost_usd: float = Field(
+        ge=0, description="Actual observed cost used for runtime accounting."
+    )
     elapsed_ms: float = Field(ge=0)
 
 
@@ -324,6 +352,7 @@ class PlanQualityMetrics(FrozenModel):
     critical_path_ms: float = Field(ge=0)
     section_coverage_rate: float = Field(ge=0, le=1)
     evidence_coverage_rate: float = Field(ge=0, le=1)
+    approval_gated_task_ids: tuple[str, ...] = ()
 
 
 def _task_map(plan: Plan) -> dict[str, Task]:
@@ -442,6 +471,7 @@ def validate_plan(
     forbidden = set(contract.forbidden_actions)
     total_attempts = 0
     total_cost = 0.0
+    approval_gated_task_ids: set[str] = set()
 
     for task in plan.tasks:
         dependency_types = {
@@ -479,7 +509,7 @@ def validate_plan(
                     f"{task.expected_artifact_type}"
                 )
             if tool.effect == ToolEffect.WRITE and tool.requires_approval:
-                raise PolicyError(f"APPROVAL_REQUIRED: {tool_name}")
+                approval_gated_task_ids.add(task.task_id)
 
     if total_attempts > contract.max_total_attempts:
         raise PolicyError(
@@ -507,7 +537,46 @@ def validate_plan(
         critical_path_ms=critical_path,
         section_coverage_rate=section_rate,
         evidence_coverage_rate=evidence_rate,
+        approval_gated_task_ids=tuple(sorted(approval_gated_task_ids)),
     )
+
+
+def approval_gated_tools(
+    task: Task, capability_policy: CapabilityPolicy
+) -> tuple[str, ...]:
+    """Return allowed WRITE tools that require approval before execution."""
+
+    tools = capability_policy.tool_map()
+    return tuple(
+        tool_name
+        for tool_name in task.suggested_tools
+        if (tool := tools.get(tool_name)) is not None
+        and tool.effect == ToolEffect.WRITE
+        and tool.requires_approval
+    )
+
+
+def validate_execution_approval(
+    plan: Plan,
+    task: Task,
+    capability_policy: CapabilityPolicy,
+    validated_approvals: tuple[ValidatedApproval, ...] = (),
+) -> tuple[str, ...]:
+    """Enforce approval at dispatch without confusing it with plan validity."""
+
+    gated_tools = approval_gated_tools(task, capability_policy)
+    for tool_name in gated_tools:
+        matching = any(
+            approval.plan_id == plan.plan_id
+            and approval.plan_version == plan.version
+            and approval.task_id == task.task_id
+            and approval.tool_name == tool_name
+            and approval.policy_version == capability_policy.policy_version
+            for approval in validated_approvals
+        )
+        if not matching:
+            raise PolicyError(f"APPROVAL_REQUIRED: {task.task_id}:{tool_name}")
+    return gated_tools
 
 
 def get_ready_tasks(plan: Plan, task_states: dict[str, TaskState]) -> list[Task]:

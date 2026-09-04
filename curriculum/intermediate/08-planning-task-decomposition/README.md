@@ -38,7 +38,7 @@ Complete [the agent loop](../../beginner/02-agent-loop/README.md), [workflow or 
 | Constraints | Maximum tasks, replan budget, allowed tools, citation policy, deadline/cost limit. |
 | Stop rule | Required sections are supported, the checkpoint passes, or the system escalates a known gap. |
 
-This contract is a constraint-satisfaction problem. A plan that uses an unauthorized browser tool, has no evidence task for a required section, exceeds its budget, or contains a dependency cycle is invalid even if it sounds plausible. The application must validate it before anything runs.
+This contract is a constraint-satisfaction problem. A plan that uses an unauthorized browser tool, has no evidence task for a required section, exceeds its budget, or contains a dependency cycle is invalid even if it sounds plausible. The application must validate it before anything runs. An allowed `WRITE` tool that requires approval is different: the task remains a valid proposal and is marked approval-gated, but the executor must block it until it receives an approval bound to the current plan version, task, tool, and policy version. **Planning permission to propose an action is not execution authorization.**
 
 ## Step 2 — Decompose goals without pretending every task is independent
 
@@ -73,7 +73,7 @@ A task graph has directed edges from a prerequisite to a dependent task. A DAG i
 | Cycle | Unschedulable mutual dependency | report needs review; review needs final report |
 | Join | A task consumes several artifacts | comparison reconciles sources |
 
-The lab uses Kahn-style topological layers to reject cycles. In production, keep the graph and all task outputs in durable state; a retry after a worker crash must not silently re-run a side effect.
+The lab uses Kahn-style topological layers to reject cycles. It also distinguishes **accumulated work** from **wall-clock time**. Three independent ready tasks taking 60 ms, 55 ms, and 80 ms represent 195 ms of work but only 80 ms of conceptual parallel wall time; a dependent task starts after that 80 ms boundary. Production wall time still depends on worker capacity, queueing, and tool latency. Keep the graph and all task outputs in durable state; a retry after a worker crash must not silently re-run a side effect.
 
 ## Step 4 — Choose a planning architecture
 
@@ -86,7 +86,7 @@ The lab uses Kahn-style topological layers to reject cycles. In production, keep
 | Dynamic/replanning agent | plan changes after observations | a failed source or evidence conflict changes the next best action | runaway expansion and repeated work |
 | Plan-and-reflect | executor plus structured evaluator | quality can be tested against clear criteria | self-critique without an external rubric |
 
-The **planner/executor separation** is a safety and engineering boundary. The planner can propose `Task` records. The executor validates task identity, dependencies, tool permissions, attempt limits, idempotency key, and result schema. A model should not grant itself tools, erase checkpoints, or turn a retrieval failure into a production action.
+The **planner/executor separation** is a safety and engineering boundary. The planner can propose `Task` records, including legitimate approval-gated actions. Plan validation checks that the task/tool combination is allowed and reports which tasks need approval; it does not pretend approval has already happened. At dispatch, the executor validates task identity, dependencies, tool permissions, bound approval where required, attempt limits, idempotency, and result schema. The lab’s `ValidatedApproval` is a stand-in for an already-validated result emitted by trusted application policy—not a field a planner or model may self-issue. This follows Course 03’s separation of authentication, authorization, approval, and execution. A model should not grant itself tools, erase checkpoints, or turn a retrieval failure into a production action.
 
 ## Step 5 — Plan-and-execute, hierarchical planning, and dynamic replanning
 
@@ -122,7 +122,11 @@ GoalContract(
 
 Use milestones/checkpoints at natural decision boundaries: after source collection, after comparison, before an external action, and before final publication. A checkpoint should return a structured result such as `PASS`, `missing_primary_evidence`, `unresolved_conflict`, or `budget_exhausted`; a vague “looks good” cannot drive a reliable replan.
 
-The lab keeps these runtime values in a separate `PlanningRunState`: run and plan IDs, current plan version, start time, replan and attempt counters, observed cost, outputs, events, and typed terminal status. Tasks without an explicit estimate receive a conservative fixture estimate rather than bypassing cost validation. For production, persist this state transactionally and compact older context into source-backed summaries rather than appending every raw observation to the model context.
+`Task.required_inputs` currently names required **artifact types**. It does not express cardinality: two dependencies may both produce `evidence-bundle`, but `required_inputs=("evidence-bundle",)` does not distinguish or require two semantically different bundles. Use dependency IDs plus a richer input-slot/cardinality contract when that distinction matters.
+
+The lab keeps runtime values in a separate `PlanningRunState`: run and plan IDs, current plan version, start time, replan and attempt counters, observed cost, accumulated work, parallel wall-clock time, outputs, events, and typed terminal status. `estimated_cost_usd` is used before execution for admission and budget reservation; the returned `result.cost_usd` is used for actual runtime accounting. Tasks without an explicit estimate receive a conservative fixture estimate rather than bypassing admission. Production systems may need larger conservative reserves, or a mid-run stop/reapproval policy, when actual cost can exceed the estimate.
+
+For production, persist this state transactionally and compact older context into source-backed summaries rather than appending every raw observation to the model context.
 
 ## Step 7 — Failure recovery and stopping conditions
 
@@ -137,6 +141,10 @@ The lab keeps these runtime values in a separate `PlanningRunState`: run and pla
 | Budget exhaustion | silently drop quality checks | stop safely with a trace and a human escalation request |
 
 Set multiple terminal conditions: all required report sections are evidenced; an evaluator accepts the report; a policy blocks a task; no ready task exists; task/replan/cost/time budget is exhausted; or a human stops the run. “Keep researching until certain” is not a valid terminal condition.
+
+The fixture’s `coverage_tags` are deterministic test metadata, not trustworthy self-attestation. For a report produced by an LLM, an independent evaluator/checkpoint must inspect the artifact and supporting evidence instead of accepting coverage labels declared by the producing model.
+
+The fixture’s attempt-specific execution keys are appropriate for its `READ` and `ANALYZE` work. For consequential `WRITE` tasks, keep the logical idempotency identity stable across retries while retaining a unique attempt ID for tracing. Reuse the side-effect and approval patterns from [Course 01 tool engineering](../01-tool-engineering/README.md) and [Course 03 human approval and permissions](../03-human-approval-permissions/README.md) rather than rebuilding that subsystem inside this planning lesson.
 
 ## Guided lab
 
