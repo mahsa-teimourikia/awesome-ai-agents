@@ -1976,17 +1976,17 @@ export const questions = [
   {
     "id": "chkpt-agentic_rag",
     "category": "Agentic RAG",
-    "prompt": "What makes RAG \"Agentic\"?",
+    "prompt": "What makes Agentic RAG safe and useful for the Northstar incident?",
     "options": [
-      "Using a more expensive embedding model.",
-      "Giving the LLM the ability to autonomously call the search tool, evaluate the results, and refine the query if necessary before answering.",
-      "Adding more documents to the database.",
-      "Using LangChain instead of LlamaIndex."
+      "Letting retrieved text expand the source allowlist when evidence is missing.",
+      "Letting a bounded controller choose retrieval steps, validate each source, measure evidence gaps, verify claim support, and abstain when needed.",
+      "Always querying every internal and public source before answering.",
+      "Treating a citation URL as proof that every nearby claim is supported."
     ],
     "correct": [
       1
     ],
-    "explanation": "Refer to the notebook for the detailed explanation.",
+    "explanation": "Agency is bounded by application-owned tenant, source, query, hop, cost, deadline, and action policy. Retrieved content remains evidence, and unsupported answers must abstain.",
     "source": {
       "label": "Notebook Checkpoint",
       "url": "curriculum/intermediate/09-agentic-rag/09_agentic_rag.ipynb"
@@ -2241,18 +2241,17 @@ export const questions = [
   {
     "id": "sota-semantic-routing",
     "category": "Agentic RAG",
-    "prompt": "How does Semantic Routing improve standard Retrieval-Augmented Generation (RAG)?",
+    "prompt": "What is the correct role of semantic routing in a production retrieval controller?",
     "options": [
-      "By using an LLM to evaluate the user's intent and dynamically selecting which specialized vector store, SQL database, or API to query, rather than querying everything at once",
-      "By rewriting the database schema to be semantic",
-      "By replacing vector embeddings with simple keyword matches",
-      "By lowering latency since it avoids querying irrelevant data sources"
+      "It proposes one or more registered sources for an evidence question; application policy still validates permissions, tenant scope, and budgets.",
+      "It authorizes any source whose embedding score exceeds a threshold.",
+      "It must force every query into exactly one route.",
+      "It guarantees lower latency and higher accuracy than deterministic routing."
     ],
     "correct": [
-      0,
-      3
+      0
     ],
-    "explanation": "Semantic Routing uses lightweight classification to route queries to the correct domain-specific store, preventing context pollution and lowering latency.",
+    "explanation": "Routing is a proposal layer, not an authorization boundary. Its accuracy, abstention quality, latency, and cost must be measured on the actual route set and query distribution.",
     "source": {
       "label": "Deep Dive: Semantic Routing",
       "url": "curriculum/intermediate/09-agentic-rag/DEEP_DIVE_SEMANTIC_ROUTING.md"

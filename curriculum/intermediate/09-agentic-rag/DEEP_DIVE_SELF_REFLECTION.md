@@ -1,94 +1,79 @@
-# Deep Dive: Self-Reflective Retrieval (CRAG & Self-RAG)
+# Deep dive: corrective and self-reflective retrieval
 
-Standard Retrieval-Augmented Generation (RAG) is a blind, forward-only pipeline:
-`Embed Query -> Fetch Top K -> Generate Answer`.
+Retrieval evaluators can signal that evidence is missing, irrelevant, stale, or conflicting. That signal may justify a bounded corrective action; it is not ground truth and must not create an open-ended loop.
 
-If the Vector DB fetches irrelevant documents, the LLM will either hallucinate an answer based on bad data, or confidently state it doesn't know the answer. 
+## Corrective RAG (CRAG)
 
-**Agentic RAG** introduces **Self-Reflection**—a cognitive feedback loop where the agent evaluates its own intermediate steps before responding to the user.
+The [CRAG paper](https://arxiv.org/abs/2401.15884) introduces a lightweight retrieval evaluator that assigns a confidence signal to retrieved documents. Different confidence regions trigger different knowledge-retrieval actions. The paper also explores web search as an extension to a limited static corpus and a decompose-then-recompose step that filters retrieved information.
 
----
+That research architecture does **not** imply a universal three-label LangGraph recipe or “bad internal retrieval → always search the web.” In an operational system, corrective actions are policy-dependent:
 
-## 1. Corrective RAG (CRAG)
+- use a different approved internal source;
+- rewrite once within a query-rewrite budget;
+- run a bounded graph or structured lookup for a named evidence gap;
+- use an approved, minimized public-web query only after egress checks; or
+- abstain when evidence or budget remains insufficient.
 
-CRAG (Corrective Retrieval Augmented Generation) introduces an explicit **Evaluator Node** immediately after the retrieval step.
+Course 09 expresses correction as `EvidenceGap → one allowed retrieval → re-evaluate`. The deterministic sufficiency gate can identify missing incident, dependency, or mitigation evidence, staleness, and conflict without asking the producing model whether it “feels confident.”
 
-### The CRAG Workflow
-1. **Retrieve:** Fetch documents from the local database.
-2. **Evaluate:** A lightweight LLM (the Evaluator) looks at the documents and the user's query. It scores the retrieval as `Correct`, `Incorrect`, or `Ambiguous`.
-3. **Branching Logic:**
-   - If `Correct`: Proceed to final generation.
-   - If `Incorrect`: **Corrective Action.** The agent discards the bad documents and searches the live Web (e.g., using a Google/Tavily API) instead.
-   - If `Ambiguous`: **Knowledge Refinement.** The agent uses another LLM call to rewrite or broaden the user's search query, and tries the local database again.
+## Self-RAG
 
-### Why CRAG is SOTA
-In enterprise deployments, internal knowledge bases are often out of date. If a user asks about a policy updated yesterday, the local Vector DB might return the old policy (which the Evaluator flags as `Ambiguous`), prompting the agent to fetch the live document from an external API, preventing a hallucination.
+The original [Self-RAG paper](https://arxiv.org/abs/2310.11511) trains a language model to retrieve on demand, generate, and critique retrieved passages and its generations using special reflection tokens. Those tokens provide inference-time control over retrieval and generation behavior.
 
----
+Self-RAG is not simply a prompt that emits canonical hidden XML tags such as `<is_relevant>` or `<is_supported>`, and the paper does not promise perfectly supported output. Its reported results are empirical results for the studied models, datasets, and metrics. A production team must reproduce evaluation on its own domain and deployment.
 
-## 2. Self-RAG
+## Reflection is a fallible signal
 
-While CRAG evaluates the *retrieval*, **Self-RAG** evaluates the *generation*. Self-RAG trains or prompts the LLM to insert explicit **Reflection Tokens** into its own output stream.
+A model-based retriever judge can fail because it:
 
-### The Self-RAG Workflow
-1. **Retrieve & Generate:** The LLM begins drafting the answer.
-2. **Self-Critique (Relevance):** The LLM generates a hidden tag `<is_relevant>`. If it determines its draft isn't answering the user's prompt, it halts generation and retries.
-3. **Self-Critique (Support):** The LLM generates a hidden tag `<is_supported>`. It checks if its current sentence is directly backed by the retrieved documents. If not (it catches itself hallucinating), it deletes the sentence and tries again.
-4. **Final Output:** The user only sees the final, perfectly supported text.
+- shares biases or missing knowledge with the generator;
+- accepts a relevant passage that does not entail the claim;
+- follows an instruction embedded in retrieved content;
+- overlooks stale or cross-tenant evidence;
+- becomes poorly calibrated after corpus/model changes.
 
----
+Use deterministic checks where possible: source allowlists, tenant binding, evidence IDs, version matching, freshness windows, typed gaps, citation completeness, and hard budgets. Calibrate semantic graders against labeled examples and record retriever/judge disagreement for review.
 
-## 3. Implementation Example (LangGraph)
+## Bounded controller pattern
 
-Implementing these reflective loops is extremely difficult with linear frameworks (like standard LangChain pipelines). **LangGraph** (State Machines) is the industry standard for this pattern because it allows cyclic loops.
-
-```python
-from typing import TypedDict
-from typing import Literal
-
-# 1. Define the Graph State
-class AgentState(TypedDict):
-    question: str
-    documents: list[str]
-    generation: str
-
-# 2. Define the Nodes
-def retrieve_node(state: AgentState):
-    print("[Action] Retrieving documents from Vector DB...")
-    # Mock retrieval
-    return {"documents": ["Doc 1: Apples are red."]}
-
-def generate_node(state: AgentState):
-    print("[Action] Generating final answer...")
-    return {"generation": "Apples are a red fruit."}
-
-# 3. The Reflection / Evaluator Edge
-def grade_documents(state: AgentState) -> Literal["generate", "rewrite_query"]:
-    print("🧠 [Evaluator] Grading retrieved documents...")
-    doc_content = " ".join(state["documents"])
-    
-    # In reality, this would be an LLM call asking: 
-    # "Does this document answer the question?"
-    if "Apples" in state["question"] and "Apples" in doc_content:
-        print("   ✅ Documents are relevant. Proceed to generation.")
-        return "generate"
-    else:
-        print("   ❌ Documents are irrelevant. Triggering corrective loop.")
-        return "rewrite_query"
-
-def rewrite_query_node(state: AgentState):
-    print("🔄 [Action] Rewriting query to be more specific...")
-    return {"question": state["question"] + " (specifically about apples)"}
-
-# 4. The Graph Architecture
-# retrieve_node -> grade_documents -> [if pass] -> generate_node
-#                                  -> [if fail] -> rewrite_query_node -> retrieve_node
+```text
+retrieve approved initial sources
+    ↓
+evaluate typed evidence gap
+    ├── sufficient → verify claims/citations → answer
+    ├── named repair + budget → one corrective retrieval → re-evaluate
+    ├── conflict → one reconciliation retrieval or state uncertainty
+    └── no budget / unresolved gap → abstain
 ```
 
-## 4. Enterprise Considerations
+Enforce `max_query_rewrites`, `max_corrective_retrievals`, `max_hops`, query count, web count, cost, and deadline in application code. A prompt requesting “no more than two tries” is not a control boundary.
 
-Self-reflection drastically increases accuracy, but it comes with significant trade-offs:
-- **Latency:** A standard RAG pipeline might take 1.5 seconds. A Self-RAG pipeline that loops twice could take 6-10 seconds.
-- **Cost:** Every evaluation node requires an LLM inference call. 
+## Optional LangGraph adapter
 
-**Recommendation:** Use semantic routing first. Only route complex, high-risk queries (e.g., legal or medical compliance) through a CRAG or Self-RAG loop. For simple informational queries, bypass the reflection loop to save latency.
+LangGraph is a widely used open-source framework for representing conditional state transitions, persistence, and interrupts. It can adapt the pattern above into nodes such as `retrieve_initial`, `evaluate_gap`, `retrieve_dependency`, `verify_citations`, and `abstain`.
+
+Keep the important rules outside the graph adapter:
+
+- trusted `RetrievalContext` and source registry;
+- tenant, authorization, data-classification, and web-egress checks;
+- budget admission;
+- evidence sufficiency and freshness;
+- claim/evidence and citation verification;
+- approval gating for consequential actions.
+
+The graph helps orchestrate the controller. It does not make retrieval correct or safe by itself.
+
+## Evaluation
+
+Evaluate the complete trajectory, not only final answer quality:
+
+- gap classification precision/recall;
+- unnecessary corrective retrievals;
+- required-evidence recall gained per extra query;
+- stale/conflict detection;
+- citation completeness and unsupported claim rate;
+- latency/cost distributions and budget exhaustion;
+- tenant violations, web exfiltration, and unsafe action attempts;
+- abstention quality when evidence cannot be repaired.
+
+More reflection is not automatically better. The useful question is whether a bounded evaluator improves evidence-grounded outcomes enough to justify its additional failure modes, latency, and cost.

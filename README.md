@@ -62,7 +62,7 @@ Every topic has a co-located `README.md`, deep dive topics, and self-contained n
 | 05 | [Agent Evaluation](curriculum/intermediate/05-agent-evaluation/README.md) | Outcome, trajectory, tool, safety, robustness, and operational evaluation |
 | 06 | [Trajectory Optimization](curriculum/intermediate/06-trajectory-optimization/README.md) | Cost, latency, reliable shortest paths, and budgets |
 | 08 | [Planning and Task Decomposition](curriculum/intermediate/08-planning-task-decomposition/README.md) | Goal decomposition, DAGs, replanning, constraints, and recovery |
-| 09 | [Agentic RAG](curriculum/intermediate/09-agentic-rag/README.md) | Retrieval as an agent tool, adaptive search, grounding, and citations |
+| 09 | [Agentic RAG](curriculum/intermediate/09-agentic-rag/README.md) | Bounded multi-source retrieval, evidence sufficiency, grounding, and citations |
 | 10 | [LangGraph State, Persistence, and Memory](curriculum/intermediate/10-langgraph-state-memory/README.md) | Graph state, checkpoints, interrupts, recovery, and governed memory |
 
 ### Advanced — scale intelligence and autonomy responsibly

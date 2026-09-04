@@ -1,83 +1,64 @@
-# Deep Dive: Semantic Routing in Agentic RAG
+# Deep dive: routing evidence questions to bounded sources
 
-Standard Retrieval-Augmented Generation (RAG) is monolithic. If a user asks a question, the system embeds the query, hits a single Vector Database, retrieves the top-K chunks, and attempts to synthesize an answer. 
+Semantic routing is a decision layer before retrieval. It proposes which source or sources best match an evidence question; application policy still decides whether the route is allowed. Routing does not grant database access, choose a tenant, enable public web search, or increase a budget.
 
-**This fails in the enterprise.** 
-If a user asks, *"What was our total revenue in Q3?"*, a Vector DB will return chunks of text that happen to contain the words "total", "revenue", and "Q3". It will not perform math. 
+## Route outcomes, not forced classification
 
-**Agentic RAG** introduces a decision layer before retrieval: **Semantic Routing**.
+A production router needs more than one winning label:
 
----
+| Outcome | Meaning | Controller response |
+| --- | --- | --- |
+| `KNOWN_ROUTE` | one source is clearly justified | validate and retrieve |
+| `MULTI_ROUTE` | the question spans multiple evidence sources | decompose or retrieve an approved subset |
+| `AMBIGUOUS` | several interpretations remain | clarify or apply a bounded disambiguation step |
+| `UNKNOWN` | no registered source fits | abstain or escalate; never invent a source |
 
-## 1. The Core Concept
+For the Northstar incident, incident facts route to `incident_db`, procedures to `runbook_search`, and the dependency/provider question proposes both `dependency_graph` and `provider_status`. The controller initially retrieves incident plus runbook, evaluates the evidence gap, and queries the graph only when dependency evidence is missing.
 
-Semantic Routing is the process of analyzing the user's intent *before* committing to a retrieval strategy. Instead of a single Vector DB, an enterprise Agentic RAG system acts as a dispatcher to multiple specialized data sources:
+## Router implementations
 
-1. **Vector Database:** Best for unstructured semantic queries (*"What is our policy on remote work?"*).
-2. **SQL/Graph Database:** Best for aggregations, math, and structured relationships (*"How many customers churned last month?"*).
-3. **Web Search API:** Best for real-time or external data (*"What did the Fed announce regarding interest rates today?"*).
-4. **Direct Answer / Chitchat:** No retrieval needed (*"Hello, how are you?"*).
+| Router | Strengths | Limitations | Best fit |
+| --- | --- | --- | --- |
+| Deterministic rules | inspectable, cheap, stable, easy to test | weak on novel phrasing | narrow high-value intents and policy-sensitive routes |
+| Embedding classifier | handles paraphrase without generation | threshold calibration, dataset drift, ambiguous multi-intent queries | larger stable route sets with representative examples |
+| Model-based classifier | flexible decomposition and structured rationales | added cost/latency and non-deterministic errors | complex questions after deterministic safeguards |
+| Hybrid cascade | cheap path first, expensive route only for uncertainty | more operational/evaluation complexity | high-volume systems with a measured uncertainty boundary |
 
----
+Do not label one class “high accuracy” and another “medium accuracy” universally. Accuracy, abstention quality, latency, and cost depend on the route set, examples, encoder/model, thresholds, hardware, deployment mode, and live query distribution.
 
-## 2. State of the Art (SOTA) Implementation Patterns
+The open-source [`semantic-router`](https://github.com/aurelio-labs/semantic-router) project is one maintained embedding/dynamic-routing option. Its API has changed across releases, so follow its current documentation and pin the version only if you adopt it. Course 09 deliberately does not depend on it: the deterministic router in `policy.py` makes the source, tenant, and budget boundaries visible and testable. No uncited sub-millisecond guarantee is assumed.
 
-Routing requires a classifier. There are three primary ways to build this classifier, trading off between latency, cost, and accuracy.
+## Multi-route decomposition
 
-### A. The LLM Router (High Accuracy, High Latency)
-You pass the user's query to a fast LLM (like `gpt-4o-mini` or `claude-3-haiku`) and ask it to output an enum.
+“Which dependency or provider is involved?” legitimately spans graph and provider-status evidence. Three patterns are possible:
 
-```python
-from pydantic import BaseModel
-from typing import Literal
+1. retrieve both immediately when both are required and budgeted;
+2. retrieve the lower-cost/internal source first, evaluate the gap, then retrieve the official status source if necessary; or
+3. split the compound question into two linked evidence questions.
 
-class RouterDecision(BaseModel):
-    destination: Literal["vector_db", "sql_db", "web_search", "chitchat"]
+Course 09 uses the second pattern. It demonstrates that routing opportunity is not an instruction to query everything.
 
-# System Prompt: "You are a routing agent. Analyze the user query..."
-```
-- **Pros:** Highly accurate. Can handle complex edge cases and ambiguous queries.
-- **Cons:** Adds 300-800ms of latency before the actual retrieval even begins. Adds inference costs.
+## Evaluation
 
-### B. The Embedding Router (Low Latency, Medium Accuracy)
-Instead of an LLM, you pre-define "utterances" (example phrases) for each route. At runtime, you embed the user's query and calculate the cosine similarity against the pre-defined utterances. If it's closest to the "SQL" utterances, you route to SQL.
+Build a labeled dataset containing known, unknown, ambiguous, and multi-route queries. Measure:
 
-- **Pros:** Extremely fast (<50ms). Very cheap.
-- **Cons:** Struggles with novel phrasing or complex, multi-part questions.
+- exact and set-based route accuracy;
+- false-positive source access;
+- unknown/ambiguous abstention quality;
+- tenant and authorization violations;
+- evidence recall after routing, not classification accuracy alone;
+- duplicate retrieval rate;
+- cost and latency distributions on the target deployment.
 
-### C. The `semantic-router` Library (The SOTA Hybrid)
-The open-source library [`semantic-router`](https://github.com/aurelio-labs/semantic-router) has emerged as the SOTA standard for this problem. It uses ultra-fast local embeddings and optimized mathematics to route queries in less than 2 milliseconds.
+Inspect errors by class. A route can be “correct” yet yield stale evidence, and a relevant document can still fail to support the final claim. Route evaluation therefore precedes—but never replaces—freshness, sufficiency, and citation verification.
 
-```python
-from semantic_router import Route
-from semantic_router import SemanticRouter
-from semantic_router.encoders import OpenAIEncoder
+## Production boundaries
 
-# 1. Define Routes
-sql_route = Route(
-    name="sql_analytics",
+- Bind tenant and authorization from authenticated application context.
+- Deny unknown sources and validate every model-proposed route.
+- Put hard limits on query rewrites, corrective retrievals, hops, web calls, cost, and time.
+- Require explicit web permission, confidentiality checks, query minimization, and domain allowlists.
+- Version router rules/models and retain observable route decisions without private chain-of-thought.
+- Prefer a fixed path when one known source already answers the question.
 
-# 2. Compile the highly-optimized routing layer
-encoder = OpenAIEncoder()
-router = RouteLayer(encoder=encoder, routes=[sql_route, vector_route])
-
-# 3. Execute in < 2ms
-decision = router("How much money did we make last week?")
-print(decision.name) # Output: sql_analytics
-```
-
----
-
-## 3. Advanced Pattern: Multi-Routing
-
-What if the user asks a compound question?
-*"What is our policy on remote work, and how many employees currently work remotely?"*
-
-A simple semantic router will fail because it must pick one destination.
-SOTA Agentic RAG implements **Task Decomposition + Multi-Routing**:
-1. The **Decomposer** splits the query into two sub-queries.
-2. The **Router** sends Query A to the Vector DB and Query B to the SQL DB.
-3. The **Synthesizer** waits for both payloads to return and generates a final, comprehensive answer.
-
-## 4. Enterprise Recommendation
-Never use a generic Vector DB for structured data. If your data lives in Postgres, route queries there. Use `semantic-router` for low-latency dispatching in production, and fall back to an LLM router only if the user query is highly ambiguous.
+The router chooses where evidence may be sought. It never decides what the evidence authorizes.
