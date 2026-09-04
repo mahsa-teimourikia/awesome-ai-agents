@@ -170,7 +170,7 @@ export const learningPath = [
   {
     "id": "i9",
     "title": "Agentic RAG",
-    "description": "Upgrade standard RAG with Agentic capabilities. Implement Semantic Routing to select domain-specific vector stores, and Self-Reflection to iteratively correct missing context.",
+    "description": "Build a bounded multi-source retrieval controller that validates routes, measures evidence sufficiency, verifies citations, and safely abstains.",
     "material": "../curriculum/intermediate/09-agentic-rag/README.md",
     "notebook": "../curriculum/intermediate/09-agentic-rag/09_agentic_rag.ipynb",
     "category": "Intermediate - Agentic RAG",
@@ -178,7 +178,7 @@ export const learningPath = [
     "technologies": [
       "Python",
       "Pydantic",
-      "LangGraph"
+      "Framework-neutral retrieval policy"
     ]
   },
   {

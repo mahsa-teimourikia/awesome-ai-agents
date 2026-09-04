@@ -33,8 +33,7 @@ intermediate = [
     "awsome-ai-agents[core]",
     "langchain",
     "langchain-openai",
-    "dspy-ai",
-    "semantic-router==0.1.16"
+    "dspy-ai"
 ]
 advanced = [
     "awsome-ai-agents[intermediate]",
