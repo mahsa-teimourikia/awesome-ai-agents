@@ -1832,21 +1832,17 @@ export const questions = [
   {
     "id": "chkpt-03_crewai_teams",
     "category": "Advanced",
-    "prompt": "Over-delegation",
+    "prompt": "What does REVIEW_PASS authorize in the contract-driven CrewAI course?",
     "options": [
-      "CrewAI is only for Python 2.",
-      "CrewAI is conversation-driven, while AutoGen is task-driven.",
-      "CrewAI is task-driven (agents execute specific assigned tasks), while AutoGen is conversation-driven (agents chat with each other).",
-      "They are exactly the same.",
-      "All tasks run in parallel.",
-      "The output of Task 1 is automatically passed as context to Task 2.",
-      "The agents vote on which task to do first.",
-      "The crew is deleted after running."
+      "A production rollback",
+      "A proposal quality-review state transition only",
+      "Any task invented by the manager",
+      "Cross-tenant evidence access"
     ],
     "correct": [
-      2
+      1
     ],
-    "explanation": "Refer to the notebook for the detailed explanation.",
+    "explanation": "Review quality and production approval are separate control boundaries. REVIEW_PASS does not authorize a write.",
     "source": {
       "label": "Notebook Checkpoint",
       "url": "curriculum/advanced/03-crewai-teams/03_crewai_teams.ipynb"

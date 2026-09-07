@@ -989,21 +989,44 @@ export const curriculumData:Subject[] = [
     "id": "a3",
     "level": "Advanced",
     "step": "03",
-    "title": "Crewai teams",
-    "description": "Advanced exploration of Crewai teams.",
-    "time": "45-60 min",
-    "outcome": "Master advanced patterns.",
-    "lesson": "Deep dive into SOTA literature.",
-    "exercise": "Implement complex agentic systems.",
-    "failures": [],
+    "title": "Contract-driven CrewAI Teams",
+    "description": "Build bounded CrewAI workers and tasks while application policy owns authority, evidence trust, recovery, budgets, and completion.",
+    "time": "120-150 min",
+    "outcome": "Choose sequential, hierarchical, or Flow-controlled crews from same-workload evidence and enforce typed artifact trust boundaries.",
+    "lesson": "Agent roles versus authority, task contracts, provenance, bounded managers, and application-owned Flow state.",
+    "exercise": "Run the Northstar incident through sequential, recovery, and Flow variants; reject tenant, grounding, delegation, and injection failures.",
+    "failures": [
+      "Role escalation:: Persona or visible tools are mistaken for application authority.",
+      "Typed but untrusted:: Schema-valid output has the wrong tenant, producer, provenance, or claim support.",
+      "Manager drift:: A manager invents workers, tasks, writes, or no-progress delegation loops.",
+      "False completion:: Crew kickoff or REVIEW_PASS is mistaken for production authorization.",
+      "Budget failure:: Calls, retries, depth, cost, or deadline exceed application limits."
+    ],
     "notebook": "curriculum/advanced/03-crewai-teams/03_crewai_teams.ipynb",
     "refs": [
       "curriculum/advanced/03-crewai-teams/README.md",
-      "curriculum/advanced/03-crewai-teams/03_crewai_teams.ipynb"
+      "curriculum/advanced/03-crewai-teams/03_crewai_teams.ipynb",
+      "curriculum/advanced/03-crewai-teams/policy.py",
+      "curriculum/advanced/03-crewai-teams/lab.py",
+      "curriculum/advanced/03-crewai-teams/crewai_adapter.py",
+      "curriculum/advanced/03-crewai-teams/AGENTS_AND_TASKS.md",
+      "curriculum/advanced/03-crewai-teams/SEQUENTIAL_VS_HIERARCHICAL.md",
+      "curriculum/advanced/03-crewai-teams/CREWAI_FLOWS.md"
     ],
-    "code": "",
-    "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
-    "quiz": []
+    "code": "curriculum/advanced/03-crewai-teams/lab.py",
+    "goals": ["Separate agent behavior from tenant-scoped capability authority.","Validate stable task graphs and immutable evidence-linked artifacts.","Bound retries, manager delegation, cost, calls, depth, and completion.","Compare total work with parallel wall-clock latency.","Select hierarchy only when measured recovery or quality earns its overhead.","Map the framework-neutral core to CrewAI 1.15.20 without trusting adapter output."],
+    "quiz": [
+      {"q":"Why isn't a Pydantic-valid artifact necessarily trustworthy?","options":["Pydantic cannot parse JSON","Schema validity does not prove tenant, producer, provenance, authorization, or grounding","Only text can be trusted","Hashes replace evidence"],"answer":1,"explanation":"Structural validation is necessary, but application policy must validate identity, evidence, provenance, capability, and claim support."},
+      {"q":"What is the difference between agent role and authority?","options":["There is no difference","Role steers behavior; application and service policy grants tenant-scoped capability","Authority comes from backstory","Visible tools always grant execution"],"answer":1,"explanation":"Prompt configuration cannot mint authorization. External policy and tool services enforce it."},
+      {"q":"When should sequential execution beat hierarchy?","options":["When stages are known and manager adaptation adds no measured benefit","Never","Whenever there are two workers","Only for writes"],"answer":0,"explanation":"Known small workflows favor the predictable baseline unless adaptation earns its added cost and risk."},
+      {"q":"What failure surface does a manager introduce?","options":["Only formatting errors","Invented workers/tasks, escalation, loops, extra cost, and false completion","No new failure surface","Only lower latency"],"answer":1,"explanation":"A manager is another model-driven control layer and therefore needs typed, bounded validation."},
+      {"q":"Why can't a manager invent arbitrary tasks?","options":["Task names are copyrighted","Application policy limits worker, artifact type, capability, depth, cost, and uniqueness","Managers cannot emit JSON","CrewAI rejects all new tasks"],"answer":1,"explanation":"Adaptive proposals remain inside the application-owned task and authority envelope."},
+      {"q":"What is the control-plane role of a Flow?","options":["Write every specialist prompt","Own global state, deterministic routing, validation, recovery, budgets, cancellation, and completion","Replace service authorization","Make every task parallel"],"answer":1,"explanation":"Crews do bounded work while Flow/application code owns lifecycle decisions."},
+      {"q":"How should retries interact with idempotency?","options":["Use a new logical task for every attempt","Keep logical identity stable and make attempt IDs unique","Retry policy denials forever","Ignore duplicate execution"],"answer":1,"explanation":"Stable logical identity prevents a retry from becoming an unintended duplicate operation."},
+      {"q":"Why validate provenance downstream?","options":["Typed upstream output may still cite invented or wrong-tenant evidence","To increase prompt length","CrewAI requires a URL","Review text is always authoritative"],"answer":0,"explanation":"Every trust boundary rechecks evidence identity, source, tenant, hash, and support."},
+      {"q":"What does REVIEW_PASS authorize?","options":["Production rollback","Database deletion","Proposal quality-review transition only","Any manager task"],"answer":2,"explanation":"Review and production approval are separate control boundaries."},
+      {"q":"How do you prove hierarchy is worth its coordination cost?","options":["Count agents","Measure quality or recovery gain while grounding, safety, cost, and latency gates hold","Prefer maximum autonomy","Use a stronger manager name"],"answer":1,"explanation":"Hierarchy is an empirical architecture choice, not an automatic upgrade."}
+    ]
   },
   {
     "id": "a4",

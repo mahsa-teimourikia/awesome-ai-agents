@@ -41,7 +41,7 @@ advanced = [
     "autogen-ext[openai]==0.7.5",
     # Course 30 still imports the separately maintained classic `autogen` namespace.
     "autogen==0.14.1",
-    "crewai",
+    "crewai==1.15.20",
     "agentops",
     "mcp",
     "chromadb",

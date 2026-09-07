@@ -226,14 +226,17 @@ export const learningPath = [
   },
   {
     "id": "a3",
-    "title": "Crewai teams",
-    "description": "Advanced exploration of Crewai teams.",
+    "title": "Contract-driven CrewAI Teams",
+    "description": "Bound CrewAI workers and tasks with application-owned artifact validation, authority, recovery, budgets, and completion.",
     "material": "../curriculum/advanced/03-crewai-teams/README.md",
-    "notebook": null,
-    "category": "Advanced - Crewai teams",
-    "minutes": 60,
+    "notebook": "../curriculum/advanced/03-crewai-teams/03_crewai_teams.ipynb",
+    "category": "Advanced - Contract-driven CrewAI Teams",
+    "minutes": 135,
     "technologies": [
-      "Python"
+      "Python",
+      "Pydantic",
+      "CrewAI 1.15.20 adapter",
+      "Deterministic evaluation"
     ]
   },
   {
