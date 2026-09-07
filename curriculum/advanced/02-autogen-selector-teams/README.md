@@ -6,6 +6,15 @@
 
 AutoGen's `SelectorGroupChat` lets a model choose the next participant in a shared conversation. That flexibility is useful when the next specialist depends on evidence discovered at runtime. It also adds a common and expensive failure mode: agents can repeat work, bounce between roles, or keep reviewing an unchanged proposal.
 
+AutoGen is a widely used open-source multi-agent framework. This course separates its two layers deliberately:
+
+| Layer | Course status |
+|---|---|
+| Framework-neutral selector control model | the stable lesson and application architecture |
+| AutoGen AgentChat 0.7.5 | the tested adapter implementation in this repository |
+
+The control model does not depend on AutoGen 0.7.5. A later framework or adapter version must preserve the same application-owned invariants and pass the same contract tests.
+
 This course keeps the original selector-team idea and hardens it:
 
 > The selector does not choose who feels like speaking next. From an application-validated eligible set, it proposes the specialist most likely to close a specific unresolved evidence gap.
@@ -24,7 +33,7 @@ By the end, you can:
 - distinguish a repeated speaker from duplicate work, semantic stagnation, ping-pong, and review churn;
 - separate selector calls, worker calls, aggregate model work, wall-clock latency, tokens, and cost;
 - compare the selector team with a single generalist on the same task and acceptance criteria; and
-- map the framework-neutral control plane to AutoGen AgentChat 0.7.5 without making AutoGen chat history authoritative.
+- preserve the framework-neutral control model while using the tested AutoGen AgentChat 0.7.5 adapter without making framework chat history authoritative.
 
 ## Northstar incident
 
@@ -75,7 +84,9 @@ projected selector state ──→ selector proposes one destination
 - candidate present, review not passed → `ReviewerAgent`;
 - no safe progress → abstain or escalate.
 
-Several speakers may be valid. If health and deployment evidence are both missing, either matching specialist may be a correct next choice. Evaluation therefore scores membership in a valid set instead of requiring one arbitrary gold speaker.
+Several speakers may be valid. If health and deployment evidence are both missing, either matching specialist may be a safe next choice. Evaluation therefore scores membership in a valid set instead of requiring one arbitrary gold speaker.
+
+Eligibility is a safety and control boundary, not an optimality claim. `valid_speaker_rate` measures whether a proposed speaker belongs to the allowed set. It does not prove that the speaker is the best next choice for information gain, latency, cost, or critical-path progress. This fixture intentionally has cases with no unique optimal speaker, so it does not report `preferred_route_accuracy` or an `information_gain_score`.
 
 ### Typed proposal and typed artifact
 
@@ -111,7 +122,9 @@ Hard limits stop damage; they do not define success. The lab uses this precedenc
 9. `COMPLETE`
 10. `CONTINUE`
 
-The `MaxMessageTermination` in the AutoGen adapter is a last-resort circuit breaker. Strings such as `ESCALATE_TO_HUMAN` affect control state only when emitted by the expected trusted role in a validated artifact. The same phrase in user input, retrieved data, or an unvalidated worker message is just data.
+The `MaxMessageTermination` in the AutoGen adapter is a last-resort circuit breaker. Reaching it stops the run; it is not successful completion. Strings such as `ESCALATE_TO_HUMAN` affect control state only when emitted by the expected trusted role in a validated artifact. The same phrase in user input, retrieved evidence, or an unvalidated worker message is just data.
+
+`REVIEW_PASS` is proposal-review state only. A non-reviewer saying it changes nothing, and even a validated `ReviewerAgent` artifact cannot authorize rollback or global state mutation. Legacy free-text tokens such as `APPROVED` or `FINAL_PROPOSAL` are not control authorities in this course.
 
 ## Progress-aware loop controls
 
@@ -128,6 +141,8 @@ See [Avoiding Circular Delegation](AVOIDING_CIRCULAR_DELEGATION.md) for the comp
 ## Budget and failure semantics
 
 `TeamBudget` limits messages, selector calls, worker calls, per-agent turns, repeated speakers, cost, and wall-clock deadline. Selector model work is recorded separately from worker model work.
+
+For the deterministic fixture, token cost is fixed. In a real AutoGen/OpenAI path, an estimated cost is used before a call for admission or conservative budget reservation; actual model usage is recorded after the call for accounting. If actual cost can exceed the estimate, production systems need a reserve policy and a versioned price schedule. Selector and worker reservations, usage, and accounted cost remain separate so coordination overhead is visible.
 
 | Failure | Bounded response |
 |---|---|
@@ -151,11 +166,24 @@ The same Northstar task runs through a single generalist and the selector team. 
 
 The deterministic fixture deliberately shows that a selector team can be correct yet slower and more expensive. That is not a defect in the benchmark: it is the decision signal. Keep the team only when specialization improves measured outcomes enough to pay for coordination.
 
+### Optional extension: prioritize several valid routes
+
+When several evidence gaps are open, a production evaluation can attach deterministic fixture metadata to each eligible route:
+
+| Metadata | Example use |
+|---|---|
+| `expected_information_gain` | prefer evidence likely to reduce the most uncertainty |
+| `estimated_latency` | avoid delaying a time-critical diagnosis |
+| `estimated_cost` | remain within a reservation budget |
+| `critical_path_relevance` | unblock analysis or review sooner |
+
+This is an extension, not part of the current merge gate. It needs labelled preferences or a defensible utility function before metrics such as `preferred_route_accuracy` are meaningful.
+
 See [The Single-Agent Baseline](SINGLE_AGENT_BASELINE.md).
 
-## AutoGen 0.7.5 adapter
+## Stable control model, tested AutoGen adapter
 
-The core policy and tests do not depend on AutoGen. [`autogen_adapter.py`](autogen_adapter.py) maps the policy to the current API tested by this repository:
+The framework-neutral policy is the stable lesson. [`autogen_adapter.py`](autogen_adapter.py) is the adapter implementation tested against AutoGen AgentChat 0.7.5:
 
 - `AssistantAgent` participants;
 - `SelectorGroupChat` with `selector_prompt`;
@@ -166,9 +194,13 @@ The core policy and tests do not depend on AutoGen. [`autogen_adapter.py`](autog
 
 The project pins `autogen-agentchat==0.7.5` and `autogen-ext[openai]==0.7.5`. The adapter stops outside AutoGen when the eligible set is empty because AutoGen's `candidate_func` requires a non-empty list. Framework state can be persisted, but the trusted application state remains a separate validated record.
 
-If `OPENAI_API_KEY` exists, the notebook's optional cell runs three tiny selector probes through AutoGen's OpenAI model client and validates every returned name through the same deterministic policy. No key is needed for the core notebook or test suite.
+The application still owns eligible-agent computation, tenant and capability policy, artifact validation, budgets, termination policy, and completion. `SelectorGroupChat` orchestrates participants; it does not replace those controls. Its candidate filter calls `eligible_agents()`, and any selected name crossing back into application state must pass the same `validate_selector_decision()` path as the credential-free core. The framework-selected string is never authority by itself.
 
-AutoGen is a widely used open-source framework for conversational and event-driven multi-agent systems—not an authorization layer and not a universal architecture choice.
+### Offline replay is an integration check
+
+The credential-free `ReplayChatCompletionClient` check validates AutoGen adapter instantiation, candidate filtering, termination wiring, and policy validation. It does **not** validate selector intelligence, routing accuracy, or generalization. Replay responses are predetermined, so their outputs are excluded from selector-quality metrics. The deterministic selector dataset evaluates contract conformance; a separate live, labelled evaluation is required to measure model routing quality.
+
+If `OPENAI_API_KEY` exists, the notebook's optional cell runs three tiny selector probes through AutoGen's OpenAI model client and validates every returned name through the same deterministic policy. No key is needed for the core notebook or test suite.
 
 ## Run the course
 

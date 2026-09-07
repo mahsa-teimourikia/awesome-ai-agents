@@ -22,6 +22,7 @@ from policy import (
     derive_metrics,
     deterministic_selector,
     eligible_agents,
+    ensure_can_continue,
     estimate_context_tokens,
     evaluate_selector,
     projected_selector_context,
@@ -258,6 +259,12 @@ def artifact_for(run: TeamRun, decision: SelectorDecision) -> WorkerArtifact:
     raise ValueError(f"no fixture for {agent_id}")
 
 
+def invoke_fixture_worker(run: TeamRun, decision: SelectorDecision) -> WorkerArtifact:
+    """Represent the pre-invocation cancellation boundary in the offline lab."""
+    ensure_can_continue(run)
+    return artifact_for(run, decision)
+
+
 def run_selector_team() -> TeamRun:
     run = build_team()
     while not termination_decision(run).should_stop:
@@ -270,7 +277,7 @@ def run_selector_team() -> TeamRun:
         apply_worker_turn(
             run,
             decision,
-            artifact_for(run, decision),
+            invoke_fixture_worker(run, decision),
             worker_tokens=150,
             worker_cost_usd=0.002,
             elapsed_ms=70,

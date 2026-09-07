@@ -1,7 +1,9 @@
-"""Optional AutoGen 0.7.5 adapter for the framework-neutral Course 02 policy.
+"""Optional adapter tested with AutoGen AgentChat 0.7.5.
 
-The deterministic policy remains authoritative. Imports are lazy so the core lab
-and tests run without AutoGen or credentials.
+The Course 02 control model is framework-neutral; 0.7.5 is an adapter test
+target, not an architectural dependency. The deterministic application policy
+remains authoritative. Imports are lazy so the core lab and tests run without
+AutoGen or credentials.
 """
 
 from __future__ import annotations
@@ -23,6 +25,8 @@ from policy import (
 
 
 TESTED_AUTOGEN_AGENTCHAT_VERSION = "0.7.5"
+LIVE_SELECTOR_ADMISSION_ESTIMATE_USD = 0.002
+LIVE_ACCOUNTING_USD_PER_TOKEN = 0.0000005
 
 SELECTOR_CONTRACT = """You are a routing component, not a conversation host.
 Choose exactly one name from {participants}. Use the projected incident goal,
@@ -72,6 +76,19 @@ def parse_selector_output(raw: str | dict[str, Any], run: TeamRun) -> SelectorDe
     )
     validate_selector_decision(run, decision)
     return decision
+
+
+def validate_framework_selected_speaker(
+    selected: str | dict[str, Any], run: TeamRun
+) -> SelectorDecision:
+    """Revalidate a framework-selected name at the application boundary.
+
+    AutoGen candidate filtering narrows the model's choice, but the returned name
+    is still an untrusted proposal. This function deliberately reuses the same
+    strict parser, eligible_agents(), and validate_selector_decision() path as
+    the credential-free core before application state may accept the speaker.
+    """
+    return parse_selector_output(selected, run)
 
 
 def _target_for(run: TeamRun, agent_name: str | None) -> str | None:
@@ -159,7 +176,8 @@ async def run_optional_openai_probe(run_factory: Callable[[], TeamRun]) -> list[
     """Run three tiny live selector probes and validate every output with policy.
 
     This is intentionally opt-in. It uses AutoGen's OpenAI model client only when
-    OPENAI_API_KEY is available, closes the client, and returns scored records.
+    OPENAI_API_KEY is available, closes the client, and returns diagnostic usage
+    records. These probes are not a generalization benchmark.
     """
     if not os.getenv("OPENAI_API_KEY"):
         return []
@@ -174,6 +192,13 @@ async def run_optional_openai_probe(run_factory: Callable[[], TeamRun]) -> list[
     try:
         for case_id in ("initial", "initial-repeat", "initial-third"):
             run = run_factory()
+            if (
+                run.selector_cost_usd
+                + run.worker_cost_usd
+                + LIVE_SELECTOR_ADMISSION_ESTIMATE_USD
+                > run.context.budget.max_cost_usd
+            ):
+                raise PolicyError("SELECTOR_COST_RESERVATION_EXCEEDS_BUDGET")
             projection = adapter_state_projection(run)
             prompt = (
                 "Return JSON with next_agent only. Choose one eligible agent. "
@@ -185,19 +210,26 @@ async def run_optional_openai_probe(run_factory: Callable[[], TeamRun]) -> list[
             )
             elapsed_ms = round((perf_counter() - started) * 1_000, 2)
             raw = result.content if isinstance(result.content, str) else str(result.content)
-            decision = parse_selector_output(raw, run)
+            decision = validate_framework_selected_speaker(raw, run)
             prompt_tokens = getattr(result.usage, "prompt_tokens", 0)
             completion_tokens = getattr(result.usage, "completion_tokens", 0)
+            actual_tokens = prompt_tokens + completion_tokens
+            accounted_cost_usd = round(
+                actual_tokens * LIVE_ACCOUNTING_USD_PER_TOKEN, 6
+            )
             records.append(
                 {
                     "case_id": case_id,
                     "valid_speaker": decision.next_agent in eligible_agents(run),
                     "state_progression_possible": decision.target_gap is not None,
                     "termination": "CONTINUE",
-                    "prompt_tokens": prompt_tokens,
-                    "completion_tokens": completion_tokens,
-                    "estimated_cost_usd": round(
-                        (prompt_tokens + completion_tokens) * 0.0000005, 6
+                    "admission_estimated_cost_usd": LIVE_SELECTOR_ADMISSION_ESTIMATE_USD,
+                    "actual_prompt_tokens": prompt_tokens,
+                    "actual_completion_tokens": completion_tokens,
+                    "actual_total_tokens": actual_tokens,
+                    "accounted_cost_usd": accounted_cost_usd,
+                    "reservation_exceeded": (
+                        accounted_cost_usd > LIVE_SELECTOR_ADMISSION_ESTIMATE_USD
                     ),
                     "latency_ms": elapsed_ms,
                 }

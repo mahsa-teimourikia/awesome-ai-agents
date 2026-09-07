@@ -952,7 +952,7 @@ export const curriculumData:Subject[] = [
     "description": "Route one governed incident through application-validated eligible speakers and typed evidence gaps.",
     "time": "120 min",
     "outcome": "Build and evaluate a selector team whose routing, authority, artifacts, budgets, and completion remain application-owned.",
-    "lesson": "Use a framework-neutral control plane, then map it to current AutoGen SelectorGroupChat APIs.",
+    "lesson": "Keep a framework-neutral selector control model, then map it through the adapter tested with AutoGen AgentChat 0.7.5.",
     "exercise": "Run the Northstar team, attack its routing and termination boundaries, and compare it with the same-task single-agent baseline.",
     "failures": [
       "Invented speaker:: Selector proposes a name outside the application-computed eligible set.",
@@ -971,7 +971,7 @@ export const curriculumData:Subject[] = [
       "curriculum/advanced/02-autogen-selector-teams/AVOIDING_CIRCULAR_DELEGATION.md"
     ],
     "code": "curriculum/advanced/02-autogen-selector-teams/lab.py",
-    "goals": ["Compute eligible speakers from typed evidence state.","Validate selector proposals and worker artifacts before state mutation.","Distinguish justified revisits from duplicate, stagnation, ping-pong, and review-churn loops.","Separate selector work from worker work and wall-clock latency.","Evaluate set-valued routing and compare against the same-task single-agent baseline."],
+    "goals": ["Compute eligible speakers from typed evidence state without confusing eligibility with optimal routing.","Validate selector proposals and worker artifacts before state mutation.","Distinguish justified revisits from duplicate, stagnation, ping-pong, and review-churn loops.","Separate selector work from worker work and wall-clock latency.","Treat offline replay as an integration check, then evaluate set-valued routing against the same-task single-agent baseline."],
     "quiz": [
       {"q":"Why is candidate filtering stronger than selector prompting?","options":["It costs fewer tokens","It mechanically limits the destination set before the model chooses","It gives agents more tools","It authorizes execution"],"answer":1,"explanation":"Prompts influence behavior; application-owned candidate filtering constrains the possible speaker names."},
       {"q":"When can two next speakers both be correct?","options":["Never","When each can safely close a different unresolved evidence gap","Only after review","Whenever they are polite"],"answer":1,"explanation":"Routing labels should accept any member of the valid set when several specialists can materially advance state."},

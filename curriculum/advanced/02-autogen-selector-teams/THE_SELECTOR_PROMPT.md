@@ -34,6 +34,12 @@ Suppose health and deployment evidence are missing. Both `ObservabilityAgent` an
 
 Use `eligible_agents` for the application-computed candidate set and `valid_next_agents` for the subset accepted by the labelled case. Score whether the prediction belongs to the valid set.
 
+`valid_speaker_rate` is therefore a safety/control metric: the proposed speaker was eligible. Eligible does not mean optimal. The current fixture does not define a unique best route, so it does not claim routing optimality or score replay responses as selector quality.
+
+### Optional information-gain extension
+
+If a later fixture labels preferences among several eligible speakers, attach deterministic route metadata such as `expected_information_gain`, `estimated_latency`, `estimated_cost`, and `critical_path_relevance`. Then evaluate a declared utility function or `preferred_route_accuracy`. Keep this separate from eligibility: an allowed route can be suboptimal without being a policy violation.
+
 ## Confidence and abstention
 
 If the candidate set is empty, stop before calling AutoGen's selector because `candidate_func` requires at least one candidate. Record `NO_ELIGIBLE_SPEAKER` and then apply the evidence/failure policy.
@@ -46,6 +52,8 @@ Prefer a structured model response where supported. Otherwise accept a minimal s
 
 ## AutoGen mapping
 
-In AutoGen AgentChat 0.7.5, `candidate_func` filters participant names, `selector_prompt` shapes the choice, and `selector_func` can override model selection but is not serialized with team configuration. The application should still validate the selected source before accepting its artifact.
+The selector control model above is framework-neutral and stable. The repository's adapter is tested against AutoGen AgentChat 0.7.5, where `candidate_func` filters participant names, `selector_prompt` shapes the choice, and `selector_func` can override model selection but is not serialized with team configuration. The adapter recomputes `eligible_agents()` and calls `validate_selector_decision()` before a selected name can be accepted into application state; it does not trust the framework-selected string directly.
+
+The offline replay client proves that this adapter can be instantiated with candidate and termination wiring and that its outputs still meet the policy boundary. Predetermined replay text cannot measure selector intelligence, routing accuracy, or generalization, and it is excluded from selector-quality metrics.
 
 The prompt is not the router. The prompt, candidate filter, typed state, validation, budgets, termination, artifact gates, and evaluation together form the routing system.

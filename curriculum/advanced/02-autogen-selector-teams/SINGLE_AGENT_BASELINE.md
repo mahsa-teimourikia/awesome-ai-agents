@@ -24,6 +24,8 @@ Both candidates answer the Northstar question, use the same five required eviden
 
 “Token tax” is too narrow. A team can add latency, operational failure points, context exposure, and invalid-route risk even when token prices are low.
 
+For deterministic fixtures, costs are fixed inputs. For live models, use estimated cost before execution for admission or reservation and actual reported token usage after execution for accounting under a versioned price schedule. Track selector and worker usage separately; otherwise routing cost disappears inside the team total.
+
 ## Interpret the deterministic fixture
 
 The lab's selector team and single generalist both succeed. The team makes more calls and costs more because every worker turn also needs a selector turn. That result says the team has not yet earned its complexity on this fixture.

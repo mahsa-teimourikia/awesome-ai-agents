@@ -25,15 +25,15 @@ Normal success comes from typed state: evidence complete, candidate diagnosis pr
 - message, selector-call, worker-call, per-agent-turn, repeated-speaker, and cost budgets;
 - duplicate, stagnation, ping-pong, and review-churn detection;
 - evidence insufficiency and explicit validated escalation; and
-- AutoGen `MaxMessageTermination` as a final ceiling.
+- AutoGen `MaxMessageTermination` as a final ceiling and circuit breaker, never as evidence of successful completion.
 
 The course uses deterministic precedence: cancellation, policy block, deadline, hard budget, loop, stall, escalation, insufficient evidence, completion, continuation. Precedence matters because an externally cancelled run must not be labelled successful merely because a late review message also says pass.
 
 ## Why text matching is insufficient
 
-`TextMentionTermination("ESCALATE_TO_HUMAN")` can be useful as a framework signal, but the phrase may appear in user input, retrieved documents, or malicious worker content. Application state changes only when the signal comes from the expected role and its typed output has passed artifact validation.
+`TextMentionTermination("ESCALATE_TO_HUMAN")` can be useful as a framework signal, but the phrase may appear in user input, retrieved evidence, or malicious worker content. Application state changes only when the signal comes from the expected role and its typed output has passed artifact validation.
 
-Likewise, `REVIEW_PASS` means review success. It does not confer `production.execute`, validate a human approval, or execute rollback.
+Likewise, `REVIEW_PASS` means proposal review success only. A non-reviewer cannot set it, and a validated reviewer result still does not confer `production.execute`, validate a human approval, execute rollback, or mutate global state. Legacy prose tokens such as `APPROVED` and `FINAL_PROPOSAL` carry no authority.
 
 ## Failure and conflict handling
 
@@ -45,4 +45,4 @@ Likewise, `REVIEW_PASS` means review success. It does not confer `production.exe
 
 ## Cancellation invariant
 
-Cancellation is checked before selector and worker calls. Once set, no further call is permitted. Persist cancellation and budget state beside any AutoGen team state so pause/resume cannot reset the application-owned boundary.
+Cancellation is checked before the next selector invocation and before the next worker invocation. Once set, neither `selector_calls` nor `worker_calls` may increase. Persist cancellation and budget state beside any AutoGen team state so pause/resume cannot reset the application-owned boundary.
