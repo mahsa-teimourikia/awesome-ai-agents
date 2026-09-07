@@ -37,7 +37,10 @@ intermediate = [
 ]
 advanced = [
     "awsome-ai-agents[intermediate]",
-    "pyautogen",
+    "autogen-agentchat==0.7.5",
+    "autogen-ext[openai]==0.7.5",
+    # Course 30 still imports the separately maintained classic `autogen` namespace.
+    "autogen==0.14.1",
     "crewai",
     "agentops",
     "mcp",

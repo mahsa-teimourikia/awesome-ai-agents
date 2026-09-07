@@ -212,14 +212,16 @@ export const learningPath = [
   },
   {
     "id": "a2",
-    "title": "Autogen selector teams",
-    "description": "Advanced exploration of Autogen selector teams.",
+    "title": "Bounded AutoGen Selector Teams",
+    "description": "Route a governed incident through validated eligible speakers, typed evidence, and bounded termination.",
     "material": "../curriculum/advanced/02-autogen-selector-teams/README.md",
-    "notebook": null,
-    "category": "Advanced - Autogen selector teams",
-    "minutes": 60,
+    "notebook": "../curriculum/advanced/02-autogen-selector-teams/02_autogen_selector_teams.ipynb",
+    "category": "Advanced - AutoGen Selector Teams",
+    "minutes": 120,
     "technologies": [
-      "Python"
+      "Python",
+      "Pydantic",
+      "AutoGen AgentChat 0.7.5"
     ]
   },
   {

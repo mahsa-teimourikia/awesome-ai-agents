@@ -948,21 +948,42 @@ export const curriculumData:Subject[] = [
     "id": "a2",
     "level": "Advanced",
     "step": "02",
-    "title": "Autogen selector teams",
-    "description": "Advanced exploration of Autogen selector teams.",
-    "time": "45-60 min",
-    "outcome": "Master advanced patterns.",
-    "lesson": "Deep dive into SOTA literature.",
-    "exercise": "Implement complex agentic systems.",
-    "failures": [],
+    "title": "Bounded AutoGen Selector Teams",
+    "description": "Route one governed incident through application-validated eligible speakers and typed evidence gaps.",
+    "time": "120 min",
+    "outcome": "Build and evaluate a selector team whose routing, authority, artifacts, budgets, and completion remain application-owned.",
+    "lesson": "Keep a framework-neutral selector control model, then map it through the adapter tested with AutoGen AgentChat 0.7.5.",
+    "exercise": "Run the Northstar team, attack its routing and termination boundaries, and compare it with the same-task single-agent baseline.",
+    "failures": [
+      "Invented speaker:: Selector proposes a name outside the application-computed eligible set.",
+      "Premature synthesis:: Analyst or Reviewer runs before required typed state exists.",
+      "Artifact contamination:: Wrong-tenant, unverified, or unauthorized evidence enters shared state.",
+      "No-progress loop:: Duplicate, ping-pong, stagnation, or review churn consumes budget without material change.",
+      "Authorization confusion:: REVIEW_PASS is mistaken for approval to execute a rollback."
+    ],
     "notebook": "curriculum/advanced/02-autogen-selector-teams/02_autogen_selector_teams.ipynb",
     "refs": [
       "curriculum/advanced/02-autogen-selector-teams/README.md",
-      "curriculum/advanced/02-autogen-selector-teams/02_autogen_selector_teams.ipynb"
+      "curriculum/advanced/02-autogen-selector-teams/02_autogen_selector_teams.ipynb",
+      "curriculum/advanced/02-autogen-selector-teams/policy.py",
+      "curriculum/advanced/02-autogen-selector-teams/lab.py",
+      "curriculum/advanced/02-autogen-selector-teams/autogen_adapter.py",
+      "curriculum/advanced/02-autogen-selector-teams/AVOIDING_CIRCULAR_DELEGATION.md"
     ],
-    "code": "",
-    "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
-    "quiz": []
+    "code": "curriculum/advanced/02-autogen-selector-teams/lab.py",
+    "goals": ["Compute eligible speakers from typed evidence state without confusing eligibility with optimal routing.","Validate selector proposals and worker artifacts before state mutation.","Distinguish justified revisits from duplicate, stagnation, ping-pong, and review-churn loops.","Separate selector work from worker work and wall-clock latency.","Treat offline replay as an integration check, then evaluate set-valued routing against the same-task single-agent baseline."],
+    "quiz": [
+      {"q":"Why is candidate filtering stronger than selector prompting?","options":["It costs fewer tokens","It mechanically limits the destination set before the model chooses","It gives agents more tools","It authorizes execution"],"answer":1,"explanation":"Prompts influence behavior; application-owned candidate filtering constrains the possible speaker names."},
+      {"q":"When can two next speakers both be correct?","options":["Never","When each can safely close a different unresolved evidence gap","Only after review","Whenever they are polite"],"answer":1,"explanation":"Routing labels should accept any member of the valid set when several specialists can materially advance state."},
+      {"q":"What does REVIEW_PASS authorize?","options":["Immediate rollback","New tool capabilities","Completion of proposal review only","Tenant switching"],"answer":2,"explanation":"A consequential write still needs separate validated approval and execution authority."},
+      {"q":"What distinguishes a justified speaker revisit?","options":["The speaker asks again","Material evidence or typed state changed","The prompt is longer","The message cap reset"],"answer":1,"explanation":"Loop checks combine speaker patterns with evidence and state digests."},
+      {"q":"What is MaxMessageTermination?","options":["Proof of success","A final circuit breaker","Artifact validation","An authorization policy"],"answer":1,"explanation":"A hard cap stops damage but cannot show the evidence and review contract succeeded."},
+      {"q":"What belongs in projected selector context?","options":["Every raw secret","Goal, gaps, eligible speakers, last material change, and budget","Only greetings","Production credentials"],"answer":1,"explanation":"Projection preserves routing facts while reducing tokens and sensitive exposure."},
+      {"q":"What should happen with no eligible speaker?","options":["Invent one","Force AnalystAgent","Abstain or escalate under the evidence policy","Reset all budgets"],"answer":2,"explanation":"No safe gap-closing route is a stop/escalation condition, not permission to fabricate topology."},
+      {"q":"Why validate worker artifacts?","options":["To make chat longer","To enforce identity, tenant, provenance, evidence, and capability boundaries","To select a model","To bypass review"],"answer":1,"explanation":"Typed validation prevents untrusted model output from becoming authoritative shared evidence."},
+      {"q":"Which metric is selector-specific?","options":["Selector model calls and tokens","Customer count","Git commits","Notebook cells"],"answer":0,"explanation":"Routing calls are coordination work and must be separated from worker calls."},
+      {"q":"When has a selector team earned its complexity?","options":["When it uses five agents","When it beats the same-task baseline on governed outcomes within cost and latency limits","When it has a long prompt","When it reaches max messages"],"answer":1,"explanation":"A team needs measured structural benefit, not architectural novelty."}
+    ]
   },
   {
     "id": "a3",

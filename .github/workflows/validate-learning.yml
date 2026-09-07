@@ -32,11 +32,11 @@ jobs:
         run: python -m compileall -q curriculum tests
       - name: Install focused validation dependencies
         run: python -m pip install -e '.[contributor,core]'
-      - name: Test Course 08, 09, 10, and Advanced 01 policy invariants
+      - name: Test Course 08, 09, 10, Advanced 01, and Advanced 02 policy invariants
         env:
           PYTHONPATH: .
-        run: pytest -q tests/test_planning_task_decomposition.py tests/test_agentic_rag.py tests/test_langgraph_state_memory.py tests/test_single_vs_multi_agent.py
-      - name: Execute Course 08, 09, 10, and Advanced 01 credential-free notebooks
+        run: pytest -q tests/test_planning_task_decomposition.py tests/test_agentic_rag.py tests/test_langgraph_state_memory.py tests/test_single_vs_multi_agent.py tests/test_autogen_selector_teams.py
+      - name: Execute Course 08, 09, 10, Advanced 01, and Advanced 02 credential-free notebooks
         env:
           PYTHONPATH: .
         run: |
@@ -44,6 +44,7 @@ jobs:
           python scripts/execute-notebooks.py --timeout 90 curriculum/intermediate/09-agentic-rag
           python scripts/execute-notebooks.py --timeout 90 curriculum/intermediate/10-langgraph-state-memory
           python scripts/execute-notebooks.py --timeout 90 curriculum/advanced/01-single-vs-multi-agent
+          python scripts/execute-notebooks.py --timeout 90 curriculum/advanced/02-autogen-selector-teams
 
   test-beginner:
     if: github.event_name == 'pull_request'

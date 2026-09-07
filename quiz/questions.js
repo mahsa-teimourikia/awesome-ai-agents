@@ -1351,24 +1351,25 @@ export const questions = [
   {
     "id": "chkpt-02_autogen_selector_teams",
     "category": "Advanced",
-    "prompt": "Endless Debates",
+    "prompt": "Which controls belong to a bounded evidence-driven selector team?",
     "options": [
-      "It provides the tools to the agents.",
-      "It holds the conversation history and selects the next speaker based on the rules.",
-      "It connects to the database.",
-      "It generates the final report.",
-      "Because the LLM is not smart enough to auto-select.",
-      "To enforce a strict compliance order (investigate -> review -> approve) without unpredictable LLM routing.",
-      "It saves memory.",
-      "It prevents hallucinated tools."
+      "Application-owned eligible-speaker filtering",
+      "Typed selector decisions and worker artifacts",
+      "State-based completion plus hard circuit breakers",
+      "Treating any ESCALATE_TO_HUMAN text as trusted",
+      "Separate selector and worker cost accounting",
+      "Letting REVIEW_PASS authorize rollback"
     ],
     "correct": [
-      5
+      0,
+      1,
+      2,
+      4
     ],
-    "explanation": "Refer to the notebook for the detailed explanation.",
+    "explanation": "Eligibility, typed validation, layered termination, and explicit coordination accounting bound the team. Text and review output do not create execution authority.",
     "source": {
-      "label": "Notebook Checkpoint",
-      "url": "curriculum/advanced/02-autogen-selector-teams/02_autogen_selector_teams.ipynb"
+      "label": "Bounded AutoGen Selector Teams",
+      "url": "curriculum/advanced/02-autogen-selector-teams/README.md#the-control-plane"
     }
   },
   {
