@@ -75,6 +75,8 @@ A Pydantic-valid object can still be:
 - created under a stale policy;
 - schema-valid but unsupported by cited facts.
 
+Claim validation first confirms each citation exists, belongs to the envelope, and is tenant-correct. It then checks each claim's `fact_keys` against only that claim's cited records. A matching fact elsewhere in the artifact cannot rescue a bad citation.
+
 Accepted envelopes are immutable. A transformation produces a new artifact ID and hash; it does not silently edit accepted evidence. Authoritative downstream state should be carried through validated task artifacts rather than relying on free-form conversation.
 
 The normal fixture contains only Northstar data. Globex and other tenants appear only in rejection tests.
@@ -99,7 +101,7 @@ The retry matrix is explicit:
 | `AUTH_DENIED` | do not retry |
 | `POLICY_BLOCKED` | do not retry |
 
-`logical_task_execution_id` stays stable across a retry; each `attempt_id` is unique. For consequential writes, logical idempotency identity must remain stable across retries. Course 01 and Intermediate Course 03 develop that execution boundary in more depth.
+The effective attempt ceiling is `min(TaskDefinition.max_attempts, CrewBudget.max_attempts)`: a broad run budget cannot override a stricter task contract. `logical_task_execution_id` stays stable across a retry; each `attempt_id` is unique. For consequential writes, logical idempotency identity must remain stable across retries. Course 01 and Intermediate Course 03 develop that execution boundary in more depth.
 
 ## Parallel evidence work
 
@@ -108,7 +110,7 @@ Health, logs, deployment, customer impact, and runbook collection are independen
 - total model work: the sum of every task duration;
 - wall-clock latency: the maximum duration in a parallel batch, plus dependent stages.
 
-The fixture produces `430 ms` of work but `220 ms` of conceptual wall-clock time. Total work is not wall-clock time. Production code still needs real concurrency limits, rate-limit groups, deadlines, and cancellation.
+The fixture produces `430 ms` of work but `220 ms` of conceptual wall-clock time. `TaskExecutionRecord.elapsed_ms` records individual task work; only the scheduler updates `elapsed_wall_clock_ms` from ready-batch latency. Total work is not wall-clock time. Production code still needs real concurrency limits, rate-limit groups, deadlines, and cancellation.
 
 ## Hierarchical execution
 
@@ -116,16 +118,17 @@ A hierarchical process adds a model-driven manager control layer. That may help 
 
 The manager proposes a typed `ManagerDecision`. The application then checks:
 
-- known manager and allowed worker;
+- known manager, allowed worker, and valid parent-task lineage (or an explicit root delegation context);
 - unique task identity;
-- allowed artifact type and capabilities;
+- allowed artifact type and manager capabilities;
+- every proposed capability is also granted to the selected worker;
 - no production-write capability;
 - delegation, manager-call, depth, replan, cost, and deadline budgets;
 - no repeated worker/task/input/evidence-gap signature without material progress.
 
-Unknown workers, arbitrary task types, privilege escalation, and repeated irrelevant delegation fail closed. A manager is another model-driven control layer, not a guarantee of resilience.
+Unknown workers, fabricated parent tasks, worker capability mismatches, arbitrary task types, privilege escalation, and repeated irrelevant delegation fail closed. `manager_calls` counts attempted manager model calls and consumed coordination budget, including proposals rejected by later validation. `delegations` counts only accepted, validated proposals. A manager is another model-driven control layer, not a guarantee of resilience.
 
-The recovery fixture is intentionally narrow: the primary deployment source is unavailable, and the manager proposes an approved read-only metadata fallback. Hierarchy is accepted only because recovery improves materially without a grounding or safety regression and remains within cost and latency bounds.
+The recovery fixture is intentionally narrow: the primary deployment source is unavailable, and the manager proposes an approved read-only metadata fallback. Hierarchy is accepted only because recovery improves materially without a grounding or safety regression and remains within configured cost and latency bounds. The fixture's `ARCHITECTURE_MAX_COST_USD = 0.10` is an explicit scenario parameter, not a universal threshold.
 
 ## Flow as the control plane
 
@@ -137,7 +140,7 @@ Model output may suggest an event. It cannot apply one directly. Text such as `T
 
 Cancellation is checked before the next crew or worker call. After `CANCELLED`, call counters cannot increase. Normal completion requires every evidence artifact, a grounded incident brief, reviewer `REVIEW_PASS`, and no blocking task.
 
-`REVIEW_PASS` means the proposal passed quality review. It does not authorize rollback or any global production mutation. Production approval remains the separate boundary taught in Intermediate Course 03.
+`REVIEW_PASS` means the proposal passed quality review. It does not authorize rollback or any global production mutation. Execution requires both `REVIEW_PASS` and separately validated production approval; failure or absence of either blocks it. This is the separate boundary taught in Intermediate Course 03.
 
 The fixture can serialize state and resume only unfinished tasks. This is a teaching checkpoint, not production durability. Use a durable store, atomic transitions, idempotent consumers, and the restart patterns from Intermediate Course 10 in a real service.
 
@@ -162,13 +165,15 @@ The optional adapter maps admitted definitions to CrewAI `Agent`, `Task`, and `C
 
 - `Process.sequential` for the baseline;
 - `Process.hierarchical` with an explicit manager for the adaptive variant;
-- task `context` for dependency references;
+- task `context` in a framework API demonstration only;
 - a descriptive `expected_output` plus `output_pydantic` for actual structured conversion;
 - an offline `BaseLLM` solely to instantiate and inspect the adapter without credentials.
 
-Offline replay validates integration shape, dependency mapping, process configuration, and policy re-validation. It does not measure model intelligence, routing quality, or generalization, and its outputs must not enter quality metrics.
+Direct CrewAI `Task.context` chains raw framework task outputs, so it is not the authoritative production state path. The preferred governed pattern is: bounded crew/task → structured candidate → application `ArtifactEnvelope` validation → accepted artifact → downstream bounded crew/task. Only accepted application artifacts are projected into the next bounded task.
 
-Even a real CrewAI `TaskOutput.pydantic` is only a candidate. `validate_adapter_payload()` wraps it in the same application envelope and runs the same policy used by the credential-free core.
+Offline replay validates SDK integration, `Agent`/`Task`/`Crew` construction, Flow construction, and structured-output plumbing. It does not validate manager intelligence, delegation quality, real-model reliability, routing quality, or generalization. Replay output must not enter architecture-quality metrics.
+
+Even a real CrewAI `TaskOutput.pydantic` is only a candidate. The authoritative `admit_crewai_output()` function parses it, builds an application envelope, calls `validate_artifact()`, and updates application state only after acceptance. Tests, the notebook, and the optional live path all use this same function.
 
 For Flow syntax and persistence, see the official [Flows documentation](https://docs.crewai.com/en/concepts/flows). For task `context` and structured outputs, see [Tasks](https://docs.crewai.com/en/concepts/tasks). For sequential and hierarchical process configuration, see [Crews](https://docs.crewai.com/en/concepts/crews).
 
@@ -191,7 +196,7 @@ uv run --extra advanced --extra contributor pytest -q \
   tests/test_crewai_teams.py -k crewai_adapter
 ```
 
-The optional paid example runs only when `OPENAI_API_KEY` is already configured. It uses a small model for one sequential demonstration; it does not execute a production action.
+The optional paid example runs only when `OPENAI_API_KEY` is already configured. It uses a small model for the bounded task sequence, validates every result before downstream work, and does not execute a production action.
 
 ## Notebook map
 

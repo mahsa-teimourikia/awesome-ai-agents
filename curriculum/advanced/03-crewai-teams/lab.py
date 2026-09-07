@@ -45,6 +45,7 @@ TENANT_ID = "northstar-commerce"
 INCIDENT_ID = "inc-eu-checkout-1842"
 QUESTION = "Why did EU checkout conversion fall after deploy-1842, and what should we do?"
 REQUIRED_EVIDENCE = ("health", "logs", "deployment", "customer-impact", "current-runbook")
+ARCHITECTURE_MAX_COST_USD = 0.10
 
 
 def build_agents() -> tuple[AgentDefinition, ...]:
@@ -427,7 +428,7 @@ def execute_fixture_task(
         elapsed_ms=elapsed_ms,
         cost_usd=definition.estimated_cost,
     )
-    register_execution(state, record)
+    register_execution(state, record, task=definition)
     result = build_artifact(task_id)
     accept_artifact(state, task_id, result)
     return result
@@ -593,13 +594,21 @@ def compare_recovery() -> dict[str, CrewMetrics]:
 
 def recovery_gate() -> str:
     runs = compare_recovery()
-    return architecture_gate(runs["sequential"], runs["hierarchical"])
+    return architecture_gate(
+        runs["sequential"],
+        runs["hierarchical"],
+        max_cost_usd=ARCHITECTURE_MAX_COST_USD,
+    )
 
 
 def no_benefit_gate() -> str:
     sequential = run_same_workload("DETERMINISTIC_SEQUENTIAL")
     hierarchy = run_same_workload("CREWAI_HIERARCHICAL")
-    return architecture_gate(sequential, hierarchy)
+    return architecture_gate(
+        sequential,
+        hierarchy,
+        max_cost_usd=ARCHITECTURE_MAX_COST_USD,
+    )
 
 
 def bad_hierarchy_metrics() -> CrewMetrics:

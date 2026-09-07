@@ -39,7 +39,7 @@ Validation covers two different layers:
 - structural validity: schema, enum values, required fields;
 - trust validity: expected producer/task/tenant, known evidence, verified source/hash, active policy, allowed capability, supported claims.
 
-Typed artifact does not equal trusted artifact. A perfectly valid object can cite an invented evidence ID or carry a diagnosis that none of its cited facts supports.
+Typed artifact does not equal trusted artifact. A perfectly valid object can cite an invented evidence ID or carry a diagnosis that none of its cited facts supports. Citation existence, envelope membership, and tenant are checked before support; support is computed only from the evidence records that each claim actually cites, never from unrelated facts elsewhere in the envelope.
 
 Accepted artifacts are immutable. Correction creates a derived artifact with a new identity and hash, preserving the audit chain.
 
@@ -65,6 +65,6 @@ This is not merely a cost optimization. Smaller context limits accidental disclo
 
 ## Review is not execution approval
 
-The reviewer can produce `REVIEW_PASS` when the brief is complete and grounded. That state permits course completion. It does not authorize a rollback. A consequential write must cross the independent approval and idempotent execution boundary described in earlier courses.
+The reviewer can produce `REVIEW_PASS` when the brief is complete and grounded. That state permits course completion. It does not authorize a rollback. Production execution requires both `REVIEW_PASS` and independently validated approval; either missing boundary blocks the action. A consequential write must also cross the idempotent execution boundary described in earlier courses.
 
 References: official CrewAI [Agents](https://docs.crewai.com/en/concepts/agents) and [Tasks](https://docs.crewai.com/en/concepts/tasks) documentation. Adapter behavior is tested with CrewAI `1.15.20`.

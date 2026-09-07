@@ -45,6 +45,9 @@ else:
     sys.modules["lab"] = previous_lab
 
 
+KNOWN_TASK_IDS = tuple(item.task_id for item in lab.build_tasks())
+
+
 def rehash(artifact, **updates):
     changed = artifact.model_copy(update=updates)
     return changed.model_copy(update={"artifact_hash": policy.artifact_digest(changed)})
@@ -204,6 +207,54 @@ def test_unsupported_claim_detected_despite_valid_schema():
         lab.accept_artifact(lab.build_flow_state(), "synthesize-incident", artifact)
 
 
+def test_claim_cannot_launder_fact_from_uncited_artifact_evidence():
+    artifact = lab.build_artifact(
+        "synthesize-incident",
+        payload={
+            "claims": [{
+                "claim_id": "laundered",
+                "text": "deploy-1842 caused the incident",
+                "evidence_ids": ["health"],
+                "fact_keys": ["suspected_change"],
+            }]
+        },
+    )
+    with pytest.raises(policy.PolicyError, match="UNSUPPORTED_CLAIM"):
+        lab.accept_artifact(lab.build_flow_state(), "synthesize-incident", artifact)
+
+
+def test_claim_citation_must_exist_before_support_is_checked():
+    artifact = lab.build_artifact(
+        "synthesize-incident",
+        payload={
+            "claims": [{
+                "claim_id": "invented-citation",
+                "text": "invented",
+                "evidence_ids": ["invented"],
+                "fact_keys": ["suspected_change"],
+            }]
+        },
+    )
+    with pytest.raises(policy.PolicyError, match="UNKNOWN_CLAIM_EVIDENCE"):
+        lab.accept_artifact(lab.build_flow_state(), "synthesize-incident", artifact)
+
+
+def test_claim_citation_must_belong_to_artifact_before_support_is_checked():
+    artifact = lab.build_artifact(
+        "collect-health",
+        payload={
+            "claims": [{
+                "claim_id": "outside-envelope",
+                "text": "deploy-1842",
+                "evidence_ids": ["deployment"],
+                "fact_keys": ["suspected_change"],
+            }]
+        },
+    )
+    with pytest.raises(policy.PolicyError, match="CLAIM_EVIDENCE_NOT_IN_ARTIFACT"):
+        lab.accept_artifact(lab.build_flow_state(), "collect-health", artifact)
+
+
 def test_accepted_artifact_model_is_immutable():
     artifact = lab.build_artifact("collect-health")
     with pytest.raises(ValidationError, match="frozen_instance"):
@@ -239,20 +290,39 @@ def test_attempt_ids_unique_logical_identity_stable():
 
 def test_duplicate_task_execution_detected():
     state = lab.build_flow_state()
-    record = policy.TaskExecutionRecord(logical_task_execution_id="incident:task", attempt_id="attempt-1", task_id="task", attempt_number=1, status="SUCCEEDED", elapsed_ms=10, cost_usd=0)
-    policy.register_execution(state, record)
+    definition = lab.task("collect-health")
+    record = policy.TaskExecutionRecord(logical_task_execution_id="incident:collect-health", attempt_id="attempt-1", task_id="collect-health", attempt_number=1, status="SUCCEEDED", elapsed_ms=10, cost_usd=0)
+    policy.register_execution(state, record, task=definition)
     with pytest.raises(policy.PolicyError, match="DUPLICATE_TASK_EXECUTION"):
-        policy.register_execution(state, record.model_copy(update={"attempt_id": "attempt-2"}))
+        policy.register_execution(state, record.model_copy(update={"attempt_id": "attempt-2"}), task=definition)
 
 
 def test_retry_attempt_may_reuse_logical_identity_after_retryable_failure():
     state = lab.build_flow_state()
-    first = policy.TaskExecutionRecord(logical_task_execution_id="incident:task", attempt_id="attempt-1", task_id="task", attempt_number=1, status="RETRYABLE", failure_code="TIMEOUT", elapsed_ms=10, cost_usd=0)
+    definition = lab.task("collect-health")
+    first = policy.TaskExecutionRecord(logical_task_execution_id="incident:collect-health", attempt_id="attempt-1", task_id="collect-health", attempt_number=1, status="RETRYABLE", failure_code="TIMEOUT", elapsed_ms=10, cost_usd=0)
     second = first.model_copy(update={"attempt_id": "attempt-2", "attempt_number": 2, "status": policy.TaskStatus.SUCCEEDED, "failure_code": None})
-    policy.register_execution(state, first)
-    policy.register_execution(state, second)
-    assert state.executed_logical_ids == ("incident:task",)
+    policy.register_execution(state, first, task=definition)
+    policy.register_execution(state, second, task=definition)
+    assert state.executed_logical_ids == ("incident:collect-health",)
     assert state.attempted_ids == ("attempt-1", "attempt-2")
+
+
+def test_task_specific_attempt_budget_is_enforced():
+    state = lab.build_flow_state()
+    state.budget = state.budget.model_copy(update={"max_attempts": 3})
+    definition = lab.task("review-incident")
+    record = policy.TaskExecutionRecord(
+        logical_task_execution_id="incident:review-incident",
+        attempt_id="review-attempt-2",
+        task_id="review-incident",
+        attempt_number=2,
+        status="SUCCEEDED",
+        elapsed_ms=10,
+        cost_usd=0,
+    )
+    with pytest.raises(policy.PolicyError, match="ATTEMPT_BUDGET_EXCEEDED"):
+        policy.register_execution(state, record, task=definition)
 
 
 def test_manager_valid_fallback_is_allowed():
@@ -262,16 +332,30 @@ def test_manager_valid_fallback_is_allowed():
     assert result is policy.DelegationDecision.ALLOW
 
 
+def test_manager_explicit_root_delegation_context_is_allowed():
+    decision = lab.build_recovery_decision().model_copy(
+        update={"parent_task_id": policy.ROOT_DELEGATION_CONTEXT}
+    )
+    result = policy.validate_manager_decision(
+        decision,
+        state=lab.build_flow_state(),
+        crew=lab.build_crews()[2],
+        capability_policy=lab.build_capability_policy(),
+        known_task_ids=KNOWN_TASK_IDS,
+    )
+    assert result is policy.DelegationDecision.ALLOW
+
+
 def test_manager_unknown_worker_rejected():
     decision = lab.build_recovery_decision().model_copy(update={"worker_agent_id": "unknown"})
     with pytest.raises(policy.PolicyError, match="MANAGER_UNKNOWN_WORKER"):
-        policy.validate_manager_decision(decision, state=lab.build_flow_state(), crew=lab.build_crews()[2], capability_policy=lab.build_capability_policy(), known_task_ids=())
+        policy.validate_manager_decision(decision, state=lab.build_flow_state(), crew=lab.build_crews()[2], capability_policy=lab.build_capability_policy(), known_task_ids=KNOWN_TASK_IDS)
 
 
 def test_manager_duplicate_task_rejected():
     decision = lab.build_recovery_decision(task_id="collect-health")
     with pytest.raises(policy.PolicyError, match="MANAGER_DUPLICATE_TASK"):
-        policy.validate_manager_decision(decision, state=lab.build_flow_state(), crew=lab.build_crews()[2], capability_policy=lab.build_capability_policy(), known_task_ids=("collect-health",))
+        policy.validate_manager_decision(decision, state=lab.build_flow_state(), crew=lab.build_crews()[2], capability_policy=lab.build_capability_policy(), known_task_ids=KNOWN_TASK_IDS)
 
 
 def test_manager_unauthorized_task_rejected():
@@ -279,28 +363,28 @@ def test_manager_unauthorized_task_rejected():
     proposed = decision.proposed_task.model_copy(update={"expected_artifact_type": policy.ArtifactType.REVIEW_DECISION})
     decision = decision.model_copy(update={"proposed_task": proposed})
     with pytest.raises(policy.PolicyError, match="MANAGER_UNAUTHORIZED_TASK"):
-        policy.validate_manager_decision(decision, state=lab.build_flow_state(), crew=lab.build_crews()[2], capability_policy=lab.build_capability_policy(), known_task_ids=())
+        policy.validate_manager_decision(decision, state=lab.build_flow_state(), crew=lab.build_crews()[2], capability_policy=lab.build_capability_policy(), known_task_ids=KNOWN_TASK_IDS)
 
 
 def test_manager_max_depth_enforced():
     decision = lab.build_recovery_decision(depth=3)
     with pytest.raises(policy.PolicyError, match="MANAGER_MAX_DEPTH_EXCEEDED"):
-        policy.validate_manager_decision(decision, state=lab.build_flow_state(), crew=lab.build_crews()[2], capability_policy=lab.build_capability_policy(), known_task_ids=())
+        policy.validate_manager_decision(decision, state=lab.build_flow_state(), crew=lab.build_crews()[2], capability_policy=lab.build_capability_policy(), known_task_ids=KNOWN_TASK_IDS)
 
 
 def test_manager_max_delegations_enforced():
     state = lab.build_flow_state()
     state.delegations = state.budget.max_delegations
     with pytest.raises(policy.PolicyError, match="MANAGER_MAX_DELEGATIONS_EXCEEDED"):
-        policy.validate_manager_decision(lab.build_recovery_decision(), state=state, crew=lab.build_crews()[2], capability_policy=lab.build_capability_policy(), known_task_ids=())
+        policy.validate_manager_decision(lab.build_recovery_decision(), state=state, crew=lab.build_crews()[2], capability_policy=lab.build_capability_policy(), known_task_ids=KNOWN_TASK_IDS)
 
 
 def test_manager_no_progress_delegation_loop_detected():
     state = lab.build_flow_state()
     decision = lab.build_recovery_decision()
-    policy.validate_manager_decision(decision, state=state, crew=lab.build_crews()[2], capability_policy=lab.build_capability_policy(), known_task_ids=())
+    policy.validate_manager_decision(decision, state=state, crew=lab.build_crews()[2], capability_policy=lab.build_capability_policy(), known_task_ids=KNOWN_TASK_IDS)
     with pytest.raises(policy.PolicyError, match="DELEGATION_STALLED"):
-        policy.validate_manager_decision(decision, state=state, crew=lab.build_crews()[2], capability_policy=lab.build_capability_policy(), known_task_ids=())
+        policy.validate_manager_decision(decision, state=state, crew=lab.build_crews()[2], capability_policy=lab.build_capability_policy(), known_task_ids=KNOWN_TASK_IDS)
 
 
 def test_manager_write_task_rejected():
@@ -309,7 +393,50 @@ def test_manager_write_task_rejected():
     decision = decision.model_copy(update={"proposed_task": proposed})
     manager_policy = lab.build_capability_policy().model_copy(update={"manager_capabilities": {"manager": (policy.Capability.PRODUCTION_ROLLBACK,)}})
     with pytest.raises(policy.PolicyError, match="MANAGER_WRITE_DENIED"):
-        policy.validate_manager_decision(decision, state=lab.build_flow_state(), crew=lab.build_crews()[2], capability_policy=manager_policy, known_task_ids=())
+        policy.validate_manager_decision(decision, state=lab.build_flow_state(), crew=lab.build_crews()[2], capability_policy=manager_policy, known_task_ids=KNOWN_TASK_IDS)
+
+
+def test_manager_worker_must_hold_every_proposed_capability():
+    decision = lab.build_recovery_decision()
+    proposed = decision.proposed_task.model_copy(
+        update={"allowed_capabilities": (policy.Capability.CUSTOMER_IMPACT_READ,)}
+    )
+    decision = decision.model_copy(update={"proposed_task": proposed})
+    manager_policy = lab.build_capability_policy().model_copy(
+        update={
+            "manager_capabilities": {
+                "manager": (
+                    policy.Capability.DEPLOYMENT_READ,
+                    policy.Capability.CUSTOMER_IMPACT_READ,
+                )
+            }
+        }
+    )
+    with pytest.raises(policy.PolicyError, match="MANAGER_WORKER_CAPABILITY_MISMATCH"):
+        policy.validate_manager_decision(
+            decision,
+            state=lab.build_flow_state(),
+            crew=lab.build_crews()[2],
+            capability_policy=manager_policy,
+            known_task_ids=KNOWN_TASK_IDS,
+        )
+
+
+def test_manager_fabricated_parent_task_is_rejected_and_call_is_accounted():
+    state = lab.build_flow_state()
+    decision = lab.build_recovery_decision().model_copy(
+        update={"parent_task_id": "fabricated-parent"}
+    )
+    with pytest.raises(policy.PolicyError, match="MANAGER_PARENT_TASK_UNKNOWN"):
+        policy.validate_manager_decision(
+            decision,
+            state=state,
+            crew=lab.build_crews()[2],
+            capability_policy=lab.build_capability_policy(),
+            known_task_ids=KNOWN_TASK_IDS,
+        )
+    assert state.manager_calls == 1
+    assert state.delegations == 0
 
 
 def test_flow_invalid_transition_rejected():
@@ -342,6 +469,17 @@ def test_flow_completion_requires_review_pass():
 def test_review_pass_does_not_authorize_rollback():
     with pytest.raises(policy.PolicyError, match="PRODUCTION_APPROVAL_REQUIRED"):
         policy.authorize_production_action(review_decision="REVIEW_PASS", validated_approval=False)
+
+
+def test_review_fail_with_external_approval_is_rejected():
+    with pytest.raises(policy.PolicyError, match="PRODUCTION_REVIEW_NOT_PASSED"):
+        policy.authorize_production_action(review_decision="REVIEW_FAIL", validated_approval=True)
+
+
+def test_missing_or_unknown_review_with_external_approval_is_rejected():
+    for decision in ("", "UNKNOWN"):
+        with pytest.raises(policy.PolicyError, match="PRODUCTION_REVIEW_NOT_PASSED"):
+            policy.authorize_production_action(review_decision=decision, validated_approval=True)
 
 
 def test_validated_approval_is_a_separate_boundary():
@@ -388,7 +526,25 @@ def test_quality_gate_rejects_hierarchy_with_no_benefit():
 
 def test_bad_hierarchy_fails_regression_gate():
     baseline = lab.run_same_workload("DETERMINISTIC_SEQUENTIAL")
-    assert policy.architecture_gate(baseline, lab.bad_hierarchy_metrics()) == "KEEP_SEQUENTIAL"
+    assert policy.architecture_gate(
+        baseline,
+        lab.bad_hierarchy_metrics(),
+        max_cost_usd=lab.ARCHITECTURE_MAX_COST_USD,
+    ) == "KEEP_SEQUENTIAL"
+
+
+def test_architecture_cost_limit_is_scenario_configuration():
+    runs = lab.compare_recovery()
+    assert policy.architecture_gate(
+        runs["sequential"],
+        runs["hierarchical"],
+        max_cost_usd=0.05,
+    ) == "KEEP_SEQUENTIAL"
+    assert policy.architecture_gate(
+        runs["sequential"],
+        runs["hierarchical"],
+        max_cost_usd=0.10,
+    ) == "ACCEPT_HIERARCHY"
 
 
 def test_flow_can_beat_unconstrained_manager_on_same_workload():
@@ -414,22 +570,37 @@ def test_persisted_state_resumes_without_rerunning_completed_tasks(tmp_path):
     assert "collect-health" not in lab.tasks_to_resume(restored)
 
 
-def test_real_crewai_adapter_output_still_validated_by_policy():
+def test_real_crewai_adapter_output_crosses_policy_admission_boundary(monkeypatch):
     state = lab.build_flow_state()
     valid_payload = lab.build_artifact("collect-health").payload
-    accepted = adapter.validate_adapter_payload(valid_payload, task_id="collect-health", state=state)
+    original_validate = adapter.validate_artifact
+    validation_calls = 0
+
+    def tracked_validate(*args, **kwargs):
+        nonlocal validation_calls
+        validation_calls += 1
+        return original_validate(*args, **kwargs)
+
+    monkeypatch.setattr(adapter, "validate_artifact", tracked_validate)
+    accepted = adapter.admit_crewai_output(valid_payload, task_id="collect-health", state=state)
     assert accepted.artifact_type is policy.ArtifactType.HEALTH_FINDING
+    assert state.accepted_artifacts[accepted.artifact_id] == accepted
+    assert state.task_states["collect-health"] is policy.TaskStatus.SUCCEEDED
+    assert validation_calls == 1
     invalid = {"claims": [{"claim_id": "x", "text": "unsupported", "evidence_ids": ["health"], "fact_keys": ["not-present"]}]}
     with pytest.raises(policy.PolicyError, match="UNSUPPORTED_CLAIM"):
-        adapter.validate_adapter_payload(invalid, task_id="collect-health", state=state)
+        adapter.admit_crewai_output(invalid, task_id="collect-health", state=state)
 
 
 def test_real_crewai_adapter_instantiates_offline_when_installed():
     pytest.importorskip("crewai")
     crew = adapter.build_sequential_crew()
+    bounded = adapter.build_bounded_task_crew("collect-health", lab.build_flow_state())
     assert crew.process.value == "sequential"
     assert len(crew.tasks) == len(lab.build_tasks())
     assert all(item.output_pydantic is adapter.CrewAIArtifactPayload for item in crew.tasks)
+    assert len(bounded.tasks) == 1
+    assert not isinstance(bounded.tasks[0].context, list)
 
 
 def test_real_crewai_flow_adapter_maps_application_state_when_installed():

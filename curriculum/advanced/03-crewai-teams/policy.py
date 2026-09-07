@@ -114,6 +114,9 @@ class DelegationDecision(StrEnum):
     DENY = "DENY"
 
 
+ROOT_DELEGATION_CONTEXT = "ROOT_DELEGATION_CONTEXT"
+
+
 class FlowEventType(StrEnum):
     FLOW_STARTED = "FLOW_STARTED"
     TASK_READY = "TASK_READY"
@@ -429,7 +432,8 @@ def validate_artifact(
     if any(record.capability not in permitted for record in records):
         raise PolicyError("EVIDENCE_CAPABILITY_VIOLATION")
 
-    facts = {key for record in records for key in record.facts}
+    artifact_evidence_ids = set(artifact.evidence_ids)
+    records_by_id = {record.evidence_id: record for record in records}
     claims = artifact.payload.get("claims", ())
     if not isinstance(claims, (list, tuple)):
         raise PolicyError("INVALID_CLAIM_SCHEMA")
@@ -438,7 +442,24 @@ def validate_artifact(
             raise PolicyError("INVALID_CLAIM_SCHEMA")
         cited = set(claim.get("evidence_ids", ()))
         fact_keys = set(claim.get("fact_keys", ()))
-        if not cited or not cited.issubset(set(artifact.evidence_ids)) or not fact_keys.issubset(facts):
+        if not cited:
+            raise PolicyError("CLAIM_EVIDENCE_REQUIRED")
+
+        cited_records: list[EvidenceRecord] = []
+        for evidence_id in cited:
+            record = state.evidence.get(evidence_id)
+            if record is None:
+                raise PolicyError("UNKNOWN_CLAIM_EVIDENCE")
+            if record.tenant_id != state.tenant_id:
+                raise PolicyError("CLAIM_EVIDENCE_TENANT_VIOLATION")
+            cited_records.append(record)
+        if not cited.issubset(artifact_evidence_ids):
+            raise PolicyError("CLAIM_EVIDENCE_NOT_IN_ARTIFACT")
+        if any(record.evidence_id not in records_by_id for record in cited_records):
+            raise PolicyError("CLAIM_EVIDENCE_NOT_IN_ARTIFACT")
+
+        cited_facts = {key for record in cited_records for key in record.facts}
+        if not fact_keys.issubset(cited_facts):
             raise PolicyError("UNSUPPORTED_CLAIM")
     return artifact
 
@@ -455,7 +476,12 @@ def retry_disposition(
     return "DO_NOT_RETRY"
 
 
-def register_execution(state: FlowState, record: TaskExecutionRecord) -> None:
+def register_execution(
+    state: FlowState,
+    record: TaskExecutionRecord,
+    *,
+    task: TaskDefinition,
+) -> None:
     if state.terminal_status is RunStatus.CANCELLED:
         raise PolicyError("RUN_CANCELLED")
     if record.attempt_id in state.attempted_ids:
@@ -466,7 +492,10 @@ def register_execution(state: FlowState, record: TaskExecutionRecord) -> None:
         raise PolicyError("TASK_BUDGET_EXCEEDED")
     if state.worker_calls >= state.budget.max_worker_calls:
         raise PolicyError("WORKER_CALL_BUDGET_EXCEEDED")
-    if record.attempt_number > state.budget.max_attempts:
+    if record.task_id != task.task_id:
+        raise PolicyError("TASK_EXECUTION_MISMATCH")
+    allowed_attempts = min(task.max_attempts, state.budget.max_attempts)
+    if record.attempt_number > allowed_attempts:
         raise PolicyError("ATTEMPT_BUDGET_EXCEEDED")
     if state.total_cost_usd + record.cost_usd > state.budget.max_cost_usd:
         raise PolicyError("COST_BUDGET_EXCEEDED")
@@ -499,6 +528,12 @@ def validate_manager_decision(
     capability_policy: CapabilityPolicy,
     known_task_ids: tuple[str, ...],
 ) -> DelegationDecision:
+    """Validate one manager proposal.
+
+    ``manager_calls`` accounts for an attempted model call once the manager and
+    call budget are valid. ``delegations`` advances only after the proposal
+    passes every later policy check.
+    """
     if state.terminal_status is RunStatus.CANCELLED:
         raise PolicyError("RUN_CANCELLED")
     if crew.manager_agent_id != decision.manager_id:
@@ -506,6 +541,9 @@ def validate_manager_decision(
     if state.manager_calls >= state.budget.max_manager_calls:
         raise PolicyError("MANAGER_CALL_BUDGET_EXCEEDED")
     state.manager_calls += 1
+    allowed_parent_ids = {*known_task_ids, ROOT_DELEGATION_CONTEXT}
+    if decision.parent_task_id not in allowed_parent_ids:
+        raise PolicyError("MANAGER_PARENT_TASK_UNKNOWN")
     allowed_workers = capability_policy.manager_workers.get(decision.manager_id, ())
     if decision.worker_agent_id not in allowed_workers:
         raise PolicyError("MANAGER_UNKNOWN_WORKER")
@@ -524,6 +562,13 @@ def validate_manager_decision(
         for cap in decision.proposed_task.allowed_capabilities
     ):
         raise PolicyError("MANAGER_WRITE_DENIED")
+    worker_capabilities = set(
+        capability_policy.grants.get(decision.worker_agent_id, ())
+    )
+    if not set(decision.proposed_task.allowed_capabilities).issubset(
+        worker_capabilities
+    ):
+        raise PolicyError("MANAGER_WORKER_CAPABILITY_MISMATCH")
     if decision.depth > state.budget.max_depth:
         raise PolicyError("MANAGER_MAX_DEPTH_EXCEEDED")
     signature = delegation_signature(decision)
@@ -629,9 +674,11 @@ def validate_completion(state: FlowState) -> None:
 
 def authorize_production_action(*, review_decision: str, validated_approval: bool) -> bool:
     """Proposal review is deliberately separate from production approval."""
-    if review_decision == "REVIEW_PASS" and not validated_approval:
+    if review_decision != "REVIEW_PASS":
+        raise PolicyError("PRODUCTION_REVIEW_NOT_PASSED")
+    if not validated_approval:
         raise PolicyError("PRODUCTION_APPROVAL_REQUIRED")
-    return validated_approval
+    return True
 
 
 def architecture_gate(
@@ -640,6 +687,7 @@ def architecture_gate(
     *,
     minimum_recovery_gain: float = 0.10,
     latency_sla_ms: int = 1_000,
+    max_cost_usd: float,
 ) -> str:
     recovery_gain = hierarchical.recovery_rate - sequential.recovery_rate
     quality_gain = hierarchical.task_success - sequential.task_success
@@ -650,7 +698,7 @@ def architecture_gate(
     )
     within_bounds = (
         hierarchical.wall_clock_latency_ms <= latency_sla_ms
-        and hierarchical.cost_usd <= 0.10
+        and hierarchical.cost_usd <= max_cost_usd
     )
     return (
         "ACCEPT_HIERARCHY"

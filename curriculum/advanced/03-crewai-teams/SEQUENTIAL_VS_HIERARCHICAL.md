@@ -23,7 +23,7 @@ That flexibility creates another failure surface:
 - no-progress delegation loops;
 - false completion based on persuasive text.
 
-The manager therefore proposes a typed decision. Application policy limits workers, artifact types, capabilities, depth, delegations, manager calls, replans, cost, and deadline. The same worker/task/input/evidence-gap signature cannot recur without material progress.
+The manager therefore proposes a typed decision. Application policy validates parent lineage, requires every proposed capability to be granted to the selected worker, and limits workers, artifact types, capabilities, depth, delegations, manager calls, replans, cost, and deadline. `manager_calls` counts attempted calls; `delegations` counts accepted validated proposals. The same worker/task/input/evidence-gap signature cannot recur without material progress.
 
 The manager cannot create `EmergencyRollbackTask`: the core lab is read-only and production-write capabilities are outside its grants.
 
