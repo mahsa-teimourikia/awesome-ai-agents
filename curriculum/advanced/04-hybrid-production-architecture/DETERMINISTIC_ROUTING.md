@@ -1,14 +1,46 @@
-# Deep Dive: Deterministic Routing and Policy
+# Deep Dive: Architecture Routing and Policy
 
-The most common mistake when building an agentic system is giving the LLM too much control over its own execution environment.
+An LLM may help interpret a request. It must not turn its own interpretation into authority.
 
-If you give an LLM a `reset_password` tool and ask it to "only use this if the user is authorized", you have built an insecure system. LLMs are non-deterministic; they can be tricked by prompt injection, or they can simply hallucinate an authorization check.
+The Course 04 control plane separates five decisions that are often collapsed into one prompt:
 
-## The Control Plane
-In a Hybrid Architecture, the LLM is just a worker. The **Control Plane** is deterministic code (Python, Go, etc.).
+1. **Classification proposal** — what intent, ambiguity, risk, side effect, data, evidence, and latency features appear present?
+2. **Policy validation** — which features are consistent with trusted identity and hard high-risk rules?
+3. **Architecture admission** — which execution shape and budget are permitted?
+4. **Action authorization** — are capability, tenant scope, and any approval valid at use time?
+5. **Result validation** — does the candidate result match its contract and evidence?
 
-1. **Deterministic Classifier:** When a user request arrives, a classifier (which can be a fast LLM or a traditional ML model) determines the *intent*.
-2. **Deterministic Routing:** A hardcoded `if/else` statement reads the intent and routes the request to the correct worker (Workflow, Agent, or Team).
-3. **Policy Gateway:** After the worker generates an output, the output must pass through a Deterministic Policy Gateway. This gateway checks for PII, validates the JSON schema, and checks role-based access control (RBAC) *before* the action executes.
+The proposer may use rules, conventional ML, a small model, or an LLM. The authoritative layer is deterministic policy code. Unknown requests remain `UNKNOWN`; destructive unknowns become `HIGH_RISK_UNKNOWN` and receive no privileged capability.
 
-The LLM never decides if it is allowed to use a tool. The code decides.
+## Monotonic authority
+
+Architecture selection can only attenuate existing grants:
+
+```text
+worker capabilities ⊆ execution contract ⊆ trusted request context
+```
+
+Tenant context never widens. Selecting a team does not create more authority than selecting a direct handler. Text copied from tools or models is evidence, never identity, approval, or permission.
+
+## Layered result and action gateways
+
+A production gateway is layered rather than a single regular expression:
+
+- Pydantic/JSON schema and request correlation;
+- tenant, role, and capability checks;
+- data-class and provider/egress policy;
+- evidence provenance and grounding;
+- actual tool/model/cost/deadline accounting;
+- structured PII/DLP policy (`ALLOW`, `MASK`, `REDACT`, `BLOCK`);
+- validated approval immediately before a consequential action;
+- output limits and audit events.
+
+The lab's regex detector is intentionally illustrative. A short output can still leak a secret, and a long output can be legitimate. Size limits manage resources; they do not prove confidentiality.
+
+## Control-plane failure
+
+If classification or routing is unavailable, do not silently use the most capable worker. Fail closed to human review or a narrowly safe deterministic fallback. Record classifier, router, and policy versions so incidents and offline evaluations can reproduce the decision.
+
+## Approval boundary
+
+A route or plan may validly contain an approval-gated action. That means the action is allowed to be proposed under a future condition. It does not mean the condition has been satisfied. Course 04 carries `approval_required` into the execution contract and validates approval immediately before the write, consistent with Intermediate Course 03.

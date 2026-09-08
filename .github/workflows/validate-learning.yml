@@ -32,11 +32,11 @@ jobs:
         run: python -m compileall -q curriculum tests
       - name: Install focused validation dependencies
         run: python -m pip install -e '.[contributor,core]'
-      - name: Test Course 08, 09, 10, Advanced 01, 02, and 03 policy invariants
+      - name: Test Course 08, 09, 10, Advanced 01, 02, 03, and 04 policy invariants
         env:
           PYTHONPATH: .
-        run: pytest -q tests/test_planning_task_decomposition.py tests/test_agentic_rag.py tests/test_langgraph_state_memory.py tests/test_single_vs_multi_agent.py tests/test_autogen_selector_teams.py tests/test_crewai_teams.py
-      - name: Execute Course 08, 09, 10, Advanced 01, 02, and 03 credential-free notebooks
+        run: pytest -q tests/test_planning_task_decomposition.py tests/test_agentic_rag.py tests/test_langgraph_state_memory.py tests/test_single_vs_multi_agent.py tests/test_autogen_selector_teams.py tests/test_crewai_teams.py tests/test_hybrid_production_architecture.py
+      - name: Execute Course 08, 09, 10, Advanced 01, 02, 03, and 04 credential-free notebooks
         env:
           PYTHONPATH: .
         run: |
@@ -46,6 +46,7 @@ jobs:
           python scripts/execute-notebooks.py --timeout 90 curriculum/advanced/01-single-vs-multi-agent
           python scripts/execute-notebooks.py --timeout 90 curriculum/advanced/02-autogen-selector-teams
           python scripts/execute-notebooks.py --timeout 90 curriculum/advanced/03-crewai-teams
+          python scripts/execute-notebooks.py --timeout 90 curriculum/advanced/04-hybrid-production-architecture
 
   test-beginner:
     if: github.event_name == 'pull_request'
@@ -91,6 +92,10 @@ jobs:
         env:
           PYTHONPATH: .
         run: python scripts/execute-notebooks.py --timeout 90 curriculum/beginner/05-agent-development-frameworks
+      - name: Instantiate Course 04 optional framework adapters
+        env:
+          PYTHONPATH: .
+        run: pytest -q tests/test_hybrid_production_architecture.py -k 'adapter_instantiates'
       - name: Upload Notebook Report
         if: always()
         uses: actions/upload-artifact@v4

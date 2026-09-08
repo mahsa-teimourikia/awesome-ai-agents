@@ -1,27 +1,33 @@
-# Deep Dive: Single Agent vs Workflow
+# Deep Dive: Bounded Agent vs Governed Workflow
 
-How do you know when to use an Agent versus a State Machine (Workflow)?
+Choose a workflow when important state transitions are known or governable. Choose a bounded agent when the evidence-gathering path is genuinely ambiguous and model-driven adaptation earns its cost.
 
-## The Workflow (State Machine)
-Use a Workflow when the path to success is **Known and Linear**.
+## Governed workflow
 
-*Example: "Reset my password."*
-1. Ask for email.
-2. Send OTP.
-3. Verify OTP.
-4. Update DB.
+A workflow is not merely a linear list. It can include conditional branches, parallel work and joins, bounded retries and loops, durable waits, timeouts, cancellation, and compensation.
 
-If you use an LLM Agent for this, it might decide to skip step 2 because it hallucinates that the user is already verified. This is dangerous. Use a strict LangGraph state machine where nodes execute in a guaranteed order.
+The password reset fixture demonstrates explicit identity verification, OTP expiry, attempt limits, persisted state, and a stable logical idempotency key. A restart cannot erase failed attempts or extend expiry. The final write cannot run before the `PASSWORD_UPDATE_AUTHORIZED` state.
 
-## The Bounded Single Agent
-Use an Agent when the path to success is **Ambiguous**.
+This improves inspectability and control; it does not make the system “100% reliable.” Dependencies, persistence, workers, networks, and operators still fail. Reliability comes from defined invariants, retries, recovery, and evidence—not from the workflow label.
 
-*Example: "Why is the database slow?"*
-The system cannot know the answer in advance. It needs an entity that can loop:
-1. Call `check_cpu_metrics()`.
-2. Observe high CPU.
-3. Call `check_active_queries()`.
-4. Observe a rogue `SELECT *` query.
-5. Formulate a response.
+## Bounded agent
 
-A workflow fails here because you cannot hardcode every possible diagnostic branch. The Agent thrives because it can use evidence to choose the next tool dynamically.
+The Northstar diagnostic request cannot know its evidence path in advance. A bounded agent may decide which read source to inspect next, but its contract still fixes:
+
+- allowed read capabilities;
+- required evidence;
+- maximum model and tool calls;
+- cost, deadline, and replan budgets;
+- tenant and data scope;
+- structured output and safe failure behavior.
+
+It can propose “prepare a rollback,” but cannot execute rollback. If the evidence gap requires a different architecture, the agent emits an `ARCHITECTURE_ESCALATION_REQUEST`. Application policy—not the worker—decides whether a separately budgeted transition is allowed.
+
+## Practical selection test
+
+Ask two questions:
+
+1. Can we govern the important transitions and failure branches explicitly?
+2. Does dynamic evidence selection materially improve the outcome?
+
+Use the smallest compliant option that passes those tests. Avoid replacing clear state with hidden conversational memory, but also avoid encoding an unbounded diagnostic world as a brittle maze of branches.
