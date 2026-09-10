@@ -1078,524 +1078,108 @@ export const curriculumData:Subject[] = [
     "id": "a5",
     "level": "Advanced",
     "step": "05",
-    "title": "Incident response",
-    "description": "Advanced exploration of Incident response.",
-    "time": "45-60 min",
-    "outcome": "Master advanced patterns.",
-    "lesson": "Deep dive into SOTA literature.",
-    "exercise": "Implement complex agentic systems.",
-    "failures": [],
+    "title": "Governed Incident Response Capstone",
+    "description": "Take a production incident from trusted alert admission to evidence-grounded diagnosis, exact approval, idempotent mitigation, and verified recovery.",
+    "time": "120-150 min",
+    "outcome": "Build a durable incident workflow in which models investigate and propose while application policy owns evidence, authority, execution, and resolution.",
+    "lesson": "Separate observations from hypotheses, close evidence gaps within budget, calculate impact deterministically, and require post-action verification before RESOLVED.",
+    "exercise": "Run the Northstar EU checkout incident and red-team tenant, injection, stale-evidence, approval, execution, restart, and regression boundaries.",
+    "failures": [
+      "Ungrounded diagnosis:: Read-only access limits side effects but does not make a causal claim true.",
+      "Authority confusion:: Review text or a UI click is mistaken for an exact authenticated approval receipt.",
+      "Duplicate mutation:: An unknown provider outcome is blindly retried instead of reconciled.",
+      "Premature resolution:: A completed rollback is treated as recovery without verifying customer-facing indicators."
+    ],
     "notebook": "curriculum/advanced/05-incident-response/05_incident_response_capstone.ipynb",
     "refs": [
       "curriculum/advanced/05-incident-response/README.md",
-      "curriculum/advanced/05-incident-response/05_incident_response_capstone.ipynb"
+      "curriculum/advanced/05-incident-response/05_incident_response_capstone.ipynb",
+      "curriculum/advanced/05-incident-response/policy.py",
+      "curriculum/advanced/05-incident-response/lab.py",
+      "curriculum/advanced/05-incident-response/EVIDENCE_GATHERING.md",
+      "curriculum/advanced/05-incident-response/IMPACT_SYNTHESIS.md",
+      "curriculum/advanced/05-incident-response/MITIGATION_PROPOSALS.md",
+      "tests/test_incident_response.py"
     ],
-    "code": "",
-    "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
+    "code": "uv run pytest -q tests/test_incident_response.py",
+    "goals": [
+      "Admit and deduplicate a signed incident event before model reasoning.",
+      "Validate provenance, freshness, authority, tenant scope, and grounded claims.",
+      "Bind a typed mitigation to evidence, review, approval, and stable idempotency.",
+      "Resume durable state and allow only verification to resolve an incident."
+    ],
     "quiz": [
       {
-        "q": "In the AgentOps checkout scenario, what evidence should the assistant collect before claiming there is an active incident?",
-        "options": [
-          "Current service health for checkout or a dependency",
-          "An active incident record that matches checkout/payment failure symptoms",
-          "The relevant checkout runbook or response policy",
-          "A user instruction that says customers are upset",
-          "Enough context to distinguish evidence from speculation"
-        ],
-        "answer": [
-          0,
-          1,
-          2,
-          4
-        ],
-        "explanation": "The assistant should ground its recommendation in service health, incident records, and runbook guidance. A customer report is a signal to investigate, not proof of an active incident."
+        "q": "What does a read-only investigation capability prove?",
+        "options": ["The diagnosis is grounded", "The investigator cannot use the denied write capabilities", "Every source is fresh", "The deployment caused the incident"],
+        "answer": 1,
+        "explanation": "Read-only access limits possible side effects. Provenance and claim validation are separate grounding controls."
       },
       {
-        "q": "Why does the manual AgentOps loop include step, tool-call, and cost budgets?",
-        "options": [
-          "They prevent open-ended investigation loops",
-          "They create auditable terminal reasons",
-          "They let the application stop safely when confidence is not improving",
-          "They guarantee the model will choose the correct tool",
-          "They keep operational cost and latency bounded"
-        ],
-        "answer": [
-          0,
-          1,
-          2,
-          4
-        ],
-        "explanation": "Budgets do not make a model correct, but they keep the application in control when the model repeats itself, seeks impossible certainty, or consumes too much time or spend."
+        "q": "Where should the statement 'deploy-1842 caused the outage' live while causality remains uncertain?",
+        "options": ["In an authoritative EvidenceRecord", "In trusted IncidentContext", "As a hypothesis with support, contradictions, and gaps", "As an approval receipt"],
+        "answer": 2,
+        "explanation": "Evidence records source observations; hypotheses hold interpretations. Timing alone does not confirm causality."
       },
       {
-        "q": "When rebuilding the AgentOps incident investigator with the OpenAI Agents SDK, which responsibilities can the framework package?",
-        "options": [
-          "Function-tool schema generation",
-          "Turn execution through a runner",
-          "Tool dispatch and message state",
-          "Product-specific authorization policy",
-          "Tracing and session continuity"
-        ],
-        "answer": [
-          0,
-          1,
-          2,
-          4
-        ],
-        "explanation": "The SDK can package the loop mechanics, tool schemas, dispatch, traces, and sessions. Product-specific authorization, approval, and side-effect boundaries still belong in application design."
+        "q": "What should happen when provider health remains a blocking gap and the retrieval budget is exhausted?",
+        "options": ["Invent the most likely result", "Confirm the deployment as root cause", "Return insufficient evidence or escalate", "Execute rollback immediately"],
+        "answer": 2,
+        "explanation": "A safe incomplete outcome is better than an unsupported diagnosis or unauthorized mutation."
       },
       {
-        "q": "What is the key lesson of replacing the manual loop with an agent framework?",
-        "options": [
-          "The loop still exists even when the SDK manages it",
-          "Framework traces help inspect model and tool behavior",
-          "Tool boundaries no longer matter once a framework is used",
-          "Sessions can help preserve working context",
-          "Application code still defines which tools are safe to expose"
-        ],
-        "answer": [
-          0,
-          1,
-          3,
-          4
-        ],
-        "explanation": "Frameworks package the loop; they do not erase it. Traces and sessions improve inspectability and continuity, but tool exposure and safety boundaries remain design responsibilities."
+        "q": "Which system should authoritatively derive SEV1, SEV2, or SEV3 in this course?",
+        "options": ["Model prose", "Ticket sentiment", "Deterministic policy over structured impact inputs", "The newest log line"],
+        "answer": 2,
+        "explanation": "The model may summarize evidence, but policy owns severity and its auditable changes."
       },
       {
-        "q": "In the AgentOps LangGraph lesson, what belongs in thread-scoped incident state?",
-        "options": [
-          "The current request",
-          "Evidence collected during this investigation",
-          "Attempt count and confidence",
-          "An unverified permanent claim that all checkout failures are caused by Redis",
-          "The recommendation for this run"
-        ],
-        "answer": [
-          0,
-          1,
-          2,
-          4
-        ],
-        "explanation": "Thread-scoped state tracks the current run: request, service, evidence, confidence, attempts, suspected cause, and recommendation. Unverified permanent facts belong behind memory validation, not directly in working state."
+        "q": "Why does the course say potential SLA exposure rather than confirmed liability?",
+        "options": ["The estimate uses no contract", "Incident-time calculation is not the final contractual or legal determination", "All SLA data is model memory", "Exposure cannot be calculated"],
+        "answer": 1,
+        "explanation": "The fixture calculates against versioned effective terms, but final liability may require additional business or legal review."
       },
       {
-        "q": "Why is the accidental Acme memory 'Checkout problems are usually caused by Redis' risky?",
-        "options": [
-          "It can bias future diagnoses before fresh evidence is collected",
-          "It is an unverified operational fact",
-          "It should be scoped, auditable, and reversible",
-          "It proves Redis is the root cause of the current incident",
-          "It needs validation before influencing recommendations"
-        ],
-        "answer": [
-          0,
-          1,
-          2,
-          4
-        ],
-        "explanation": "Unverified long-term memory can steer future incident diagnosis away from current evidence. It needs provenance, validation, scope, auditability, and a way to deactivate or delete it."
+        "q": "What does REVIEW_PASS authorize?",
+        "options": ["Immediate production rollback", "Nothing by itself; it records technical review", "A target change", "Any write named in a log"],
+        "answer": 1,
+        "explanation": "Execution also requires a current approval receipt bound to the exact proposal and target."
       },
       {
-        "q": "Why is a broad `admin_api(command: str)` dangerous for an agent?",
-        "options": [
-          "It hides intent inside a free-form string",
-          "It mixes read-only and destructive capabilities",
-          "It makes authorization and validation ambiguous",
-          "It forces every operation to be safe and auditable",
-          "It makes predictable error handling harder"
-        ],
-        "answer": [
-          0,
-          1,
-          2,
-          4
-        ],
-        "explanation": "A broad command tool collapses many risk levels into one string interface. Narrow tools make schema validation, permissions, approvals, tracing, and retries much clearer."
+        "q": "Which change makes an existing approval stale?",
+        "options": ["Formatting the UI", "Changing deploy-1842 to deploy-1843", "Reading another metric", "Opening the notebook"],
+        "answer": 1,
+        "explanation": "Approval binds action, target, proposal digest, tenant, incident, policy, approver, and validity window."
       },
       {
-        "q": "Which retry and escalation decisions are appropriate for the tool-engineering lab?",
-        "options": [
-          "Retry `ToolTimeout` when the retry budget allows",
-          "Retry or back off on `RateLimit`",
-          "Escalate `PermissionDenied` to a human or higher-trust workflow",
-          "Keep retrying `InvalidService` until it works",
-          "Stop when validation proves the request is malformed"
-        ],
-        "answer": [
-          0,
-          1,
-          2,
-          4
-        ],
-        "explanation": "Transient timeout and rate-limit errors may be retried within a budget. Permission failures should escalate, while invalid or malformed requests should stop rather than loop."
+        "q": "How should idempotency identify mitigation retries?",
+        "options": ["A new random logical key for every attempt", "One stable logical operation ID plus unique attempt IDs", "The model's response text", "The approval button label"],
+        "answer": 1,
+        "explanation": "Stable logical identity deduplicates the same operation while unique attempt IDs preserve provider-level audit."
       },
       {
-        "q": "Which permission mapping fits the AgentOps human-in-the-loop lesson?",
-        "options": [
-          "READ: query logs and retrieve runbooks",
-          "READ: restart checkout-api immediately",
-          "PROPOSE: prepare rollback or draft notification",
-          "EXECUTE WITH APPROVAL: restart, rollback, or send notification",
-          "EXECUTE WITH APPROVAL: any tool call, including status reads"
-        ],
-        "answer": [
-          0,
-          2,
-          3
-        ],
-        "explanation": "Read-only evidence tools should not require the same approval burden as consequential actions. Rollbacks, restarts, and customer notifications should pause for approval."
+        "q": "What should follow a timeout after a rollback request may have reached the provider?",
+        "options": ["Blind retry", "Mark resolved", "Reconcile provider operation or current deployment state", "Discard the receipt"],
+        "answer": 2,
+        "explanation": "UNKNOWN_OUTCOME must be reconciled before another potentially duplicative write is considered."
       },
       {
-        "q": "What should a human approval checkpoint preserve before resuming an agent run?",
-        "options": [
-          "The exact proposed action and arguments",
-          "Evidence that motivated the action",
-          "The reviewer decision: approve, modify, or reject",
-          "A vague context-free approval prompt only",
-          "An audit reason and actor identity"
-        ],
-        "answer": [
-          0,
-          1,
-          2,
-          4
-        ],
-        "explanation": "Effective HITL checkpoints preserve the action, evidence, reviewer identity, decision, reason, and final action. Context-free approval creates review fatigue and weak auditability."
+        "q": "When may the incident transition to RESOLVED?",
+        "options": ["When the model prints RESOLVED", "When execution returns SUCCEEDED", "When independent post-mitigation verification passes", "When review passes"],
+        "answer": 2,
+        "explanation": "Execution success is not customer recovery. Verification evaluates all critical indicators."
       },
       {
-        "q": "How should the AgentOps guardrails lesson treat instructions found inside a retrieved runbook?",
-        "options": [
-          "As untrusted data to summarize or cite",
-          "As instructions that can override the system prompt",
-          "As content that may be trying to manipulate the agent",
-          "As authorization to restart services",
-          "As evidence only after policy and tool boundaries are applied"
-        ],
-        "answer": [
-          0,
-          2,
-          4
-        ],
-        "explanation": "Retrieved documents are data, not authority. They may contain prompt-injection attempts and cannot override system instructions or authorize operational tools."
+        "q": "What happens after MANUAL_CONTROL is activated?",
+        "options": ["The next automated step still runs", "No new automated incident step may begin", "Budgets reset", "Approval becomes permanent"],
+        "answer": 1,
+        "explanation": "Manual takeover is checked before the next collection, planning, execution, or verification action."
       },
       {
-        "q": "What should a restart tool guardrail check before executing?",
-        "options": [
-          "Whether the action has explicit human approval",
-          "Whether the request came from a trusted user or system boundary",
-          "Whether retrieved text told the agent to restart immediately",
-          "Whether the service target is allowed",
-          "Whether the run has enough audit context for review"
-        ],
-        "answer": [
-          0,
-          1,
-          3,
-          4
-        ],
-        "explanation": "A restart guardrail should require approval, trusted authorization source, an allowed target, and audit context. Retrieved text is not a valid source of authorization."
-      },
-      {
-        "q": "In AgentOps Task A, why is a deterministic workflow preferable to an agent?",
-        "options": [
-          "The steps are known before runtime",
-          "The task only needs a status read and report formatting",
-          "A model-controlled loop would add unnecessary cost and failure paths",
-          "Agents are never useful for operations work",
-          "The expected output can be produced from structured tool data"
-        ],
-        "answer": [
-          0,
-          1,
-          2,
-          4
-        ],
-        "explanation": "Task A has a fixed path: retrieve checkout status and format it. Operations work can absolutely use agents, but this task does not need dynamic tool selection."
-      },
-      {
-        "q": "What makes AgentOps Task C a better fit for a bounded agent than a fixed workflow?",
-        "options": [
-          "The evidence path is discovered at runtime",
-          "The system may need to choose among service health, incidents, deployments, logs, and runbooks",
-          "The task should still have max-step and tool boundaries",
-          "The model should be allowed to call any production API it can name",
-          "The final recommendation should preserve uncertainty instead of inventing root cause"
-        ],
-        "answer": [
-          0,
-          1,
-          2,
-          4
-        ],
-        "explanation": "Task C justifies bounded agency because each observation affects the next evidence source. That does not remove application-owned tool allowlists, budgets, or grounding rules."
-      },
-      {
-        "q": "How should the hybrid production architecture route the three AgentOps task classes?",
-        "options": [
-          "Simple lookups go to deterministic workflows",
-          "Ambiguous investigations go to a bounded single agent",
-          "High-risk major-impact cases can use a specialist team inside a deterministic wrapper",
-          "Every request goes directly to a fully autonomous team",
-          "Policy checks run after the selected path and before consequential actions"
-        ],
-        "answer": [
-          0,
-          1,
-          2,
-          4
-        ],
-        "explanation": "The hybrid design starts with deterministic classification, then selects the least autonomous reliable path. Agents are components inside policy and approval workflows, not replacements for them."
-      },
-      {
-        "q": "Which controls should remain outside the model in the hybrid production architecture?",
-        "options": [
-          "Tool allowlists and authorization",
-          "Budget limits and stop conditions",
-          "Human approval for high-impact actions",
-          "Audit logs and action receipts",
-          "The ability for retrieved documents to authorize rollback"
-        ],
-        "answer": [
-          0,
-          1,
-          2,
-          3
-        ],
-        "explanation": "Production control boundaries should be implemented in deterministic application code. Retrieved documents can provide evidence, but they cannot authorize side effects such as rollback."
-      },
-      {
-        "q": "In the AgentOps team notebook, what evidence can justify moving from one agent to a specialist team?",
-        "options": [
-          "The incident requires distinct observability, deployment, customer-impact, analysis, and risk-review work",
-          "Measured accuracy or risk handling improves enough to justify extra overhead",
-          "The problem can be solved by a fixed two-step status workflow",
-          "The team has explicit ownership and bounded delegation",
-          "The design is more visually impressive than a single-agent baseline"
-        ],
-        "answer": [
-          0,
-          1,
-          3
-        ],
-        "explanation": "A specialist team is justified by separable expertise, measurable improvement, explicit ownership, and bounded coordination. A simple fixed workflow or prettier architecture is not enough."
-      },
-      {
-        "q": "Which metrics should learners compare when running the same incident with a single agent and a multi-agent team?",
-        "options": [
-          "Accuracy and whether the recommendation is evidence-supported",
-          "Cost, latency, tool calls, tokens, and coordination overhead",
-          "Whether the team used more agent names than the baseline",
-          "Whether the team prevents simple incidents from becoming slower",
-          "Whether risk review changes or challenges the recommendation"
-        ],
-        "answer": [
-          0,
-          1,
-          3,
-          4
-        ],
-        "explanation": "The comparison should cover outcome quality, operational cost, coordination overhead, and risk-review value. More agent names are not evidence of a better architecture."
-      },
-      {
-        "q": "What does the AutoGen selector-team notebook teach about selector-style group chat?",
-        "options": [
-          "Participant roles and descriptions help the selector choose the next speaker",
-          "Shared context makes coordination visible but can also amplify loops",
-          "Selector teams automatically guarantee the best possible diagnosis",
-          "Termination conditions are part of the team design",
-          "A model can dynamically choose the next participant from the conversation state"
-        ],
-        "answer": [
-          0,
-          1,
-          3,
-          4
-        ],
-        "explanation": "Selector-style teams make speaker selection and shared context explicit, but they still need termination, ownership, evaluation, and loop controls. The framework does not guarantee correctness."
-      },
-      {
-        "q": "Which controls help stop a multi-agent team from bouncing responsibility forever?",
-        "options": [
-          "`MAX_TEAM_MESSAGES`",
-          "`MAX_AGENT_TURNS`",
-          "Explicit ownership for each evidence domain",
-          "Allowing every agent to ask every other agent indefinitely",
-          "A termination condition tied to a recommendation or safe stop"
-        ],
-        "answer": [
-          0,
-          1,
-          2,
-          4
-        ],
-        "explanation": "Team loops need global message budgets, per-agent turn budgets, ownership rules, and explicit termination. Unlimited peer-to-peer delegation is exactly the failure mode to prevent."
-      },
-      {
-        "q": "What does the CrewAI AgentOps notebook emphasize about the Agents + Tasks + Crew model?",
-        "options": [
-          "Agents describe specialist roles, goals, and backstories",
-          "Tasks describe concrete work products and can depend on previous task outputs",
-          "The crew organizes the collaboration plan",
-          "CrewAI removes the need for policy and side-effect controls",
-          "Task ownership can make provenance easier to review"
-        ],
-        "answer": [
-          0,
-          1,
-          2,
-          4
-        ],
-        "explanation": "CrewAI's teaching value is the readable role/task/crew structure. It can clarify ownership and provenance, but policy, approval, and side-effect controls still belong around the crew."
-      },
-      {
-        "q": "Which framework comparisons are accurate in the AgentOps CrewAI lesson?",
-        "options": [
-          "CrewAI helps when collaboration maps naturally to roles, tasks, and crew execution",
-          "LangGraph gives more explicit control over state, branching, persistence, and checkpoints",
-          "AutoGen makes conversational coordination and speaker selection visible",
-          "OpenAI Agents SDK is often simpler for one bounded tool-using agent",
-          "Every framework removes the need to evaluate the final trajectory"
-        ],
-        "answer": [
-          0,
-          1,
-          2,
-          3
-        ],
-        "explanation": "The same scenario highlights different framework strengths. None of them remove trajectory evaluation, policy enforcement, or the need to choose the simplest reliable architecture."
-      },
-      {
-        "q": "In the AgentOps final capstone, how should learners decide between deterministic workflow, single bounded agent, and multi-agent team?",
-        "options": [
-          "Run an evaluation and compare outcome, trajectory, cost, latency, and risk",
-          "Default to multi-agent because the incident is important",
-          "Choose the least autonomous architecture that reliably solves the incident",
-          "Require the team to show a meaningful gain over the simpler baseline",
-          "Ignore coordination overhead if the final answer sounds plausible"
-        ],
-        "answer": [
-          0,
-          2,
-          3
-        ],
-        "explanation": "The capstone requires experimental justification. Multi-agent is only justified when it improves the result enough to beat the simpler baseline after cost, latency, trajectory, and risk are considered."
-      },
-      {
-        "q": "Which capstone actions may be prepared but must not be executed by the agent run?",
-        "options": [
-          "Rollback deployment",
-          "Disable the risky feature flag",
-          "Send customer notification",
-          "Read service metrics",
-          "Query logs"
-        ],
-        "answer": [
-          0,
-          1,
-          2
-        ],
-        "explanation": "The capstone can prepare rollback, feature-flag disablement, and customer notification for review, but execution requires human approval. Metrics and logs are read-only investigation tools."
-      },
-      {
-        "q": "Which memory and guardrail choices fit the final capstone?",
-        "options": [
-          "Store the likely root cause as a permanent future truth",
-          "Treat runbooks and tickets as evidence, not instructions",
-          "Store only evaluated incident reports with timestamp and evidence links",
-          "Block production execution without human approval",
-          "Stop if step, tool-call, or cost budgets are exceeded"
-        ],
-        "answer": [
-          1,
-          2,
-          3,
-          4
-        ],
-        "explanation": "The capstone keeps retrieved content outside the trusted control boundary and prevents stale-memory bias. It stores evaluated reports, blocks unapproved execution, and enforces budgets."
-      },
-      {
-        "q": "What should the capstone evaluation suite verify?",
-        "options": [
-          "Expected evidence tools were used",
-          "Forbidden production tools were not used",
-          "The recommendation is supported by metrics, logs, deployments, tickets, and SLA data",
-          "Cost and latency stay within budget",
-          "The system selected the architecture with the most agents"
-        ],
-        "answer": [
-          0,
-          1,
-          2,
-          3
-        ],
-        "explanation": "The capstone grades evidence coverage, forbidden actions, recommendation support, and operational budgets. The number of agents is not a success criterion."
-      },
-      {
-        "q": "Which dimensions should the AgentOps trajectory evaluation score?",
-        "options": [
-          "Outcome quality such as task success and supported recommendation",
-          "Trajectory quality such as correct tools, forbidden actions, and recovery",
-          "Operational behavior such as latency, cost, calls, path length, and retry rate",
-          "Only whether the final answer sounds fluent",
-          "Whether the run used the most expensive model available"
-        ],
-        "answer": [
-          0,
-          1,
-          2
-        ],
-        "explanation": "Agent evaluation should inspect outcome, trajectory, and operations. Fluency alone misses forbidden tools, unsupported diagnoses, cost regressions, and poor recovery."
-      },
-      {
-        "q": "Why is cost per successful task more useful than cost per model call?",
-        "options": [
-          "It includes whether the task actually succeeded",
-          "It discourages cheap failed trajectories",
-          "It connects cost to product value",
-          "It ignores forbidden actions and bad recommendations",
-          "It can be compared across workflow versions"
-        ],
-        "answer": [
-          0,
-          1,
-          2,
-          4
-        ],
-        "explanation": "Cost per successful task rewards reliable outcomes rather than isolated cheap calls. A cheap failed trajectory is still expensive from a product perspective."
-      },
-      {
-        "q": "What should learners optimize in the AgentOps trajectory optimization notebook?",
-        "options": [
-          "The shortest reliable trajectory to a correct result",
-          "Lower latency and cost while preserving task success",
-          "Removing redundant searches and reflections",
-          "Minimizing tokens even if the answer loses evidence support",
-          "Reducing unnecessary tool calls without introducing forbidden actions"
-        ],
-        "answer": [
-          0,
-          1,
-          2,
-          4
-        ],
-        "explanation": "The goal is not token minimization at any cost. The goal is a shorter, cheaper, faster trajectory that still succeeds and remains evidence-supported."
-      },
-      {
-        "q": "What does the teaching efficiency score combine?",
-        "options": [
-          "Success",
-          "Latency",
-          "Cost",
-          "Trajectory length",
-          "Brand color preference"
-        ],
-        "answer": [
-          0,
-          1,
-          2,
-          3
-        ],
-        "explanation": "The notebook's simple efficiency score combines success with latency, cost, and trajectory length so learners compare reliable paths instead of isolated token counts."
+        "q": "How should a provider/model failure be represented?",
+        "options": ["As a fabricated successful postmortem", "As MODEL_UNAVAILABLE or INVALID_OUTPUT", "As authenticated approval", "As confirmed root cause"],
+        "answer": 1,
+        "explanation": "Failure is explicit and safe; the system never substitutes invented production success."
       }
     ]
   },
