@@ -1,26 +1,30 @@
-# Deep Dive: When to Use Teams (And When Not To)
+# Deep Dive: When to Use Teams (and When Not To)
 
-Multi-agent teams (like AutoGen or CrewAI) are highly popular in demos. They look impressive: "Agent A talks to Agent B to solve the problem!"
+A team is an execution architecture, not a maturity badge. It adds model calls, context boundaries, orchestration states, failure modes, and observability work. Those costs are justified only by a measured benefit.
 
-In production, multi-agent teams are often a massive liability.
+## Reasons a team may earn its overhead
 
-## The Multi-Agent Tax
-If a user asks "What is my account balance?", a single agent can call `get_balance()` and answer in 2 seconds for $0.001.
+- **Parallel specialization:** observability, deployment, and customer-impact evidence can be gathered concurrently.
+- **Capability isolation:** workers receive different least-privilege tool sets.
+- **Modality or model specialization:** one worker may handle vision while another uses code or retrieval.
+- **Fault isolation:** a specialist can fail without corrupting every artifact.
+- **Workspace, organization, or data isolation:** policy requires separate execution boundaries.
+- **Context isolation:** narrow workers avoid placing unrelated sensitive context in one prompt.
 
-If you use a team:
-1. `ManagerAgent` receives the request.
-2. `ManagerAgent` delegates to `BillingAgent`.
-3. `BillingAgent` calls the tool.
-4. `BillingAgent` passes the result to `ReviewerAgent`.
-5. `ReviewerAgent` passes it back to `ManagerAgent`.
+Adversarial review is one useful pattern, but it is not the only reason. Conversely, naming five roles does not prove five agents are needed.
 
-This takes 45 seconds, costs $0.05, and vastly increases the surface area for hallucinations (e.g., the agents get stuck in an infinite polite loop: "Thank you BillingAgent!" "You're welcome ManagerAgent!").
+## Pipeline or team?
 
-## When Teams Actually Add Value
-You should only use a multi-agent team when the workload is **Asymmetric**.
+A known producer → independent reviewer → deterministic gate dependency is a pipeline. Use a team when more than one evidence gap can be pursued dynamically or in parallel and the coordination policy cannot be represented more simply.
 
-*Example: Generating Secure Code.*
-- Agent 1: `CoderAgent` (Prompted to be fast and creative).
-- Agent 2: `SecurityAgent` (Prompted to be adversarial and strict).
+Prefer typed artifacts feeding synthesis or review. Open-ended debate is rarely the default: it is harder to bound, evaluate, and terminate.
 
-Because their system prompts and goals are fundamentally at odds, splitting them into two agents that debate each other produces a better result than trying to prompt a single agent to be "creative but also strict."
+## Measure the same workload
+
+Compare direct, workflow, single-agent, and team candidates on identical inputs and evidence. Report successful, grounded, policy-compliant completion; actual cost and cost per successful compliant request; wall-clock latency and accumulated work; model/tool calls and privileged exposure; recovery; and operational complexity.
+
+There is no universal “team tax” number. Measure your providers, tools, prompts, workloads, and concurrency limits. A team that lowers wall time may still consume much more total work.
+
+## Application ownership remains
+
+Manager, selector, crew, or group-chat frameworks coordinate execution. The application still owns eligibility, authorization, budgets, artifact validation, architecture transitions, termination policy, and completion. A framework-selected speaker or tool is a candidate decision that must pass the same contract checks as the credential-free core.
