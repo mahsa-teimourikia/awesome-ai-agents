@@ -11,7 +11,8 @@ when the preceding design can no longer solve the problem reliably.
 1. Read the topic `README.md` for outcomes and prerequisites.
 2. Open the notebook and work through the concept, diagram, implementation,
    deliberate failure case, exercises, and checkpoint.
-3. Run the reusable implementation from `curriculum/advanced/05-incident-response-capstone/agentops_lab/`.
+3. Run the reusable implementation co-located with the lesson (for example,
+   `curriculum/advanced/05-incident-response/lab.py`).
 4. Use the [Learning Hub](../hub/index.html) for guided navigation and the
    [knowledge check](../quiz/index.html) to test the concepts.
 
@@ -128,10 +129,10 @@ and personalization.
 
 ## Shared implementation and fixtures
 
-`advanced/05-incident-response-capstone/agentops_lab/` contains the reusable, deterministic implementation
-modules plus the incident data, runbooks, and evaluation fixtures. This is
-intentional: every lesson has its own learning surface, while one shared source
-of truth prevents copies of the simulated production environment from drifting.
+`advanced/05-incident-response/` contains the capstone's reusable deterministic
+policy, lab, incident data, runbook, and evaluation fixtures. The notebook and
+focused pytest suite import that same source of truth instead of maintaining a
+second incident architecture.
 
 Every runnable example now belongs to the lesson it supports. Look for the
 co-located `lab.py` in each notebook-led topic; each notebook imports and
