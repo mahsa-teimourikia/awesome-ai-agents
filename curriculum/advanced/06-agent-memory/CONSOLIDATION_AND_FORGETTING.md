@@ -1,19 +1,65 @@
-# Deep Dive: Consolidation and Forgetting
+# Deep Dive — Consolidation, Supersession, and Forgetting
 
-An agent's context window is finite. If you just append every user message to a chat history, the agent will eventually crash or lose its reasoning ability (the "Lost in the Middle" phenomenon).
+Consolidation turns source events into candidate memories. It may run at a
+conversation boundary, under token pressure, after an important event, on an
+explicit correction, on a schedule, or after human review. “Every ten turns” is
+only one implementation choice.
 
-To solve this, advanced agents use **Reflection**.
+## A safe consolidation job
 
-## The Reflection Pattern
-Reflection is an asynchronous background process that converts Episodic Memory (raw logs) into Semantic Memory (concrete facts).
+```text
+selected sources
+→ immutable source digest
+→ typed candidate extraction
+→ schema and provenance validation
+→ optional verification or review
+→ atomic durable write
+```
 
-1. **Trigger:** After 10 conversational turns, a background job kicks off.
-2. **Extraction:** A cheap, fast LLM reads the 10 turns and asks: *"Are there any new, durable facts here?"*
-   - Log: "Actually, I switched from Python to Go."
-   - Extraction: `{"user_id": 123, "fact_type": "primary_language", "value": "Go"}`
-3. **Upsert:** The agent updates the structured Semantic Database.
-4. **Forgetting:** The agent deletes the 10 raw episodic turns from its working memory to free up context window space.
+Store a job ID, extractor version, policy version, source IDs, and source digest.
+The job must be idempotent: replaying it after a timeout or process failure
+must not duplicate a truth. If extraction succeeds but persistence fails, a
+retry uses the same logical job identity.
 
-## Resolving Contradictions
-If the user previously said they used Python, and now says they use Go, the Semantic Database must handle the contradiction.
-You should not store both facts and rely on the LLM to figure out which is true. The Reflection engine must explicitly **supersede** the old fact, maintaining a single source of truth in the Semantic DB.
+The extractor can hallucinate. “I might switch to Go” must not become
+`preferred_language=Go`; quoted third-party text, sarcasm, temporary state, and
+malicious instructions require rejection or an ephemeral decision. A summary
+cannot become more trusted than its least-trusted supporting source without an
+independent verifier.
+
+## Supersession instead of overwrite
+
+When an admissible value changes, close the prior record's valid-time interval
+and write a new version in one transaction:
+
+```text
+v1: New York  ACTIVE      effective_to=2026-02-10
+v2: London    ACTIVE      supersedes=v1
+```
+
+The old record remains available to authorized historical queries. `effective_*`
+describes when the fact was true; `recorded_at` describes when the system learned
+it. Optimistic `expected_version` rejects two concurrent writers that both read
+the same prior version.
+
+Conflicts are key-specific. Latest explicit user input may win for a preference.
+An account API wins for billing data. A high-risk or equally authoritative
+disagreement may require human review rather than silent selection.
+
+## Forgetting is a policy decision
+
+Different operations have different meanings:
+
+- **Expiry:** stop retrieving a time-bounded fact after `expires_at`.
+- **Supersession:** retain history but exclude the prior version from current use.
+- **Dispute:** quarantine a challenged record while it is reviewed.
+- **Soft deletion:** exclude content while retaining a governed record.
+- **Hard deletion:** remove content and optionally retain a minimal tombstone.
+- **Source invalidation:** revoke or reverify derived memories when provenance is
+  deleted, corrected, or loses authority.
+- **Legal hold/audit retention:** prevent deletion where policy requires it.
+
+Data minimization happens before storage: persist `communication_style=concise`,
+not the full personal explanation, when the extra text is unnecessary. A memory
+review interface should explain what is remembered, why, and from which safe
+source handles, and should support correction, dispute, and deletion.
