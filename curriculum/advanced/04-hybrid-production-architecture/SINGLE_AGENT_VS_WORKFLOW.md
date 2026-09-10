@@ -6,7 +6,7 @@ Choose a workflow when important state transitions are known or governable. Choo
 
 A workflow is not merely a linear list. It can include conditional branches, parallel work and joins, bounded retries and loops, durable waits, timeouts, cancellation, and compensation.
 
-The password reset fixture demonstrates explicit identity verification, OTP expiry, attempt limits, persisted state, and a stable logical idempotency key. A restart cannot erase failed attempts or extend expiry. The final write cannot run before the `PASSWORD_UPDATE_AUTHORIZED` state.
+The password reset fixture demonstrates end-to-end authenticated subject binding, explicit identity verification, OTP expiry, attempt limits, persisted state, and a stable per-reset logical idempotency key. A retry of one reset preserves its ID; a later reset for the same user receives a new ID. A restart cannot erase failed attempts or extend expiry. The final write cannot run before the `PASSWORD_UPDATE_AUTHORIZED` state.
 
 This improves inspectability and control; it does not make the system “100% reliable.” Dependencies, persistence, workers, networks, and operators still fail. Reliability comes from defined invariants, retries, recovery, and evidence—not from the workflow label.
 

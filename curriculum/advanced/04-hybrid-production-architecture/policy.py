@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import StrEnum
+import hashlib
 import json
 import re
 from typing import Any, Mapping
@@ -220,6 +221,8 @@ class ArchitectureDecision(FrozenModel):
 class ExecutionContract(FrozenModel):
     request_id: str
     tenant_id: str
+    user_id: str
+    roles: tuple[str, ...]
     architecture: ArchitectureType
     allowed_capabilities: tuple[Capability, ...]
     required_evidence: tuple[str, ...]
@@ -233,6 +236,48 @@ class ExecutionContract(FrozenModel):
     router_version: str
     execution_mode: ExecutionMode
     max_replans: int = Field(ge=0)
+
+
+class ApprovalReceipt(FrozenModel):
+    """Application-issued approval bound to one exact consequential proposal."""
+
+    approval_id: str = Field(min_length=1)
+    request_id: str = Field(min_length=1)
+    tenant_id: str = Field(min_length=1)
+    action: Capability
+    target: str = Field(min_length=1)
+    proposal_digest: str = Field(min_length=64, max_length=64)
+    approver_id: str = Field(min_length=1)
+    policy_version: str = Field(min_length=1)
+    issued_at: datetime
+    expires_at: datetime
+
+
+class EvidenceReceipt(FrozenModel):
+    """Application-owned proof that evidence was accepted during this run."""
+
+    evidence_id: str = Field(min_length=1)
+    request_id: str = Field(min_length=1)
+    tenant_id: str = Field(min_length=1)
+    source_id: str = Field(min_length=1)
+    source_version: str = Field(min_length=1)
+    digest: str = Field(min_length=64, max_length=64)
+
+
+class AcceptedEvidenceRegistry(MutableModel):
+    request_id: str = Field(min_length=1)
+    tenant_id: str = Field(min_length=1)
+    receipts: dict[str, EvidenceReceipt] = Field(default_factory=dict)
+
+    def register(self, receipt: EvidenceReceipt) -> None:
+        if receipt.request_id != self.request_id:
+            raise PolicyError("EVIDENCE_REQUEST_MISMATCH")
+        if receipt.tenant_id != self.tenant_id:
+            raise PolicyError("EVIDENCE_TENANT_MISMATCH")
+        existing = self.receipts.get(receipt.evidence_id)
+        if existing is not None and existing != receipt:
+            raise PolicyError("EVIDENCE_RECEIPT_CONFLICT")
+        self.receipts[receipt.evidence_id] = receipt
 
 
 class ExecutionResult(FrozenModel):
@@ -256,7 +301,8 @@ class ExecutionResult(FrozenModel):
 class ExecutionRequest(FrozenModel):
     text: str = Field(min_length=1)
     supplied_otp: str | None = None
-    validated_approval: bool = False
+    subject_user_id: str | None = None
+    approval_receipt: ApprovalReceipt | None = None
     model_available: bool = True
     dependencies_available: bool = True
     cancelled: bool = False
@@ -265,7 +311,9 @@ class ExecutionRequest(FrozenModel):
 class DecisionAudit(FrozenModel):
     request_id: str
     tenant_id: str
-    request_text: str
+    request_reference: str
+    request_digest: str = Field(min_length=64, max_length=64)
+    retention_class: str
     classification: RequestClassification
     decision: ArchitectureDecision
     occurred_at: datetime
@@ -274,6 +322,9 @@ class DecisionAudit(FrozenModel):
 
 class ArchitectureTransitionState(MutableModel):
     request_id: str
+    original_request_text: str
+    original_classification: RequestClassification
+    accepted_evidence_ids: tuple[str, ...] = ()
     current: ArchitectureType
     transitions: int = 0
     depth: int = 0
@@ -291,6 +342,7 @@ class ArchitectureEscalationRequest(FrozenModel):
 class PasswordResetState(MutableModel):
     request_id: str
     tenant_id: str
+    user_id: str
     logical_operation_id: str
     attempt_ids: tuple[str, ...] = ()
     status: PasswordResetStatus = PasswordResetStatus.REQUESTED
@@ -573,6 +625,15 @@ def _attenuate(
     return tuple(capability for capability in requested if capability in grants)
 
 
+def minimum_required_capabilities(
+    intent: Intent, architecture: ArchitectureType
+) -> tuple[Capability, ...]:
+    """Return the least authority with which this fixture route can succeed."""
+    if architecture is ArchitectureType.HUMAN_ESCALATION:
+        return ()
+    return _REQUIRED_CAPABILITIES[intent]
+
+
 def decide_architecture(
     context: RequestContext,
     classification: RequestClassification,
@@ -643,6 +704,9 @@ def decide_architecture(
     allowed = _attenuate(requested, context)
     if architecture is ArchitectureType.HUMAN_ESCALATION:
         allowed = ()
+    required = minimum_required_capabilities(classification.intent, architecture)
+    if not set(required).issubset(set(allowed)):
+        raise PolicyError("AUTH_DENIED")
     budget = _ARCHITECTURE_BUDGETS[architecture].model_copy(
         update={"deadline_ms": min(_ARCHITECTURE_BUDGETS[architecture].deadline_ms, context.deadline_ms)}
     )
@@ -675,6 +739,8 @@ def build_execution_contract(
     return ExecutionContract(
         request_id=context.request_id,
         tenant_id=context.tenant_id,
+        user_id=context.user_id,
+        roles=context.roles,
         architecture=decision.architecture,
         allowed_capabilities=decision.allowed_capabilities,
         required_evidence=_REQUIRED_EVIDENCE[classification.intent],
@@ -698,10 +764,68 @@ def require_capabilities(
         raise PolicyError("AUTH_DENIED")
 
 
+def proposal_digest(
+    *, request_id: str, tenant_id: str, action: Capability, target: str
+) -> str:
+    normalized = json.dumps(
+        {
+            "action": action.value,
+            "request_id": request_id,
+            "target": target,
+            "tenant_id": tenant_id,
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return hashlib.sha256(normalized.encode()).hexdigest()
+
+
+def evidence_digest(payload: Mapping[str, Any]) -> str:
+    normalized = json.dumps(dict(payload), sort_keys=True, separators=(",", ":"), default=str)
+    return hashlib.sha256(normalized.encode()).hexdigest()
+
+
+def validate_approval_receipt(
+    receipt: ApprovalReceipt,
+    contract: ExecutionContract,
+    *,
+    action: Capability,
+    target: str,
+    now: datetime,
+    authorized_approvers: frozenset[str],
+) -> None:
+    """Validate the exact approval immediately before consequential execution."""
+    if receipt.request_id != contract.request_id:
+        raise PolicyError("APPROVAL_REQUEST_MISMATCH")
+    if receipt.tenant_id != contract.tenant_id:
+        raise PolicyError("APPROVAL_TENANT_MISMATCH")
+    if receipt.action is not action:
+        raise PolicyError("APPROVAL_ACTION_MISMATCH")
+    if receipt.target != target:
+        raise PolicyError("APPROVAL_TARGET_MISMATCH")
+    expected_digest = proposal_digest(
+        request_id=contract.request_id,
+        tenant_id=contract.tenant_id,
+        action=action,
+        target=target,
+    )
+    if receipt.proposal_digest != expected_digest:
+        raise PolicyError("APPROVAL_PROPOSAL_MISMATCH")
+    if receipt.policy_version != contract.policy_version:
+        raise PolicyError("APPROVAL_POLICY_STALE")
+    if receipt.issued_at > now or receipt.expires_at <= now:
+        raise PolicyError("APPROVAL_EXPIRED")
+    if receipt.expires_at <= receipt.issued_at:
+        raise PolicyError("APPROVAL_WINDOW_INVALID")
+    if receipt.approver_id not in authorized_approvers:
+        raise PolicyError("APPROVER_NOT_AUTHORIZED")
+
+
 def validate_execution_result(
     result: ExecutionResult,
     contract: ExecutionContract,
     *,
+    accepted_evidence: AcceptedEvidenceRegistry,
     pii_action: PIIAction = PIIAction.BLOCK,
     max_output_chars: int = OUTPUT_SIZE_LIMIT,
 ) -> ExecutionResult:
@@ -720,17 +844,26 @@ def validate_execution_result(
         raise PolicyError("COST_BUDGET_EXCEEDED")
     if result.wall_clock_ms > contract.deadline_ms:
         raise PolicyError("DEADLINE_EXCEEDED")
-    if result.status is ExecutionStatus.SUCCEEDED and not set(
-        contract.required_evidence
-    ).issubset(set(result.evidence_ids)):
-        raise PolicyError("INSUFFICIENT_EVIDENCE")
+    if result.status is ExecutionStatus.SUCCEEDED:
+        if not set(contract.required_evidence).issubset(set(result.evidence_ids)):
+            raise PolicyError("INSUFFICIENT_EVIDENCE")
+        for evidence_id in result.evidence_ids:
+            receipt = accepted_evidence.receipts.get(evidence_id)
+            if receipt is None:
+                raise PolicyError("INVALID_EVIDENCE")
+            if receipt.request_id != contract.request_id:
+                raise PolicyError("EVIDENCE_REQUEST_MISMATCH")
+            if receipt.tenant_id != contract.tenant_id:
+                raise PolicyError("EVIDENCE_TENANT_MISMATCH")
+            if not receipt.source_id or not receipt.source_version or len(receipt.digest) != 64:
+                raise PolicyError("EVIDENCE_PROVENANCE_INVALID")
 
     encoded = json.dumps(dict(result.output), sort_keys=True, default=str)
     if len(encoded) > max_output_chars:
         raise PolicyError("OUTPUT_SIZE_LIMIT")
-    transformed = apply_pii_policy(encoded, pii_action)
-    if transformed != encoded:
-        return result.model_copy(update={"output": {"protected_output": transformed}})
+    transformed = apply_structured_pii_policy(dict(result.output), pii_action)
+    if transformed != dict(result.output):
+        return result.model_copy(update={"output": transformed})
     return result
 
 
@@ -749,6 +882,19 @@ def apply_pii_policy(text: str, action: PIIAction) -> str:
     return _CARD.sub(replacement, _EMAIL.sub(replacement, text))
 
 
+def apply_structured_pii_policy(value: Any, action: PIIAction) -> Any:
+    """Recursively protect string values without collapsing output structure."""
+    if isinstance(value, Mapping):
+        return {key: apply_structured_pii_policy(item, action) for key, item in value.items()}
+    if isinstance(value, list):
+        return [apply_structured_pii_policy(item, action) for item in value]
+    if isinstance(value, tuple):
+        return tuple(apply_structured_pii_policy(item, action) for item in value)
+    if isinstance(value, str):
+        return apply_pii_policy(value, action)
+    return value
+
+
 _ALLOWED_TRANSITIONS: Mapping[ArchitectureType, set[ArchitectureType]] = {
     ArchitectureType.DIRECT_FUNCTION: set(),
     ArchitectureType.DETERMINISTIC_WORKFLOW: {ArchitectureType.HUMAN_ESCALATION},
@@ -763,13 +909,22 @@ _ALLOWED_TRANSITIONS: Mapping[ArchitectureType, set[ArchitectureType]] = {
     ArchitectureType.HUMAN_ESCALATION: set(),
 }
 
+_TRANSITION_REMEDIES: Mapping[
+    tuple[ArchitectureType, Intent, str], tuple[ArchitectureType, Intent]
+] = {
+    (
+        ArchitectureType.BOUNDED_SINGLE_AGENT,
+        Intent.INCIDENT_DIAGNOSIS,
+        "customer-impact",
+    ): (ArchitectureType.SELECTOR_TEAM, Intent.MULTI_DOMAIN_INCIDENT),
+}
+
 
 def admit_architecture_transition(
     transition: ArchitectureTransitionState,
     escalation: ArchitectureEscalationRequest,
     *,
     context: RequestContext,
-    revised_classification: RequestClassification,
 ) -> ArchitectureDecision:
     """Re-run admission before allowing a worker-proposed architecture change."""
     if transition.cancelled:
@@ -783,15 +938,31 @@ def admit_architecture_transition(
         raise PolicyError("ARCHITECTURE_DEPTH_EXCEEDED")
     if escalation.proposed_architecture not in _ALLOWED_TRANSITIONS[transition.current]:
         raise PolicyError("ARCHITECTURE_TRANSITION_DENIED")
-
-    validated = validate_classification(
-        "Investigate checkout across observability, deployment, and customer impact."
-        if escalation.proposed_architecture is ArchitectureType.SELECTOR_TEAM
-        else "Unknown request requiring human review.",
+    validated_original = validate_classification(
+        transition.original_request_text,
         context,
-        revised_classification,
+        transition.original_classification,
     )
-    decision = decide_architecture(context, validated)
+    if escalation.evidence_gap in transition.accepted_evidence_ids:
+        raise PolicyError("EVIDENCE_GAP_ALREADY_RESOLVED")
+    remedy = _TRANSITION_REMEDIES.get(
+        (transition.current, validated_original.intent, escalation.evidence_gap)
+    )
+    if remedy is None:
+        raise PolicyError("EVIDENCE_GAP_NOT_ADDRESSABLE")
+    expected_architecture, revised_intent = remedy
+    if escalation.reason_code is not ReasonCode.DYNAMIC_RECOVERY_REQUIRED:
+        raise PolicyError("TRANSITION_REASON_MISMATCH")
+    if escalation.proposed_architecture is not expected_architecture:
+        raise PolicyError("EVIDENCE_GAP_ARCHITECTURE_MISMATCH")
+    revised_classification = validated_original.model_copy(
+        update={
+            "intent": revised_intent,
+            "requires_multi_domain_evidence": True,
+            "ambiguity": ClassificationConfidence.AMBIGUOUS,
+        }
+    )
+    decision = decide_architecture(context, revised_classification)
     if decision.architecture is not escalation.proposed_architecture:
         raise PolicyError("ARCHITECTURE_READMISSION_MISMATCH")
     transition.history = (*transition.history, transition.current)
@@ -813,7 +984,14 @@ def record_decision(
     return DecisionAudit(
         request_id=context.request_id,
         tenant_id=context.tenant_id,
-        request_text=request_text,
+        request_reference=f"request:{context.request_id}",
+        request_digest=hashlib.sha256(request_text.encode()).hexdigest(),
+        retention_class=(
+            "REFERENCE_AND_DIGEST_ONLY"
+            if context.data_classification
+            in {DataClassification.SENSITIVE, DataClassification.RESTRICTED}
+            else "MINIMUM_AUDIT_30_DAYS"
+        ),
         classification=classification,
         decision=decision,
         occurred_at=occurred_at,

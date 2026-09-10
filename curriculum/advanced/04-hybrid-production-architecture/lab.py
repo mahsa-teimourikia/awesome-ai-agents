@@ -11,6 +11,8 @@ from typing import Protocol
 from pydantic import BaseModel, ConfigDict, Field
 
 from policy import (
+    AcceptedEvidenceRegistry,
+    ApprovalReceipt,
     ArchitectureDecision,
     ArchitectureEscalationRequest,
     ArchitectureTransitionState,
@@ -22,6 +24,7 @@ from policy import (
     ExecutionRequest,
     ExecutionResult,
     ExecutionStatus,
+    EvidenceReceipt,
     FailureCode,
     Intent,
     PIIAction,
@@ -38,10 +41,13 @@ from policy import (
     admit_architecture_transition,
     build_execution_contract,
     decide_architecture,
+    evidence_digest,
     propose_classification,
+    proposal_digest,
     record_decision,
     require_capabilities,
     validate_classification,
+    validate_approval_receipt,
     validate_execution_result,
 )
 
@@ -49,6 +55,8 @@ from policy import (
 NORTHSTAR_TENANT = "northstar-commerce"
 FIXED_TIME = datetime(2026, 1, 15, 10, 0, tzinfo=timezone.utc)
 FIXTURE_OTP = "731904"
+ROLLBACK_TARGET = "deploy-1842"
+AUTHORIZED_APPROVERS = frozenset({"incident-commander-7"})
 
 REQUESTS = {
     "status": "Is checkout healthy?",
@@ -67,6 +75,8 @@ def build_context(
     request_id: str,
     *,
     tenant_id: str = NORTHSTAR_TENANT,
+    user_id: str = "user-1042",
+    roles: tuple[str, ...] = ("support-user", "incident-responder"),
     allowed_capabilities: tuple[Capability, ...] = ALL_CAPABILITIES,
     data_classification: DataClassification = DataClassification.INTERNAL,
     deadline_ms: int = 2_000,
@@ -74,8 +84,8 @@ def build_context(
     return RequestContext(
         request_id=request_id,
         tenant_id=tenant_id,
-        user_id="user-1042",
-        roles=("support-user", "incident-responder"),
+        user_id=user_id,
+        roles=roles,
         allowed_capabilities=allowed_capabilities,
         data_classification=data_classification,
         policy_version=POLICY_VERSION,
@@ -110,10 +120,42 @@ _EVIDENCE = {
 }
 
 
-def _tenant_evidence(contract: ExecutionContract, evidence_id: str) -> dict[str, object]:
+def _accept_evidence(
+    registry: AcceptedEvidenceRegistry,
+    contract: ExecutionContract,
+    evidence_id: str,
+    record: dict[str, object],
+    *,
+    source_id: str,
+    source_version: str = "fixture-v1",
+) -> None:
+    registry.register(
+        EvidenceReceipt(
+            evidence_id=evidence_id,
+            request_id=contract.request_id,
+            tenant_id=contract.tenant_id,
+            source_id=source_id,
+            source_version=source_version,
+            digest=evidence_digest(record),
+        )
+    )
+
+
+def _tenant_evidence(
+    contract: ExecutionContract,
+    evidence_id: str,
+    registry: AcceptedEvidenceRegistry,
+) -> dict[str, object]:
     record = _EVIDENCE[evidence_id]
     if record["tenant_id"] != contract.tenant_id:
         raise ValueError("AUTH_DENIED")
+    _accept_evidence(
+        registry,
+        contract,
+        evidence_id,
+        record,
+        source_id=f"northstar:{evidence_id}",
+    )
     return record
 
 
@@ -153,12 +195,20 @@ def _result(
 
 class ArchitectureRunner(Protocol):
     def run(
-        self, contract: ExecutionContract, request: ExecutionRequest
+        self,
+        contract: ExecutionContract,
+        request: ExecutionRequest,
+        accepted_evidence: AcceptedEvidenceRegistry,
     ) -> ExecutionResult: ...
 
 
 class DirectFunctionRunner:
-    def run(self, contract: ExecutionContract, request: ExecutionRequest) -> ExecutionResult:
+    def run(
+        self,
+        contract: ExecutionContract,
+        request: ExecutionRequest,
+        accepted_evidence: AcceptedEvidenceRegistry,
+    ) -> ExecutionResult:
         require_capabilities(contract, (Capability.CHECKOUT_HEALTH_READ,))
         if not request.dependencies_available:
             return _result(
@@ -171,7 +221,7 @@ class DirectFunctionRunner:
                 events=("DEPENDENCY_FALLBACK_REQUIRED",),
                 failure=FailureCode.DEPENDENCY_UNAVAILABLE,
             )
-        health = _tenant_evidence(contract, "checkout-health")
+        health = _tenant_evidence(contract, "checkout-health", accepted_evidence)
         return _result(
             contract,
             status=ExecutionStatus.SUCCEEDED,
@@ -189,23 +239,30 @@ def _otp_digest(request_id: str, otp: str) -> str:
 
 
 def begin_password_reset(
-    context: RequestContext,
+    contract: ExecutionContract,
     *,
+    subject_user_id: str | None = None,
     now: datetime = FIXED_TIME,
     otp: str = FIXTURE_OTP,
     ttl_seconds: int = 300,
     max_attempts: int = 3,
 ) -> PasswordResetState:
+    subject = subject_user_id or contract.user_id
+    if subject != contract.user_id:
+        raise ValueError("SUBJECT_MISMATCH")
     if not {Capability.OTP_SEND, Capability.PASSWORD_UPDATE}.issubset(
-        set(context.allowed_capabilities)
+        set(contract.allowed_capabilities)
     ):
         raise ValueError("AUTH_DENIED")
     state = PasswordResetState(
-        request_id=context.request_id,
-        tenant_id=context.tenant_id,
-        logical_operation_id=f"password-reset:{context.tenant_id}:{context.user_id}",
+        request_id=contract.request_id,
+        tenant_id=contract.tenant_id,
+        user_id=contract.user_id,
+        logical_operation_id=(
+            f"password-reset:{contract.tenant_id}:{contract.user_id}:{contract.request_id}"
+        ),
         status=PasswordResetStatus.REQUESTED,
-        otp_digest=_otp_digest(context.request_id, otp),
+        otp_digest=_otp_digest(contract.request_id, otp),
         otp_expires_at=now + timedelta(seconds=ttl_seconds),
         max_attempts=max_attempts,
     )
@@ -286,8 +343,40 @@ def load_password_state(path: Path) -> PasswordResetState:
     return PasswordResetState.model_validate_json(path.read_text())
 
 
+def build_rollback_approval(
+    contract: ExecutionContract,
+    *,
+    approval_id: str = "approval-rollback-1842",
+    approver_id: str = "incident-commander-7",
+    now: datetime = FIXED_TIME,
+    ttl_seconds: int = 300,
+) -> ApprovalReceipt:
+    return ApprovalReceipt(
+        approval_id=approval_id,
+        request_id=contract.request_id,
+        tenant_id=contract.tenant_id,
+        action=Capability.PRODUCTION_ROLLBACK,
+        target=ROLLBACK_TARGET,
+        proposal_digest=proposal_digest(
+            request_id=contract.request_id,
+            tenant_id=contract.tenant_id,
+            action=Capability.PRODUCTION_ROLLBACK,
+            target=ROLLBACK_TARGET,
+        ),
+        approver_id=approver_id,
+        policy_version=contract.policy_version,
+        issued_at=now,
+        expires_at=now + timedelta(seconds=ttl_seconds),
+    )
+
+
 class WorkflowRunner:
-    def run(self, contract: ExecutionContract, request: ExecutionRequest) -> ExecutionResult:
+    def run(
+        self,
+        contract: ExecutionContract,
+        request: ExecutionRequest,
+        accepted_evidence: AcceptedEvidenceRegistry,
+    ) -> ExecutionResult:
         if not request.dependencies_available:
             return _result(
                 contract,
@@ -307,7 +396,7 @@ class WorkflowRunner:
                     events=("AUTHORIZATION_DENIED",),
                     failure=FailureCode.AUTH_DENIED,
                 )
-            if not request.validated_approval:
+            if request.approval_receipt is None:
                 return _result(
                     contract,
                     status=ExecutionStatus.BLOCKED,
@@ -316,6 +405,37 @@ class WorkflowRunner:
                     events=("APPROVAL_REQUIRED",),
                     failure=FailureCode.POLICY_BLOCKED,
                 )
+            try:
+                validate_approval_receipt(
+                    request.approval_receipt,
+                    contract,
+                    action=Capability.PRODUCTION_ROLLBACK,
+                    target=ROLLBACK_TARGET,
+                    now=FIXED_TIME,
+                    authorized_approvers=AUTHORIZED_APPROVERS,
+                )
+            except ValueError as error:
+                return _result(
+                    contract,
+                    status=ExecutionStatus.BLOCKED,
+                    output={"message": "Approval receipt did not match the rollback."},
+                    events=(str(error), "WRITE_NOT_ATTEMPTED"),
+                    failure=FailureCode.POLICY_BLOCKED,
+                )
+            _accept_evidence(
+                accepted_evidence,
+                contract,
+                "review-pass",
+                {"review_state": "PASS", "target": ROLLBACK_TARGET},
+                source_id="northstar:security-review",
+            )
+            _accept_evidence(
+                accepted_evidence,
+                contract,
+                "validated-approval",
+                request.approval_receipt.model_dump(mode="json"),
+                source_id="northstar:approval-store",
+            )
             return _result(
                 contract,
                 status=ExecutionStatus.SUCCEEDED,
@@ -340,12 +460,21 @@ class WorkflowRunner:
                 events=("AUTHORIZATION_DENIED",),
                 failure=FailureCode.AUTH_DENIED,
             )
-        context = build_context(
-            contract.request_id,
-            tenant_id=contract.tenant_id,
-            allowed_capabilities=contract.allowed_capabilities,
-        )
-        state = begin_password_reset(context)
+        try:
+            state = begin_password_reset(
+                contract,
+                subject_user_id=request.subject_user_id,
+            )
+        except ValueError as error:
+            if str(error) != "SUBJECT_MISMATCH":
+                raise
+            return _result(
+                contract,
+                status=ExecutionStatus.BLOCKED,
+                output={"message": "Password reset subject does not match the contract."},
+                events=("SUBJECT_MISMATCH", "WRITE_NOT_ATTEMPTED"),
+                failure=FailureCode.AUTH_DENIED,
+            )
         if request.supplied_otp is None:
             return _result(
                 contract,
@@ -374,6 +503,13 @@ class WorkflowRunner:
             )
         authorize_password_update(state)
         execute_password_update(state)
+        _accept_evidence(
+            accepted_evidence,
+            contract,
+            "identity-verification",
+            {"user_id": state.user_id, "verified": state.verified_identity},
+            source_id="northstar:identity-service",
+        )
         return _result(
             contract,
             status=ExecutionStatus.SUCCEEDED,
@@ -387,7 +523,12 @@ class WorkflowRunner:
 
 
 class BoundedAgentRunner:
-    def run(self, contract: ExecutionContract, request: ExecutionRequest) -> ExecutionResult:
+    def run(
+        self,
+        contract: ExecutionContract,
+        request: ExecutionRequest,
+        accepted_evidence: AcceptedEvidenceRegistry,
+    ) -> ExecutionResult:
         required = (
             Capability.CHECKOUT_HEALTH_READ,
             Capability.LOGS_READ,
@@ -422,7 +563,7 @@ class BoundedAgentRunner:
             "deploy-1842",
             "rollback-runbook",
         ):
-            _tenant_evidence(contract, evidence_id)
+            _tenant_evidence(contract, evidence_id, accepted_evidence)
         if "need a team" in request.text.casefold():
             return _result(
                 contract,
@@ -462,7 +603,12 @@ class BoundedAgentRunner:
 
 
 class PipelineRunner:
-    def run(self, contract: ExecutionContract, request: ExecutionRequest) -> ExecutionResult:
+    def run(
+        self,
+        contract: ExecutionContract,
+        request: ExecutionRequest,
+        accepted_evidence: AcceptedEvidenceRegistry,
+    ) -> ExecutionResult:
         require_capabilities(
             contract, (Capability.PROPOSAL_GENERATE, Capability.SECURITY_REVIEW)
         )
@@ -474,12 +620,28 @@ class PipelineRunner:
                 events=("MODEL_UNAVAILABLE", "HUMAN_ESCALATION_REQUESTED"),
                 failure=FailureCode.MODEL_UNAVAILABLE,
             )
+        proposal = "Validate rollback candidate under the controlled workflow."
+        review = "PASS_WITH_APPROVAL_REQUIRED"
+        _accept_evidence(
+            accepted_evidence,
+            contract,
+            "remediation-proposal",
+            {"proposal": proposal},
+            source_id="northstar:proposal-stage",
+        )
+        _accept_evidence(
+            accepted_evidence,
+            contract,
+            "security-review",
+            {"review": review, "reviewed_artifact": "remediation-proposal"},
+            source_id="northstar:security-review-stage",
+        )
         return _result(
             contract,
             status=ExecutionStatus.SUCCEEDED,
             output={
-                "proposal": "Validate rollback candidate under the controlled workflow.",
-                "security_review": "PASS_WITH_APPROVAL_REQUIRED",
+                "proposal": proposal,
+                "security_review": review,
                 "deterministic_gate_state": "PROPOSAL_REVIEWED",
             },
             evidence_ids=("remediation-proposal", "security-review"),
@@ -496,7 +658,12 @@ class PipelineRunner:
 
 
 class TeamRunner:
-    def run(self, contract: ExecutionContract, request: ExecutionRequest) -> ExecutionResult:
+    def run(
+        self,
+        contract: ExecutionContract,
+        request: ExecutionRequest,
+        accepted_evidence: AcceptedEvidenceRegistry,
+    ) -> ExecutionResult:
         required = (
             Capability.CHECKOUT_HEALTH_READ,
             Capability.DEPLOYMENT_READ,
@@ -525,7 +692,7 @@ class TeamRunner:
                 failure=FailureCode.DEPENDENCY_UNAVAILABLE,
             )
         for evidence_id in ("checkout-health", "deploy-1842", "customer-impact"):
-            _tenant_evidence(contract, evidence_id)
+            _tenant_evidence(contract, evidence_id, accepted_evidence)
         return _result(
             contract,
             status=ExecutionStatus.SUCCEEDED,
@@ -544,7 +711,12 @@ class TeamRunner:
 
 
 class HumanEscalationRunner:
-    def run(self, contract: ExecutionContract, request: ExecutionRequest) -> ExecutionResult:
+    def run(
+        self,
+        contract: ExecutionContract,
+        request: ExecutionRequest,
+        accepted_evidence: AcceptedEvidenceRegistry,
+    ) -> ExecutionResult:
         return _result(
             contract,
             status=ExecutionStatus.ESCALATED,
@@ -574,6 +746,7 @@ class ArchitectureRegistry:
             ArchitectureType.CREW: team,
             ArchitectureType.HUMAN_ESCALATION: human,
         }
+        self.accepted_evidence: AcceptedEvidenceRegistry | None = None
 
     def run(
         self,
@@ -582,28 +755,39 @@ class ArchitectureRegistry:
         *,
         pii_action: PIIAction = PIIAction.BLOCK,
     ) -> ExecutionResult:
+        accepted_evidence = AcceptedEvidenceRegistry(
+            request_id=contract.request_id,
+            tenant_id=contract.tenant_id,
+        )
+        self.accepted_evidence = accepted_evidence
         if request.cancelled:
-            return _result(
+            candidate = _result(
                 contract,
                 status=ExecutionStatus.CANCELLED,
                 output={"message": "Cancelled before runner invocation."},
                 events=("CANCELLED_BEFORE_NEXT_WORK",),
                 failure=FailureCode.CANCELLED,
             )
-        runner = self._runners[contract.architecture]
-        try:
-            candidate = runner.run(contract, request)
-        except ValueError as error:
-            if str(error) != "AUTH_DENIED":
-                raise
-            candidate = _result(
-                contract,
-                status=ExecutionStatus.BLOCKED,
-                output={"message": "Required capability denied."},
-                events=("AUTHORIZATION_DENIED",),
-                failure=FailureCode.AUTH_DENIED,
-            )
-        return validate_execution_result(candidate, contract, pii_action=pii_action)
+        else:
+            runner = self._runners[contract.architecture]
+            try:
+                candidate = runner.run(contract, request, accepted_evidence)
+            except ValueError as error:
+                if str(error) != "AUTH_DENIED":
+                    raise
+                candidate = _result(
+                    contract,
+                    status=ExecutionStatus.BLOCKED,
+                    output={"message": "Required capability denied."},
+                    events=("AUTHORIZATION_DENIED",),
+                    failure=FailureCode.AUTH_DENIED,
+                )
+        return validate_execution_result(
+            candidate,
+            contract,
+            accepted_evidence=accepted_evidence,
+            pii_action=pii_action,
+        )
 
 
 class ControlPlaneRun(BaseModel):
@@ -612,6 +796,7 @@ class ControlPlaneRun(BaseModel):
     decision: ArchitectureDecision
     contract: ExecutionContract
     result: ExecutionResult
+    accepted_evidence: tuple[EvidenceReceipt, ...]
     audit: DecisionAudit
 
 
@@ -620,7 +805,8 @@ def run_control_plane(
     context: RequestContext,
     *,
     supplied_otp: str | None = None,
-    validated_approval: bool = False,
+    subject_user_id: str | None = None,
+    approval_receipt: ApprovalReceipt | None = None,
     classifier_available: bool = True,
     router_available: bool = True,
     model_available: bool = True,
@@ -639,12 +825,14 @@ def run_control_plane(
         decision = decide_architecture(context, fallback_classification)
         classification = fallback_classification
     contract = build_execution_contract(context, classification, decision)
-    result = ArchitectureRegistry().run(
+    registry = ArchitectureRegistry()
+    result = registry.run(
         contract,
         ExecutionRequest(
             text=request_text,
             supplied_otp=supplied_otp,
-            validated_approval=validated_approval,
+            subject_user_id=subject_user_id,
+            approval_receipt=approval_receipt,
             model_available=model_available,
             dependencies_available=dependencies_available,
             cancelled=cancelled,
@@ -670,6 +858,11 @@ def run_control_plane(
         decision=decision,
         contract=contract,
         result=result,
+        accepted_evidence=tuple(
+            registry.accepted_evidence.receipts.values()
+            if registry.accepted_evidence is not None
+            else ()
+        ),
         audit=audit,
     )
 
@@ -722,7 +915,50 @@ ARCHITECTURE_PROFILES = {
         wall_clock_ms=150,
         complexity=11,
     ),
+    ArchitectureType.PIPELINE: ArchitectureProfile(
+        architecture=ArchitectureType.PIPELINE,
+        model_calls=2,
+        tool_calls=0,
+        cost_usd=0.026,
+        total_work_ms=240,
+        wall_clock_ms=240,
+        complexity=7,
+    ),
+    ArchitectureType.MANAGER_SPECIALISTS: ArchitectureProfile(
+        architecture=ArchitectureType.MANAGER_SPECIALISTS,
+        model_calls=5,
+        tool_calls=3,
+        cost_usd=0.052,
+        total_work_ms=330,
+        wall_clock_ms=180,
+        complexity=12,
+    ),
+    ArchitectureType.CREW: ArchitectureProfile(
+        architecture=ArchitectureType.CREW,
+        model_calls=4,
+        tool_calls=3,
+        cost_usd=0.048,
+        total_work_ms=310,
+        wall_clock_ms=170,
+        complexity=12,
+    ),
+    ArchitectureType.HUMAN_ESCALATION: ArchitectureProfile(
+        architecture=ArchitectureType.HUMAN_ESCALATION,
+        model_calls=0,
+        tool_calls=0,
+        cost_usd=0,
+        total_work_ms=0,
+        wall_clock_ms=1_200,
+        complexity=3,
+    ),
 }
+
+_SAME_WORKLOAD_ARCHITECTURES = (
+    ArchitectureType.DIRECT_FUNCTION,
+    ArchitectureType.DETERMINISTIC_WORKFLOW,
+    ArchitectureType.BOUNDED_SINGLE_AGENT,
+    ArchitectureType.SELECTOR_TEAM,
+)
 
 
 class BenchmarkRow(BaseModel):
@@ -745,7 +981,8 @@ class BenchmarkRow(BaseModel):
 def same_workload_benchmark() -> tuple[BenchmarkRow, ...]:
     """Deterministic fixture comparison, not a live-model quality benchmark."""
     rows = []
-    for profile in ARCHITECTURE_PROFILES.values():
+    for architecture in _SAME_WORKLOAD_ARCHITECTURES:
+        profile = ARCHITECTURE_PROFILES[architecture]
         rows.append(
             BenchmarkRow(
                 architecture=profile.architecture,
@@ -790,13 +1027,17 @@ def labelled_requests() -> tuple[LabelledRequest, ...]:
 
 
 def architecture_regret(
-    selected: ArchitectureType, best: ArchitectureType
+    selected: ArchitectureType,
+    best: ArchitectureType,
+    *,
+    profiles: dict[ArchitectureType, ArchitectureProfile] | None = None,
 ) -> dict[str, float]:
-    if selected is best:
-        return {"extra_cost_usd": 0, "extra_latency_ms": 0, "extra_complexity": 0}
-    selected_profile = ARCHITECTURE_PROFILES.get(selected)
-    best_profile = ARCHITECTURE_PROFILES.get(best)
+    profiles = ARCHITECTURE_PROFILES if profiles is None else profiles
+    selected_profile = profiles.get(selected)
+    best_profile = profiles.get(best)
     if selected_profile is None or best_profile is None:
+        raise ValueError("ARCHITECTURE_PROFILE_MISSING")
+    if selected is best:
         return {"extra_cost_usd": 0, "extra_latency_ms": 0, "extra_complexity": 0}
     return {
         "extra_cost_usd": max(0, selected_profile.cost_usd - best_profile.cost_usd),
@@ -906,8 +1147,12 @@ def low_risk_canary_eligible(classification: RequestClassification) -> bool:
 def build_agent_to_team_escalation(
     context: RequestContext,
 ) -> tuple[ArchitectureTransitionState, ArchitectureDecision]:
+    original_classification = propose_classification(REQUESTS["diagnosis"], context)
     transition = ArchitectureTransitionState(
         request_id=context.request_id,
+        original_request_text=REQUESTS["diagnosis"],
+        original_classification=original_classification,
+        accepted_evidence_ids=("checkout-health", "checkout-logs", "deploy-1842"),
         current=ArchitectureType.BOUNDED_SINGLE_AGENT,
     )
     escalation = ArchitectureEscalationRequest(
@@ -916,12 +1161,10 @@ def build_agent_to_team_escalation(
         reason_code=ReasonCode.DYNAMIC_RECOVERY_REQUIRED,
         evidence_gap="customer-impact",
     )
-    revised = propose_classification(REQUESTS["team"], context)
     decision = admit_architecture_transition(
         transition,
         escalation,
         context=context,
-        revised_classification=revised,
     )
     return transition, decision
 

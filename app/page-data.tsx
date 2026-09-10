@@ -1033,7 +1033,7 @@ export const curriculumData:Subject[] = [
     "level": "Advanced",
     "step": "04",
     "title": "Application-owned hybrid architecture",
-    "description": "Select the smallest appropriate execution architecture while application policy owns authority, budgets, transitions, evidence, and completion.",
+    "description": "Select the smallest appropriate execution architecture while application policy owns principal binding, authority, evidence receipts, budgets, transitions, and completion.",
     "time": "90-120 min",
     "outcome": "Route one Northstar workload across direct functions, workflows, bounded agents, pipelines, teams, and human escalation using typed, attenuated execution contracts.",
     "lesson": "Classifier proposals versus policy authority, restart-safe workflows, approval-gated writes, architecture re-admission, layered result controls, and routing evaluation.",
@@ -1042,6 +1042,7 @@ export const curriculumData:Subject[] = [
       "Classifier authority:: A model-proposed intent or risk level is treated as permission.",
       "Capability widening:: A richer architecture receives tenant or tool authority the caller did not have.",
       "Approval collapse:: A valid approval-gated route is mistaken for authorization to execute a write.",
+      "Evidence by assertion:: A model-provided evidence ID is accepted without a request- and tenant-bound receipt.",
       "Unsafe self-upgrade:: An agent changes architecture without a new policy admission and budget.",
       "False efficiency:: Different workloads or only token counts are used to justify more orchestration.",
       "Control-plane outage:: Router failure silently falls through to the most privileged worker."
@@ -1058,10 +1059,10 @@ export const curriculumData:Subject[] = [
       "curriculum/advanced/04-hybrid-production-architecture/WHEN_TO_USE_TEAMS.md"
     ],
     "code": "curriculum/advanced/04-hybrid-production-architecture/lab.py",
-    "goals": ["Separate classification, admission, authorization, execution, and validation.","Attenuate every execution contract to trusted tenant-scoped capabilities.","Build restart-safe workflows and block approval-gated writes until approval is validated.","Bound agents and re-admit every requested architecture transition.","Track actual cost, total work, wall clock, evidence, and policy events consistently.","Evaluate safety, validity, regret, and cost per successful compliant request before rollout."],
+    "goals": ["Separate classification, admission, authorization, execution, and validation.","Preserve the authenticated user and roles while attenuating every execution contract.","Build restart-safe workflows and validate exact approval receipts immediately before writes.","Accept evidence only through request- and tenant-bound provenance receipts.","Bound agents and re-admit every requested architecture transition against the original request and unresolved gap.","Track actual cost, total work, wall clock, evidence, and policy events consistently.","Evaluate safety, validity, regret, and cost per successful compliant request before rollout."],
     "quiz": [
       {"q":"What authority does a classifier output have?","options":["It can grant tools","It is a proposal that application policy must validate","It is a production approval","It can widen tenant scope"],"answer":1,"explanation":"Rules, ML, or an LLM may propose features, but trusted policy owns authorization and architecture admission."},
-      {"q":"Can a valid plan contain an approval-gated rollback?","options":["No, planning must reject it","Yes, but execution remains blocked until approval is validated","Yes, and it may execute immediately","Only if a model says APPROVED"],"answer":1,"explanation":"Planning permission and execution authorization are separate control boundaries."},
+      {"q":"Can a valid plan contain an approval-gated rollback?","options":["No, planning must reject it","Yes, but execution remains blocked until an exact typed receipt is validated","Yes, and it may execute immediately","Only if a model says APPROVED"],"answer":1,"explanation":"Planning permission and execution authorization are separate control boundaries; the receipt must match the request, tenant, action, target, proposal, policy, approver, and validity window."},
       {"q":"Which capability relationship must hold?","options":["Contract capabilities may exceed caller grants","Contract capabilities are a subset of trusted caller grants","Teams receive every capability","Classifier text defines capability"],"answer":1,"explanation":"Architecture selection attenuates authority; it never mints it."},
       {"q":"When is a deterministic workflow appropriate?","options":["Only for perfectly linear work","When important state transitions and failure paths are governable","Whenever a model is available","Only for read operations"],"answer":1,"explanation":"Workflows may branch, retry, wait, run parallel nodes, and compensate while preserving explicit state."},
       {"q":"What may a bounded agent do when it needs a team?","options":["Upgrade itself","Emit an architecture escalation request for policy re-admission","Add capabilities","Ignore its budget"],"answer":1,"explanation":"The application validates transition, depth, budget, tenant, data, and capabilities before a new contract."},
@@ -1069,6 +1070,7 @@ export const curriculumData:Subject[] = [
       {"q":"Does an architecture-valid route have to be optimal?","options":["Always","No, several routes may be safe while one has lower cost, latency, or complexity","Only for teams","Optimality is authorization"],"answer":1,"explanation":"Validity is a safety set; regret compares compliant routes against the best fixture choice."},
       {"q":"What should happen if the router is unavailable?","options":["Use the most powerful team","Fail closed to a narrow safe fallback or human review","Trust a worker name","Skip audit"],"answer":1,"explanation":"Control-plane failure must not turn into implicit privilege escalation."},
       {"q":"What does an output-size limit prove?","options":["No exfiltration occurred","Only that a configured resource limit was met","The tenant is correct","Approval was granted"],"answer":1,"explanation":"Schema, scope, grounding, DLP, egress, and approval remain separate checks."},
+      {"q":"When is an evidence ID trustworthy?","options":["When a model repeats it","When it resolves to an application-accepted receipt bound to the request, tenant, source, version, and digest","Whenever its spelling is familiar","After output redaction"],"answer":1,"explanation":"An ID string is a claim. The result gateway must resolve it through authoritative provenance state."},
       {"q":"What does a framework adapter own?","options":["Global authority","Policy completion","Bounded execution under an application-issued contract","Tenant identity"],"answer":2,"explanation":"LangGraph or Agents SDK can orchestrate execution; the application still owns authority, budgets, validation, termination policy, and completion."}
     ]
   },

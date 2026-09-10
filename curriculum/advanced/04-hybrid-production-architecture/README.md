@@ -68,8 +68,10 @@ Text is data, not authority. A string such as `APPROVED`, `ROLLBACK_NOW`, or `AD
 - `RequestContext`: trusted request ID, tenant, user, roles, capabilities, data class, policy version, and deadline.
 - `RequestClassification`: classifier-proposed intent, uncertainty, risk, side effect, evidence needs, approval needs, sensitivity, and latency.
 - `ArchitectureDecision`: application-owned architecture, reason codes, attenuated capabilities, budget, approval flag, mode, and versions.
-- `ExecutionContract`: the only authority passed to a runner.
+- `ExecutionContract`: the only authority passed to a runner; it preserves the authenticated `user_id` and roles as well as tenant scope.
 - `ExecutionResult`: a common result envelope for every runner.
+- `ApprovalReceipt`: an application-issued record bound to one request, tenant, action, target, proposal digest, approver, policy version, and validity window.
+- `EvidenceReceipt`: application-owned proof binding accepted evidence to a request, tenant, source, source version, and digest.
 
 The included classifier is a deterministic offline fixture. A production proposer could be rules, conventional ML, a small model, or an LLM. Regardless of implementation, it is **not an authority**. Policy applies hard overrides for recognized high-risk intents and treats unknown destructive language as `HIGH_RISK_UNKNOWN`. It never grants privileged capabilities to an unknown request.
 
@@ -89,13 +91,15 @@ contract capabilities ⊆ decision capabilities ⊆ caller capabilities
 
 The selected architecture cannot widen tenant scope, tool scope, provider access, or data access. A richer architecture receives no extra authority merely because it has more workers.
 
+Attenuation alone is not enough. If the remaining grants cannot meet the selected architecture's minimum requirements, admission returns `AUTH_DENIED` before a worker is invoked. The control plane distinguishes a deliberately useful partial route from a contract that cannot possibly succeed.
+
 Every contract includes model-call, tool-call, cost, deadline, and replan limits. Estimated cost is used for admission or reservation; actual usage belongs in runtime accounting. Production systems should reserve conservatively when actual cost can exceed estimates.
 
 ## Framework-neutral runners
 
-[`lab.py`](lab.py) registers direct, workflow, agent, pipeline, team, and human runners behind the same `run(contract, request) -> ExecutionResult` interface. The deterministic fixtures need no credentials or network.
+[`lab.py`](lab.py) registers direct, workflow, agent, pipeline, team, and human runners behind the same `run(contract, request, accepted_evidence) -> ExecutionResult` interface. The application owns that per-run evidence registry; the deterministic fixtures need no credentials or network.
 
-All runners return request and tenant identity; selected architecture and status; structured output and evidence IDs; model calls, tool calls, actual cost; `total_work_ms` and `wall_clock_ms`; policy events, approval state, and an optional failure code.
+All runners return request and tenant identity; selected architecture and status; structured output and evidence claims; model calls, tool calls, actual cost; `total_work_ms` and `wall_clock_ms`; policy events, approval state, and an optional failure code. A claimed evidence ID is accepted only when it resolves through the application-owned registry to a matching receipt from this request and tenant.
 
 Total work is not wall-clock time. Parallel specialists may perform 290 ms of accumulated work while finishing in 150 ms of elapsed time.
 
@@ -116,18 +120,19 @@ The password reset fixture persists:
 - state (`REQUESTED → OTP_SENT → WAITING_FOR_OTP → VERIFIED → PASSWORD_UPDATE_AUTHORIZED → COMPLETED`);
 - unique attempt IDs and bounded attempts;
 - OTP expiry;
-- a stable logical operation ID;
+- the authenticated subject from `RequestContext → ExecutionContract → PasswordResetState`;
+- a stable logical operation ID scoped to tenant, user, and reset request;
 - completed operation IDs for idempotency.
 
-Restarting does not reset the attempt count or expiry. For consequential writes, the logical idempotency identity stays stable across retries while attempt IDs remain unique. See Intermediate Courses 01 and 03 for the fuller approval/idempotency subsystems.
+Restarting does not reset the attempt count or expiry. Retrying the same reset preserves the logical ID, while a new reset request for the same user receives a new ID. For consequential writes, attempt IDs remain unique. See Intermediate Courses 01 and 03 for the fuller approval/idempotency subsystems.
 
-Rollback is also a controlled workflow. Planning can validly include the rollback action and mark it approval-gated. Execution remains blocked until a validated approval is presented. Planning permission is not execution authorization.
+Rollback is also a controlled workflow. Planning can validly include the rollback action and mark it approval-gated. Execution remains blocked until an application-issued `ApprovalReceipt` matches request, tenant, action, target, proposal digest, policy version, validity window, and an authorized approver. The receipt is validated immediately before the write. Planning permission is not execution authorization, and a boolean is not an approval receipt. The teaching receipt is in-memory; production should resolve a signed receipt or authoritative approval-store record.
 
 ## Bounded single agents
 
 The diagnostic agent receives only read capabilities plus required evidence and hard call, cost, deadline, and replan limits. It may gather evidence and propose a next step; it cannot execute rollback.
 
-If it discovers a multi-domain evidence gap, it emits an `ARCHITECTURE_ESCALATION_REQUEST`. It cannot upgrade itself. The control plane checks an allowed transition graph, remaining transition/depth budgets, caller authority, data policy, and a revised classification before issuing a new contract.
+If it discovers a multi-domain evidence gap, it emits an `ARCHITECTURE_ESCALATION_REQUEST`. It cannot upgrade itself. The control plane revalidates the original request and classification, inspects current accepted evidence, verifies that the target architecture can address the named gap, and checks transition/depth budgets, caller authority, and data policy before issuing a new contract. It never manufactures a routing prompt to justify the requested target.
 
 ## Pipelines and teams
 
@@ -139,7 +144,7 @@ Teams earn their overhead when the workload benefits from parallel specializatio
 
 Architecture is not a one-way complexity ladder. A request may remain in its admitted architecture, request one allowed and budgeted transition, degrade to a deterministic fallback, stop safely, or escalate to a human.
 
-Each transition is a new admission event. It must preserve tenant and capability attenuation, consume transition/depth budget, and be audited. Cancellation is checked before the next selector, model, tool, or workflow step—not only after its result arrives.
+Each transition is a new admission event. It must preserve the original request binding, tenant and capability attenuation, address a real unresolved evidence gap, consume transition/depth budget, and be audited. A missing OTP or unauthorized rollback is not a valid reason to promote a diagnostic agent into a team. Cancellation is checked before the next selector, model, tool, or workflow step—not only after its result arrives.
 
 ## Layered gateway
 
@@ -148,12 +153,12 @@ The teaching gateway demonstrates layers that production systems should keep exp
 1. schema and request identity;
 2. tenant and capability scope;
 3. data classification and provider/egress restrictions;
-4. evidence grounding;
+4. evidence grounding through application-owned receipts, not ID strings alone;
 5. actual model/tool/cost/deadline accounting;
 6. PII/DLP action: `ALLOW`, `MASK`, `REDACT`, or `BLOCK`;
 7. validated approval immediately before consequential execution.
 
-The included email/card patterns are illustrative, not production DLP. Output length is a configurable resource limit, not proof that exfiltration cannot occur.
+The included email/card patterns are illustrative, not production DLP. Masking and redaction recurse through mappings and lists so the output schema remains structured. Output length is a configurable resource limit, not proof that exfiltration cannot occur.
 
 ## Outages and operating modes
 
@@ -164,15 +169,15 @@ The included email/card patterns are illustrative, not production DLP. Output le
 - Data sensitivity may restrict providers, web access, tools, teams, and logging.
 - Interactive work is marked `SYNC`; longer parallel or review work is `ASYNC`.
 
-Policy, classifier, and router versions are written to the decision audit. Production audit records should also retain actor identity, normalized features, chosen route, reason codes, budgets, observed usage, evidence IDs, fallback/escalation, and final disposition.
+Policy, classifier, and router versions are written to the decision audit. The fixture stores a request reference and digest—not raw request text—plus normalized classification and decision data. Production audit should retain only the minimum fields needed for traceability, apply data-class-specific retention, and avoid duplicating sensitive content. Useful fields include actor reference, normalized features, chosen route, reason codes, budgets, observed usage, evidence receipts, fallback/escalation, and final disposition.
 
 ## Evaluation: safety before elegance
 
 [`lab.py`](lab.py) includes a labelled routing fixture with expected intent, risk, valid architecture set, best compliant architecture, and routing-loss weight. Evaluate intent accuracy, risk accuracy, high-risk false-negative rate, architecture validity, weighted routing loss, and architecture regret (extra cost, latency, and complexity over the best compliant route).
 
-“Valid” and “optimal” are distinct. A bounded agent may be a valid way to read checkout health, while a direct function is the better compliant route.
+“Valid” and “optimal” are distinct. A bounded agent may be a valid way to read checkout health, while a direct function is the better compliant route. Every architecture used by the labelled fixture has a profile; missing profile data raises `ARCHITECTURE_PROFILE_MISSING` rather than silently producing zero regret.
 
-The same-workload table reports task success, grounding, policy compliance, actual cost, wall clock, total work, model/tool calls, privileged exposure, recovery, and an educational complexity score. These are deterministic fixture measurements—not live model-quality claims. Complexity scores are discussion aids, not universal constants.
+The same-workload table reports task success, grounding, policy compliance, actual cost, wall clock, total work, model/tool calls, privileged exposure, recovery, and an educational complexity score. Its fixed success/grounding/compliance values validate comparison mechanics—not equivalent architecture quality or live model performance. Held-out production evaluation must measure those outcomes. Complexity scores are discussion aids, not universal constants.
 
 For production comparison, include **cost per successful compliant request**, not only raw token cost. Reject a router candidate if safety or task success regresses. Additional complexity must earn a measured efficiency or recovery improvement.
 
@@ -217,13 +222,13 @@ Use `uv sync --extra frameworks` to instantiate the optional adapters.
 ## Checkpoint
 
 1. **May a classifier grant a capability?** No. It proposes features; policy intersects requirements with trusted caller grants.
-2. **Does a valid approval-gated plan authorize execution?** No. Approval is validated at execution.
+2. **Does a valid approval-gated plan authorize execution?** No. An exact, unexpired, policy-current approval receipt is validated at execution.
 3. **Is a workflow necessarily linear?** No. It may branch, wait, retry, loop within bounds, run parallel nodes, and compensate.
 4. **Can an agent promote itself into a team?** No. It may request a transition; the control plane re-admits it.
 5. **Why track total work and wall clock?** Parallel work can increase consumption while decreasing elapsed latency.
 6. **Does a valid architecture have to be optimal?** No. Validity is a safety constraint; optimality compares compliant alternatives.
 7. **What happens when the router is unavailable?** Fail closed to a narrow safe fallback or human review.
-8. **Does a small output prove no data leaked?** No. Size, DLP, scope, grounding, and egress are separate controls.
+8. **Is an evidence ID string evidence?** No. It must resolve to an application-accepted, request- and tenant-bound provenance receipt.
 9. **When should a team be considered?** When measured parallelism or isolation benefits justify overhead.
 10. **Who owns completion with a framework adapter?** The application. Framework termination is an orchestration signal.
 
