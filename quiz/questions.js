@@ -1527,20 +1527,20 @@ export const questions = [
   {
     "id": "chkpt-agent_memory",
     "category": "State & Memory",
-    "prompt": "What is the difference between Short-Term and Long-Term memory in an LLM Agent?",
+    "prompt": "What is the correct boundary between a model and durable memory?",
     "options": [
-      "Short-term is fast, Long-term is slow.",
-      "Short-term is the current prompt's `messages` array (bounded by token limits). Long-term relies on external storage (like a Vector DB) to retrieve relevant context across separate sessions.",
-      "Short-term uses Python, Long-term uses SQL.",
-      "Only human agents have Long-Term memory."
+      "The model may write any high-confidence output directly.",
+      "The model proposes a typed candidate; application policy admits and persists it.",
+      "Every transcript becomes semantic memory automatically.",
+      "The storage framework decides authorization after ranking."
     ],
     "correct": [
       1
     ],
-    "explanation": "Refer to the notebook for the detailed explanation.",
+    "explanation": "Model output is a proposal, not a memory write; policy owns provenance, verification, authorization, and lifecycle.",
     "source": {
       "label": "Notebook Checkpoint",
-      "url": "curriculum/advanced/06-agent-memory/agent_memory.ipynb"
+      "url": "curriculum/advanced/06-agent-memory/06_agent_memory.ipynb"
     }
   },
   {
