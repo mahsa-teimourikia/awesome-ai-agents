@@ -1,0 +1,79 @@
+{
+  "version": 1,
+  "id": "northstar-world-model-control-loop",
+  "title": "World-model decision support with independent execution control",
+  "purpose": "Show that simulation informs a proposal while validity, approval, capability, fresh-state checks, and calibration remain application-owned.",
+  "output": {
+    "svg": "world-model-control-loop.svg",
+    "medium": "notebook",
+    "alt_text": "A world-model workflow from observed state through validity, simulation, predicted distributions, constraints, and a planning decision; a separate authority boundary validates approval and fresh state before the external execution control plane; observed outcomes feed calibration and model validation."
+  },
+  "canvas": {
+    "width": 1800,
+    "height": 1000,
+    "background": "#F7F9FC",
+    "margin": 60,
+    "grid": 10
+  },
+  "layout": {
+    "primary_flow": "left-to-right",
+    "min_node_gap": 50,
+    "min_layer_gap": 70,
+    "node_padding": {"x": 22, "y": 16}
+  },
+  "style": {
+    "font_family": "Inter, Arial, sans-serif",
+    "title_color": "#16324F",
+    "semantic_colors": {
+      "service": {"fill": "#EAF1FF", "stroke": "#2F6BFF"},
+      "model": {"fill": "#F0EEFF", "stroke": "#7667E8"},
+      "data": {"fill": "#E5F7F6", "stroke": "#16A3A5"},
+      "action": {"fill": "#FFF1DF", "stroke": "#F59E42"},
+      "operations": {"fill": "#FFFFFF", "stroke": "#52606D"}
+    }
+  },
+  "groups": [
+    {"id": "decision_support", "label": "Decision support — prediction is not authority", "bounds": {"x": 60, "y": 150, "width": 1270, "height": 500}, "fill": "#FFFFFF", "stroke": "#D7DEE8"},
+    {"id": "authority", "label": "Authority boundary", "bounds": {"x": 1370, "y": 150, "width": 370, "height": 780}, "fill": "#FFF9F0", "stroke": "#F59E42"},
+    {"id": "calibration", "label": "Independent observation, calibration, and promotion", "bounds": {"x": 60, "y": 700, "width": 1270, "height": 230}, "fill": "#F3FAFA", "stroke": "#16A3A5"}
+  ],
+  "nodes": [
+    {"id": "observed", "group": "decision_support", "label": "ObservedState", "subtitle": "provenance · units · quality", "type": "data", "bounds": {"x": 100, "y": 270, "width": 200, "height": 110}, "ports": {"out": {"side": "right", "offset": 0.5}}},
+    {"id": "validity", "group": "decision_support", "label": "Model validity", "subtitle": "fresh · complete · in-domain", "type": "service", "bounds": {"x": 360, "y": 270, "width": 200, "height": 110}, "ports": {"in": {"side": "left", "offset": 0.5}, "out": {"side": "right", "offset": 0.5}, "stop": {"side": "bottom", "offset": 0.5}}},
+    {"id": "simulate", "group": "decision_support", "label": "Scenario simulator", "subtitle": "seeded Monte Carlo", "type": "model", "bounds": {"x": 620, "y": 270, "width": 200, "height": 110}, "ports": {"in": {"side": "left", "offset": 0.5}, "out": {"side": "right", "offset": 0.5}}},
+    {"id": "predicted", "group": "decision_support", "label": "PredictedState", "subtitle": "outcome distributions", "type": "model", "bounds": {"x": 880, "y": 270, "width": 200, "height": 110}, "ports": {"in": {"side": "left", "offset": 0.5}, "out": {"side": "right", "offset": 0.5}}},
+    {"id": "constraints", "group": "decision_support", "label": "Constraints + utility", "subtitle": "blast radius · robustness", "type": "service", "bounds": {"x": 1130, "y": 270, "width": 170, "height": 110}, "ports": {"in": {"side": "left", "offset": 0.5}, "out": {"side": "bottom", "offset": 0.5}}},
+    {"id": "stop", "group": "decision_support", "label": "Stop / refresh evidence", "subtitle": "stale · OOD · unvalidated", "type": "operations", "bounds": {"x": 350, "y": 490, "width": 220, "height": 100}, "ports": {"in": {"side": "top", "offset": 0.5}}},
+    {"id": "decision", "group": "decision_support", "label": "PlanningDecision", "subtitle": "proposal for review", "type": "action", "bounds": {"x": 1020, "y": 490, "width": 230, "height": 100}, "ports": {"in": {"side": "top", "offset": 0.5}, "out": {"side": "right", "offset": 0.5}}},
+    {"id": "approval", "group": "authority", "label": "Bound ApprovalReceipt", "subtitle": "identity · role · expiry", "type": "action", "bounds": {"x": 1410, "y": 260, "width": 290, "height": 110}, "ports": {"in": {"side": "left", "offset": 0.5}, "out": {"side": "bottom", "offset": 0.5}}},
+    {"id": "fresh_state", "group": "authority", "label": "Fresh-state + capability", "subtitle": "same digest · least privilege", "type": "service", "bounds": {"x": 1410, "y": 450, "width": 290, "height": 110}, "ports": {"in": {"side": "top", "offset": 0.5}, "out": {"side": "bottom", "offset": 0.5}}},
+    {"id": "execution", "group": "authority", "label": "External execution plane", "subtitle": "idempotency · reconciliation", "type": "operations", "bounds": {"x": 1410, "y": 640, "width": 290, "height": 110}, "ports": {"in": {"side": "top", "offset": 0.5}, "out": {"side": "bottom", "offset": 0.5}}},
+    {"id": "outcome", "group": "calibration", "label": "ObservedOutcome", "subtitle": "trusted production sensors", "type": "data", "bounds": {"x": 1040, "y": 775, "width": 240, "height": 100}, "ports": {"in": {"side": "right", "offset": 0.5}, "out": {"side": "left", "offset": 0.5}}},
+    {"id": "error", "group": "calibration", "label": "PredictionError", "subtitle": "SLO impact · calibration", "type": "data", "bounds": {"x": 730, "y": 775, "width": 240, "height": 100}, "ports": {"in": {"side": "right", "offset": 0.5}, "out": {"side": "left", "offset": 0.5}}},
+    {"id": "backtest", "group": "calibration", "label": "Shadow + backtest", "subtitle": "miss rate · ranking · coverage", "type": "service", "bounds": {"x": 420, "y": 775, "width": 240, "height": 100}, "ports": {"in": {"side": "right", "offset": 0.5}, "out": {"side": "left", "offset": 0.5}}},
+    {"id": "registry", "group": "calibration", "label": "Versioned model registry", "subtitle": "validate · promote · roll back", "type": "model", "bounds": {"x": 110, "y": 775, "width": 240, "height": 100}, "ports": {"in": {"side": "right", "offset": 0.5}}}
+  ],
+  "edges": [
+    {"id": "observe_to_validity", "from": {"node": "observed", "port": "out"}, "to": {"node": "validity", "port": "in"}, "kind": "primary", "route": [[300, 325], [360, 325]]},
+    {"id": "validity_to_sim", "from": {"node": "validity", "port": "out"}, "to": {"node": "simulate", "port": "in"}, "label": "VALID", "kind": "primary", "route": [[560, 325], [620, 325]]},
+    {"id": "validity_to_stop", "from": {"node": "validity", "port": "stop"}, "to": {"node": "stop", "port": "in"}, "label": "not valid", "kind": "secondary", "route": [[460, 380], [460, 490]]},
+    {"id": "sim_to_prediction", "from": {"node": "simulate", "port": "out"}, "to": {"node": "predicted", "port": "in"}, "kind": "primary", "route": [[820, 325], [880, 325]]},
+    {"id": "prediction_to_constraints", "from": {"node": "predicted", "port": "out"}, "to": {"node": "constraints", "port": "in"}, "kind": "primary", "route": [[1080, 325], [1130, 325]]},
+    {"id": "constraints_to_decision", "from": {"node": "constraints", "port": "out"}, "to": {"node": "decision", "port": "in"}, "kind": "primary", "route": [[1215, 380], [1215, 430], [1135, 430], [1135, 490]]},
+    {"id": "decision_to_approval", "from": {"node": "decision", "port": "out"}, "to": {"node": "approval", "port": "in"}, "label": "review request", "kind": "primary", "route": [[1250, 540], [1345, 540], [1345, 315], [1410, 315]]},
+    {"id": "approval_to_fresh", "from": {"node": "approval", "port": "out"}, "to": {"node": "fresh_state", "port": "in"}, "label": "validated receipt", "kind": "primary", "route": [[1555, 370], [1555, 450]]},
+    {"id": "fresh_to_execution", "from": {"node": "fresh_state", "port": "out"}, "to": {"node": "execution", "port": "in"}, "label": "authorized envelope", "kind": "primary", "route": [[1555, 560], [1555, 640]]},
+    {"id": "execution_to_outcome", "from": {"node": "execution", "port": "out"}, "to": {"node": "outcome", "port": "in"}, "label": "observe independently", "kind": "secondary", "route": [[1555, 750], [1555, 825], [1280, 825]]},
+    {"id": "outcome_to_error", "from": {"node": "outcome", "port": "out"}, "to": {"node": "error", "port": "in"}, "kind": "secondary", "route": [[1040, 825], [970, 825]]},
+    {"id": "error_to_backtest", "from": {"node": "error", "port": "out"}, "to": {"node": "backtest", "port": "in"}, "kind": "secondary", "route": [[730, 825], [660, 825]]},
+    {"id": "backtest_to_registry", "from": {"node": "backtest", "port": "out"}, "to": {"node": "registry", "port": "in"}, "kind": "secondary", "route": [[420, 825], [350, 825]]}
+  ],
+  "validation": {
+    "no_overlaps": true,
+    "route_around_nodes": true,
+    "min_text_padding": 16,
+    "min_connector_clearance": 12,
+    "verify_port_attachment": true,
+    "verify_contrast": true
+  }
+}

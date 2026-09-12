@@ -1306,21 +1306,42 @@ export const curriculumData:Subject[] = [
     "id": "a7",
     "level": "Advanced",
     "step": "07",
-    "title": "World models environment modeling",
-    "description": "Advanced exploration of World models environment modeling.",
-    "time": "45-60 min",
-    "outcome": "Master advanced patterns.",
-    "lesson": "Deep dive into SOTA literature.",
-    "exercise": "Implement complex agentic systems.",
-    "failures": [],
-    "notebook": "curriculum/advanced/07-world-models-environment-modeling/world_models_environment_modeling.ipynb",
+    "title": "World models and environment modeling",
+    "description": "Use fallible world models for uncertainty-aware counterfactual planning without confusing prediction with observation, safety, or authority.",
+    "time": "150 min",
+    "outcome": "Validate model applicability, compare robust action distributions, enforce hard constraints, and bind any execution proposal to fresh state and approval.",
+    "lesson": "A Northstar EU checkout incident connects provenance, model snapshots, OOD detection, Monte Carlo scenarios, explicit utility, blast radius, calibration, drift, and controlled promotion.",
+    "exercise": "Run the credential-free planner, inject stale and OOD state, inspect constraint failures, test sensitivity, and prove approval and fresh-state boundaries.",
+    "failures": ["Simulation success presented as production safety", "Predicted state treated as observed state", "Stale, missing, or out-of-domain inputs", "High utility hiding data loss or cross-tenant blast radius", "Approval replay after material state change", "Silent model recalibration"],
+    "notebook": "curriculum/advanced/07-world-models-environment-modeling/07_world_models.ipynb",
     "refs": [
       "curriculum/advanced/07-world-models-environment-modeling/README.md",
-      "curriculum/advanced/07-world-models-environment-modeling/world_models_environment_modeling.ipynb"
+      "curriculum/advanced/07-world-models-environment-modeling/07_world_models.ipynb",
+      "curriculum/advanced/07-world-models-environment-modeling/lab.py",
+      "curriculum/advanced/07-world-models-environment-modeling/policy.py"
     ],
-    "code": "",
-    "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
-    "quiz": []
+    "code": "PYTHONPATH=curriculum/advanced/07-world-models-environment-modeling uv run --frozen python curriculum/advanced/07-world-models-environment-modeling/lab.py",
+    "goals": ["Distinguish sandbox, simulator, world model, and digital twin.", "Keep observed and predicted state as different typed artifacts.", "Gate simulation on provenance, freshness, sensor quality, units, and OOD checks.", "Compare distributions using explicit utility, hard constraints, robustness, and sensitivity.", "Prove simulation cannot grant capability or replace bound approval and fresh-state validation.", "Measure calibration and promote candidate models through shadow evaluation and backtesting."],
+    "quiz": [
+      {
+        "q": "What does a successful simulation authorize?",
+        "options": ["Immediate production execution", "A capability grant", "Nothing; it supports a proposal for separate review and authorization", "Copying predicted state into telemetry"],
+        "answer": 2,
+        "explanation": "Prediction, planning, authorization, and execution are separate control boundaries."
+      },
+      {
+        "q": "Why is database rollback rejected even with high recovery probability?",
+        "options": ["It has the lowest point estimate", "Hard data-loss and cross-tenant constraints override utility ranking", "Monte Carlo cannot model databases", "Waiting is always preferred"],
+        "answer": 1,
+        "explanation": "Utility ranks feasible actions; it cannot trade away an explicit hard constraint."
+      },
+      {
+        "q": "What should happen when current state differs from the approved snapshot?",
+        "options": ["Reuse the approval", "Execute the old winner", "Return SIMULATION_STALE and repeat observation, simulation, review, and approval", "Lower a confidence score"],
+        "answer": 2,
+        "explanation": "The approval binds the exact snapshot and observed-state digest."
+      }
+    ]
   },
   {
     "id": "a8",

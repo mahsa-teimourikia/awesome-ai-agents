@@ -1794,20 +1794,20 @@ export const questions = [
   {
     "id": "chkpt-world_models_environment_modeling",
     "category": "Advanced",
-    "prompt": "What is a 'World Model' in Agentic AI?",
+    "prompt": "A valid world-model simulation recommends a production rollback. What may the planning system do next?",
     "options": [
-      "A 3D simulation of the earth.",
-      "A structured representation (like a graph or rule engine) of the environment, allowing the agent to understand dependencies and consequences *before* acting.",
-      "A global translation model.",
-      "A database of all internet websites."
+      "Execute immediately because simulation proves the rollback is safe.",
+      "Grant itself the rollback capability.",
+      "Create a digest-bound proposal for fresh-state checks, review, and validated approval.",
+      "Copy the predicted state into production telemetry."
     ],
     "correct": [
-      1
+      2
     ],
-    "explanation": "Refer to the notebook for the detailed explanation.",
+    "explanation": "Simulation is decision-support evidence. It does not establish production safety, grant capabilities, or authorize execution.",
     "source": {
       "label": "Notebook Checkpoint",
-      "url": "curriculum/advanced/07-world-models-environment-modeling/world_models_environment_modeling.ipynb"
+      "url": "curriculum/advanced/07-world-models-environment-modeling/07_world_models.ipynb"
     }
   },
   {
