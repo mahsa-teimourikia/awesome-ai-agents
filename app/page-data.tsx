@@ -1307,7 +1307,7 @@ export const curriculumData:Subject[] = [
     "level": "Advanced",
     "step": "07",
     "title": "World models and environment modeling",
-    "description": "Use fallible world models for uncertainty-aware counterfactual planning without confusing prediction with observation, safety, or authority.",
+    "description": "Use fallible world models for uncertainty-aware scenario and intervention planning without confusing prediction with observation, safety, or authority.",
     "time": "150 min",
     "outcome": "Validate model applicability, compare robust action distributions, enforce hard constraints, and bind any execution proposal to fresh state and approval.",
     "lesson": "A Northstar EU checkout incident connects provenance, model snapshots, OOD detection, Monte Carlo scenarios, explicit utility, blast radius, calibration, drift, and controlled promotion.",

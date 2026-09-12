@@ -6,7 +6,7 @@ A model can predict success while the real system fails because its state, struc
 
 The lab does not compress applicability into a confidence score. `assess_model_validity()` checks:
 
-- model, snapshot, and sensor age;
+- model, snapshot, and sensor age, including impossible future timestamps;
 - input-state digest and tenant binding;
 - required variables and units;
 - sensor quality (`GOOD`, `DELAYED`, `MISSING`, `NOISY`, `UNTRUSTED`); and
@@ -18,7 +18,7 @@ It returns `VALID`, `DEGRADED`, `STALE`, `OUT_OF_DISTRIBUTION`, or `UNVALIDATED`
 
 Percentage error alone is misleading. A 1 ms prediction followed by 2 ms is 100% relative error but may be operationally irrelevant. A 10 ms prediction followed by 4,200 ms has large absolute error and can cross an SLO.
 
-Track absolute error, relative error, SLO impact, interval coverage, decision sensitivity, and whether the recommended ranking would change. For event predictions, track Brier score or another proper scoring rule.
+Track absolute error, relative error, SLO impact, interval coverage, decision sensitivity, and whether the recommended ranking would change. Prediction-interval coverage measures whether the observed outcome fell inside the predicted interval; it does not compare interval bounds with absolute error. For event predictions, track Brier score or another proper scoring rule.
 
 ## Calibrate without silent self-modification
 
@@ -29,4 +29,6 @@ prediction -> observed outcome -> error -> update proposal
 -> backtest -> validation report -> staged promotion or rejection
 ```
 
-The agent does not silently rewrite the active model, and an untrusted or broken sensor cannot become calibration truth. Versions remain immutable so decisions can be reproduced and rolled back.
+The agent does not silently rewrite the active model, and an untrusted or broken sensor cannot become calibration truth. Versions remain immutable so decisions can be reproduced and rolled back. In this deterministic fixture, ranking accuracy is supplied by a separate backtest rather than derived from `compare_prediction()`.
+
+Predictive fit does not by itself establish causal counterfactual validity. Comparing interventions is justified only to the extent that the transition model and its assumptions support those interventions.

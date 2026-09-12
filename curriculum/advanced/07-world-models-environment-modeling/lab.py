@@ -12,7 +12,10 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from policy import (
+    CONSTRAINT_POLICY_VERSION,
     POLICY_VERSION,
+    SCENARIO_GENERATION_VERSION,
+    UTILITY_POLICY_VERSION,
     ActionProposal,
     ActionType,
     ApprovalReceipt,
@@ -41,6 +44,7 @@ from policy import (
     assess_model_validity,
     build_action_proposal,
     canonical_digest,
+    model_snapshot_digest,
     observed_state_digest,
     score_distribution,
     summarize_outcomes,
@@ -52,12 +56,12 @@ FIXED_TIME = datetime(2026, 2, 10, 10, 0, tzinfo=UTC)
 TENANT = "northstar-commerce"
 INCIDENT_ID = "inc-eu-checkout-1842"
 
-PLANNING_CAPABILITIES = (
-    "production.rollback",
-    "feature-flag.write",
-    "traffic.shift",
-    "telemetry.read",
-    "database.restore",
+ALLOWED_PROPOSAL_ACTIONS = (
+    ActionType.ROLLBACK_DEPLOYMENT,
+    ActionType.DISABLE_3DS,
+    ActionType.SHIFT_TRAFFIC,
+    ActionType.WAIT_AND_OBSERVE,
+    ActionType.DATABASE_ROLLBACK,
 )
 
 EXECUTION_CAPABILITIES = (
@@ -282,16 +286,34 @@ def simulate_proposal(
     samples: int = 200,
     traffic_multiplier: float = 1.0,
     provider_latency_multiplier: float = 1.0,
+    db_capacity_multiplier: float = 1.0,
     seed_offset: int = 0,
 ) -> OutcomeDistribution:
     """Run deterministic Monte Carlo scenario analysis; never execute an action."""
 
     if samples <= 0:
         raise ValueError("SIMULATION_SAMPLES_MUST_BE_POSITIVE")
+    if min(
+        traffic_multiplier,
+        provider_latency_multiplier,
+        db_capacity_multiplier,
+    ) <= 0:
+        raise ValueError("SIMULATION_MULTIPLIERS_MUST_BE_POSITIVE")
     action_index = list(ActionType).index(proposal.action_type)
     rng = random.Random(snapshot.random_seed + action_index * 1_000 + seed_offset)
     profile = ACTION_PROFILE[proposal.action_type]
-    run_id = f"sim-{proposal.proposal_id}-{samples}-{traffic_multiplier:.1f}-{seed_offset}"
+    run_configuration = {
+        "proposal_digest": proposal.proposal_digest,
+        "model_snapshot_digest": model_snapshot_digest(snapshot),
+        "samples": samples,
+        "seed": snapshot.random_seed + action_index * 1_000 + seed_offset,
+        "traffic_multiplier": traffic_multiplier,
+        "provider_latency_multiplier": provider_latency_multiplier,
+        "db_capacity_multiplier": db_capacity_multiplier,
+        "db_capacity_range": (0.85, 1.10),
+        "scenario_generation_version": SCENARIO_GENERATION_VERSION,
+    }
+    run_id = f"sim-{canonical_digest(run_configuration)[:24]}"
     outcomes: list[PredictedOutcome] = []
     probability = max(
         0.05,
@@ -312,7 +334,9 @@ def simulate_proposal(
             traffic_multiplier=traffic_multiplier,
             provider_latency_multiplier=provider_latency_multiplier,
             dependency_available=dependency_available,
-            db_capacity_multiplier=rng.uniform(0.85, 1.10),
+            db_capacity_multiplier=rng.uniform(0.85, 1.10)
+            * db_capacity_multiplier,
+            scenario_generation_version=SCENARIO_GENERATION_VERSION,
         )
         recovered = rng.random() < probability and dependency_available
         data_loss = rng.random() < profile["data_loss_probability"]
@@ -342,7 +366,12 @@ def simulate_proposal(
             checkout_error_rate_pct=rng.uniform(0.5, 2.0) if recovered else rng.uniform(8, 22),
             checkout_p99_ms=latency,
             queue_depth=rng.uniform(80, 400) if recovered else rng.uniform(1_000, 4_000),
-            db_utilization_pct=min(100, rng.uniform(45, 75) * traffic_multiplier),
+            db_utilization_pct=min(
+                100,
+                rng.uniform(45, 75)
+                * traffic_multiplier
+                / db_capacity_multiplier,
+            ),
             provider_available=dependency_available,
             derived_from_snapshot_id=snapshot.snapshot_id,
         )
@@ -394,7 +423,7 @@ def run_planning_cycle(
     snapshot: ModelSnapshot,
     *,
     samples: int = 200,
-    sensitivity_multipliers: tuple[float, ...] = (1.0, 2.0),
+    joint_stress_multipliers: tuple[float, ...] = (1.0, 2.0),
     weights: UtilityWeights | None = None,
     constraints: PlanningConstraints | None = None,
 ) -> PlanningDecision:
@@ -408,8 +437,10 @@ def run_planning_cycle(
             model_validity=validity,
             recommended_proposal_id=None,
             simulation_results=(),
-            sensitivity_winners=(),
+            joint_stress_winners=(),
             reason_codes=(validity.status.value, *validity.reason_codes),
+            utility_policy_version=UTILITY_POLICY_VERSION,
+            constraint_policy_version=CONSTRAINT_POLICY_VERSION,
             created_at=FIXED_TIME,
         )
 
@@ -420,7 +451,7 @@ def run_planning_cycle(
             proposal,
             observed_state=state,
             snapshot=snapshot,
-            planning_capabilities=PLANNING_CAPABILITIES,
+            allowed_proposal_actions=ALLOWED_PROPOSAL_ACTIONS,
         )
         distribution = simulate_proposal(proposal, snapshot, samples=samples)
         score = score_distribution(
@@ -433,7 +464,9 @@ def run_planning_cycle(
                 proposal_digest=proposal.proposal_digest,
                 model_version=snapshot.model_version,
                 snapshot_id=snapshot.snapshot_id,
+                model_snapshot_digest=model_snapshot_digest(snapshot),
                 observed_state_digest=proposal.observed_state_digest,
+                scenario_generation_version=SCENARIO_GENERATION_VERSION,
                 started_at=FIXED_TIME - timedelta(seconds=1),
                 distribution=distribution,
                 score=score,
@@ -448,13 +481,15 @@ def run_planning_cycle(
             model_validity=validity,
             recommended_proposal_id=None,
             simulation_results=tuple(base_results),
-            sensitivity_winners=(),
+            joint_stress_winners=(),
             reason_codes=("ALL_ACTIONS_CONSTRAINT_BLOCKED",),
+            utility_policy_version=UTILITY_POLICY_VERSION,
+            constraint_policy_version=CONSTRAINT_POLICY_VERSION,
             created_at=FIXED_TIME,
         )
 
-    sensitivity_winners: list[str] = []
-    for index, multiplier in enumerate(sensitivity_multipliers):
+    joint_stress_winners: list[str] = []
+    for index, multiplier in enumerate(joint_stress_multipliers):
         if multiplier == 1.0:
             winner = base_winner
         else:
@@ -477,13 +512,13 @@ def run_planning_cycle(
                     )
                 )
             winner = _winner(variant_scores)
-        sensitivity_winners.append(winner or "NO_FEASIBLE_ACTION")
+        joint_stress_winners.append(winner or "NO_FEASIBLE_ACTION")
 
-    unique_winners = set(sensitivity_winners)
+    unique_winners = set(joint_stress_winners)
     if len(unique_winners) > 1:
         status = PlanningStatus.DECISION_UNSTABLE
         recommendation = None
-        reasons = ("SENSITIVITY_WINNER_CHANGED",)
+        reasons = ("JOINT_STRESS_WINNER_CHANGED",)
     else:
         status = PlanningStatus.READY_FOR_REVIEW
         recommendation = base_winner
@@ -497,8 +532,10 @@ def run_planning_cycle(
         model_validity=validity,
         recommended_proposal_id=recommendation,
         simulation_results=tuple(base_results),
-        sensitivity_winners=tuple(sensitivity_winners),
+        joint_stress_winners=tuple(joint_stress_winners),
         reason_codes=reasons,
+        utility_policy_version=UTILITY_POLICY_VERSION,
+        constraint_policy_version=CONSTRAINT_POLICY_VERSION,
         created_at=FIXED_TIME,
     )
 
@@ -529,7 +566,8 @@ def approval_receipt(
     tenant: str | None = None,
     proposal_digest: str | None = None,
     simulation_run_id: str | None = None,
-    snapshot_digest: str | None = None,
+    model_digest: str | None = None,
+    state_digest: str | None = None,
     policy_version: str = POLICY_VERSION,
     status: ApprovalStatus = ApprovalStatus.VALID,
     issued_at: datetime = FIXED_TIME,
@@ -545,7 +583,8 @@ def approval_receipt(
         proposal_digest=proposal_digest or proposal.proposal_digest,
         simulation_run_id=simulation_run_id or simulation.simulation_run_id,
         world_model_snapshot_id=proposal.world_model_snapshot_id,
-        snapshot_digest=snapshot_digest or proposal.observed_state_digest,
+        model_snapshot_digest=model_digest or simulation.model_snapshot_digest,
+        observed_state_digest=state_digest or proposal.observed_state_digest,
         policy_version=policy_version,
         issued_at=issued_at,
         expires_at=expires_at,
@@ -555,6 +594,7 @@ def approval_receipt(
 
 def authorize_recommended_action(
     state: ObservedState,
+    snapshot: ModelSnapshot,
     decision: PlanningDecision,
     proposal: ActionProposal,
     simulation: SimulationResult,
@@ -570,6 +610,7 @@ def authorize_recommended_action(
         simulation,
         decision,
         approval,
+        snapshot=snapshot,
         current_state=state,
         executor_capabilities=executor_capabilities,
         now=now,
@@ -580,14 +621,16 @@ def shadow_calibration_records() -> tuple[CalibrationRecord, ...]:
     """Historical shadow predictions; the candidate model never controlled production."""
 
     values = (
-        ("cal-1", 2.0, 0.80, True, 0.0, 5.0),
-        ("cal-2", 3.0, 0.75, True, 0.0, 5.0),
-        ("cal-3", 1.0, 0.30, False, 0.0, 4.0),
-        ("cal-4", 4.0, 0.70, True, 0.0, 5.0),
-        ("cal-5", 2.5, 0.65, True, 0.0, 4.0),
+        # id, prediction, observation, probability, recovered, interval
+        ("cal-1", 10.0, 12.0, 0.80, True, 7.0, 14.0),
+        ("cal-2", 10.0, 13.0, 0.75, True, 7.0, 14.0),
+        ("cal-3", 10.0, 9.0, 0.30, False, 8.0, 12.0),
+        ("cal-4", 10.0, 14.0, 0.70, True, 7.0, 15.0),
+        ("cal-5", 10.0, 12.5, 0.65, True, 7.0, 14.0),
     )
     records = []
-    for record_id, error, probability, recovered, lower, upper in values:
+    for record_id, predicted, observed, probability, recovered, lower, upper in values:
+        error = abs(predicted - observed)
         prediction_error = PredictionError(
             prediction_id=f"prediction-{record_id}",
             observed_outcome_id=f"outcome-{record_id}",
@@ -603,6 +646,8 @@ def shadow_calibration_records() -> tuple[CalibrationRecord, ...]:
                 record_id=record_id,
                 model_version="world-model-v12",
                 prediction_error=prediction_error,
+                predicted_recovery_minutes=predicted,
+                observed_recovery_minutes=observed,
                 predicted_recovery_probability=probability,
                 recovery_occurred=recovered,
                 interval_lower_minutes=lower,
@@ -633,24 +678,27 @@ def demo_summary(samples: int = 200) -> dict[str, Any]:
     state = observed_state()
     snapshot = model_snapshot(state)
     decision = run_planning_cycle(
-        state, snapshot, samples=samples, sensitivity_multipliers=(1.0,)
+        state, snapshot, samples=samples, joint_stress_multipliers=(1.0,)
     )
     proposal, simulation = recommended_artifacts(state, snapshot, decision)
     blocked_without_approval = False
     try:
-        authorize_recommended_action(state, decision, proposal, simulation, None)
+        authorize_recommended_action(
+            state, snapshot, decision, proposal, simulation, None
+        )
     except WorldModelPolicyError as error:
         blocked_without_approval = str(error) == "APPROVAL_REQUIRED"
     approval = approval_receipt(proposal, simulation)
     command = authorize_recommended_action(
-        state, decision, proposal, simulation, approval
+        state, snapshot, decision, proposal, simulation, approval
     )
     return {
         "model_validity": decision.model_validity.status.value,
         "planning_status": decision.status.value,
         "recommended_action": proposal.action_type.value,
         "simulation_run_id": simulation.simulation_run_id,
-        "snapshot_digest": proposal.observed_state_digest,
+        "model_snapshot_digest": simulation.model_snapshot_digest,
+        "observed_state_digest": proposal.observed_state_digest,
         "approval_required": proposal.approval_required,
         "blocked_without_approval": blocked_without_approval,
         "execution_envelope_created": command.execution_id,

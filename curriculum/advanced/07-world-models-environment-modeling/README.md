@@ -18,7 +18,7 @@ By the end, you can:
 2. keep observed production state and predicted state as different types;
 3. bind observations, model snapshots, simulations, proposals, and approvals with provenance and digests;
 4. gate simulation on freshness, sensor quality, model applicability, and out-of-distribution checks;
-5. run seeded Monte Carlo counterfactuals and interpret distributions rather than point estimates;
+5. run seeded Monte Carlo scenario simulations and interpret distributions rather than point estimates;
 6. combine explicit multi-objective utility with hard safety constraints, blast-radius checks, and robustness analysis;
 7. prove that planning permission, execution capability, review, approval, and execution are separate boundaries; and
 8. compare predicted and observed outcomes, measure calibration, detect drift, backtest a candidate model, and promote it through a controlled process.
@@ -49,7 +49,7 @@ Deployment `deploy-1842` is followed by elevated EU checkout latency, errors, an
 | Wait and observe | avoid intervention | customer and SLA impact continues |
 | Roll back the database | recover quickly in the toy model | data loss and cross-tenant blast radius |
 
-The model receives observations, snapshots the exact input, generates counterfactual outcome distributions, applies constraints and utility, and returns a recommendation for review.
+The model receives observations, snapshots the exact input, generates scenario outcome distributions, applies constraints and utility, and returns a recommendation for review.
 
 ```mermaid
 flowchart TD
@@ -126,7 +126,7 @@ observation_id · source · source_version · observed_at · retrieved_at
 tenant · variable · unit · value · quality
 ```
 
-The source identity and version make an input traceable. The two timestamps distinguish when the event occurred from when the planner retrieved it. Tenant and unit prevent accidental cross-scope or dimensionally invalid comparisons. Quality is one of `GOOD`, `DELAYED`, `MISSING`, `NOISY`, or `UNTRUSTED`.
+The source identity and version make an input traceable. The two timestamps distinguish when the event occurred from when the planner retrieved it. Tenant and unit prevent accidental cross-scope or dimensionally invalid comparisons. Quality is one of `GOOD`, `DELAYED`, `MISSING`, `NOISY`, or `UNTRUSTED`. Future observations, future retrievals, and future snapshots are invalid rather than silently treated as age zero; calibration must occur no later than snapshot creation.
 
 ## 3. Snapshot and validity before prediction
 
@@ -144,6 +144,8 @@ validated state-variable ranges
 random seed
 ```
 
+`model_snapshot_digest` hashes this immutable, application-owned artifact. The simulation and approval bind both the snapshot ID and digest, so reusing a trusted-looking ID for altered model metadata fails closed.
+
 Before simulation, `assess_model_validity()` computes model, snapshot, and sensor ages and returns one of:
 
 | Status | Meaning | Consequential planning response |
@@ -156,11 +158,11 @@ Before simulation, `assess_model_validity()` computes model, snapshot, and senso
 
 The fixture was calibrated for traffic up to 5,000 requests/second. Black Friday traffic of 7,000 requests/second returns `MODEL_OUT_OF_DOMAIN`; the planner does not “simulate anyway.” A single `confidence=0.72` would hide why the model is inapplicable, so validity is a typed status with reason codes and measurable ages.
 
-## 4. Counterfactual planning is not Tree of Thoughts
+## 4. Scenario planning, interventions, and Tree of Thoughts
 
-Counterfactual planning evaluates outcomes under alternative actions. It may use model predictive control, scenario analysis, dynamic programming, search, Monte Carlo Tree Search, or other planning algorithms. **Tree of Thoughts** is a specific LLM inference/search technique for exploring intermediate reasoning candidates; it is not a synonym for environment simulation.
+A **scenario** asks what the model predicts under assumed future conditions. An **intervention or counterfactual** asks what would have happened under an alternative action and requires a transition model with meaningful intervention semantics. Model predictive control, scenario analysis, dynamic programming, search, and Monte Carlo Tree Search can support planning, but generic Monte Carlo analysis is not causal proof. **Tree of Thoughts** is a specific LLM inference/search technique for exploring intermediate reasoning candidates; it is not a synonym for environment simulation.
 
-This course uses **deterministic fixture-driven Monte Carlo scenario analysis**. It does not use Tree of Thoughts and does not claim that the hard-coded transition profile is learned intelligence.
+This course uses **deterministic fixture-driven Monte Carlo scenario analysis**. Its action-conditioned transition rules illustrate intervention-shaped queries, but observational calibration alone cannot eliminate confounding or establish causal validity. It does not use Tree of Thoughts and does not claim that the hard-coded transition profile is learned intelligence.
 
 For each action, the lab samples 200 scenarios using a stable seed. It varies dependency availability, traffic, provider latency, database capacity, and stochastic recovery. It reports:
 
@@ -192,7 +194,7 @@ U(a) = 4P(recovery)
 -1.2(uncertainty)
 \]
 
-This formula is not universal. It is a reviewable fixture policy. Production weights should be approved by accountable owners, evaluated across incident classes, and monitored for unintended incentives.
+This formula is not universal. It is a reviewable fixture policy. Production weights should be approved by accountable owners, evaluated across incident classes, and monitored for unintended incentives. The resulting score records `utility_policy_version` and `constraint_policy_version`, allowing a historical decision to be reconstructed after policy changes.
 
 Utility never overrides hard constraints. `score_distribution()` rejects a scenario set when it predicts:
 
@@ -211,11 +213,11 @@ A deployment rollback requires the observed deployment to still equal `deploy-18
 
 Production systems should extend these checks with schema compatibility, write-set analysis, no orphaned foreign keys, no negative balances, regulatory region constraints, dependency health, capacity headroom, and service-specific SLOs.
 
-## 6. Robustness and sensitivity
+## 6. Robustness, joint stress, and sensitivity
 
 Expected utility asks which action is best on average under the model. Robustness asks how often it remains acceptable across plausible scenarios. Worst-case constraints ask whether any represented outcome is unacceptable.
 
-`run_planning_cycle()` also re-evaluates actions under a high-traffic/high-latency scenario. If the winner changes or every action becomes infeasible, it returns `DECISION_UNSTABLE` and no executable recommendation. That is more informative than presenting a brittle winner as certain.
+`run_planning_cycle()` also re-evaluates actions under a **joint stress scenario** where traffic and provider latency rise together. If the winner changes or every action becomes infeasible, it returns `DECISION_UNSTABLE` and no executable recommendation. This is not one-at-a-time sensitivity analysis. For attribution, call `simulate_proposal()` separately with only `traffic_multiplier`, only `provider_latency_multiplier`, or a changed database-capacity assumption; changing one variable at a time shows which assumption drives the result.
 
 Try these experiments in the notebook:
 
@@ -233,18 +235,19 @@ The central invariant is:
 SIMULATION_PASS != APPROVED
 ```
 
-The planning layer is allowed to propose a rollback because the planner has `production.rollback` in its **planning capability set**. This permission means “may evaluate and propose,” not “may execute.” The proposal retains `approval_required=True` and remains valid.
+The planning layer is allowed to propose a rollback because `ROLLBACK_DEPLOYMENT` is in its application-owned `allowed_proposal_actions`. It does **not** hold `production.rollback`. Proposal policy answers “may evaluate and propose?”; the executor's separate capability answers “may perform this production action?” The proposal retains `approval_required=True` and remains valid.
 
 Execution requires all of the following:
 
 1. the `PlanningDecision` is `READY_FOR_REVIEW` and recommends the exact proposal;
 2. the proposal digest still matches its typed payload;
-3. the `SimulationResult` binds the proposal, model version, snapshot, and observed-state digest;
-4. an authenticated `ApprovalReceipt` binds tenant, action, target, proposal digest, simulation run, world-model snapshot, state digest, policy version, approver role, issue time, and expiry;
-5. the executor independently holds the required execution capability; and
-6. fresh observed state has the same digest and preconditions as the approved simulation.
+3. the selected simulation independently has no hard-constraint violations and the decision's model validity is `VALID`;
+4. the `SimulationResult` binds the proposal, model version, immutable snapshot ID and digest, observed-state digest, scenario-generation version, and versioned scoring policy;
+5. an authenticated `ApprovalReceipt` binds tenant, action, target, proposal digest, simulation run, model-snapshot ID and digest, observed-state digest, policy version, approver role, issue time, and expiry;
+6. the executor independently holds the required execution capability; and
+7. the application reruns `assess_model_validity()` immediately before authorization and verifies the current state digest and preconditions.
 
-A log line, retrieved document, model response, or string containing `APPROVED` cannot create an `ApprovalReceipt`. A successful simulation cannot expand capabilities. If production changes after approval, `SIMULATION_STALE` forces new observations, a new snapshot, re-simulation, and new review/approval.
+A log line, retrieved document, model response, or string containing `APPROVED` cannot create an `ApprovalReceipt`. A successful simulation cannot expand capabilities. An unexpired approval is not a freshness waiver: if sensor/model age now exceeds policy, `MODEL_STATE_STALE` forces new observations, a new snapshot, re-simulation, and new review/approval. Material state changes similarly return `SIMULATION_STALE`.
 
 `authorize_recommended_action()` returns a typed `ExecutionProposal` envelope only. It performs no production operation. Consequential execution, stable logical idempotency keys, unique attempt IDs, replay defense, outcome reconciliation, and the authoritative approval store belong to the control plane taught in Courses 01, 03, and Advanced 05.
 
@@ -263,7 +266,7 @@ Simulation can reduce the probability of unsafe actions by detecting failures th
 
 Relative error alone is not criticality. A prediction of 1 ms followed by an observation of 2 ms is a 100% relative error but only a 1 ms absolute error and may not affect an SLO or decision. A prediction of 10 ms followed by 4,200 ms has large absolute error and crosses the fixture's 500 ms SLO.
 
-`compare_prediction()` therefore records absolute recovery error, relative recovery error, absolute latency error, SLO impact, ranking impact, and materiality.
+`compare_prediction()` therefore records absolute recovery error, relative recovery error, absolute latency error, SLO impact, and materiality. Its `ranking_changed` field remains `False` in this single-action fixture; `ranking_accuracy` is a separately supplied deterministic backtest input, not a metric derived by `compare_prediction()`.
 
 ## 9. Calibration, drift, and controlled updates
 
@@ -278,6 +281,8 @@ The lab calculates:
 | recovery event probability | Brier score |
 | action ranking | ranking accuracy during backtest |
 | safety constraint detection | constraint-violation miss rate |
+
+Prediction-interval coverage asks whether the **observed recovery time** falls between the predicted lower and upper bounds. The absolute prediction error remains separate for MAE and RMSE; it is not compared with the interval endpoints.
 
 The included records are explicitly labelled **historical shadow-prediction fixtures**. In shadow mode, production acts normally while a candidate model predicts without control. The prediction is compared with later observations.
 
@@ -350,7 +355,9 @@ Also define confidentiality, retention, availability, concurrency, cost, model-r
 
 | Failure | Why it happens | Fail-closed response |
 |---|---|---|
-| stale snapshot | approval occurs after production changed | `SIMULATION_STALE`; re-observe and re-simulate |
+| stale snapshot or sensors | time passes even though serialized values do not change | `MODEL_STATE_STALE`; re-observe and re-simulate |
+| changed production state | current digest differs from the simulated input | `SIMULATION_STALE`; rebuild the complete lineage |
+| future timestamp | clock skew or malformed telemetry makes age impossible | `UNVALIDATED`; repair time/source integrity |
 | out-of-domain traffic | model was not validated at current load | `MODEL_OUT_OF_DOMAIN`; use another validated model or human process |
 | missing/noisy/untrusted sensor | world state is incomplete or corrupt | `UNVALIDATED`; repair evidence path |
 | unit mismatch | incompatible raw numbers appear comparable | reject state; normalize upstream with lineage |

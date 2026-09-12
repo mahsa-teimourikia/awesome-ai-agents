@@ -18,6 +18,9 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 POLICY_VERSION = "northstar-world-model-policy-v1"
+UTILITY_POLICY_VERSION = "northstar-incident-utility-v1"
+CONSTRAINT_POLICY_VERSION = "northstar-incident-constraints-v1"
+SCENARIO_GENERATION_VERSION = "northstar-monte-carlo-v2"
 APPROVER_ROLE = "incident.approver"
 
 
@@ -58,6 +61,15 @@ class ActionType(StrEnum):
     SHIFT_TRAFFIC = "SHIFT_TRAFFIC"
     WAIT_AND_OBSERVE = "WAIT_AND_OBSERVE"
     DATABASE_ROLLBACK = "DATABASE_ROLLBACK"
+
+
+ACTION_EXECUTION_CAPABILITY = {
+    ActionType.ROLLBACK_DEPLOYMENT: "production.rollback",
+    ActionType.DISABLE_3DS: "feature-flag.write",
+    ActionType.SHIFT_TRAFFIC: "traffic.shift",
+    ActionType.WAIT_AND_OBSERVE: "telemetry.read",
+    ActionType.DATABASE_ROLLBACK: "database.restore",
+}
 
 
 class ApprovalStatus(StrEnum):
@@ -168,13 +180,20 @@ class ModelSnapshot(FrozenModel):
             raise ValueError("DUPLICATE_MODEL_VARIABLE")
         return variables
 
+    @model_validator(mode="after")
+    def calibration_precedes_snapshot(self) -> "ModelSnapshot":
+        if self.calibration_time > self.snapshot_time:
+            raise ValueError("CALIBRATION_AFTER_SNAPSHOT")
+        return self
+
 
 class ModelValidity(FrozenModel):
     status: ModelValidityStatus
     reason_codes: tuple[str, ...]
-    model_age_seconds: float = Field(ge=0)
-    snapshot_age_seconds: float = Field(ge=0)
-    oldest_sensor_age_seconds: float = Field(ge=0)
+    # Negative values preserve impossible future timestamps for diagnosis.
+    model_age_seconds: float
+    snapshot_age_seconds: float
+    oldest_sensor_age_seconds: float
     missing_variables: tuple[str, ...] = ()
     out_of_distribution_variables: tuple[str, ...] = ()
 
@@ -203,6 +222,7 @@ class SimulationScenario(FrozenModel):
     provider_latency_multiplier: float = Field(gt=0)
     dependency_available: bool
     db_capacity_multiplier: float = Field(gt=0)
+    scenario_generation_version: str = Field(min_length=1)
 
 
 class PredictedOutcome(FrozenModel):
@@ -265,6 +285,8 @@ class ScenarioScore(FrozenModel):
     uncertainty_penalty: float = Field(ge=0)
     robustness_score: float = Field(ge=0, le=1)
     hard_constraint_violations: tuple[str, ...]
+    utility_policy_version: str = Field(min_length=1)
+    constraint_policy_version: str = Field(min_length=1)
 
 
 class SimulationResult(FrozenModel):
@@ -273,7 +295,9 @@ class SimulationResult(FrozenModel):
     proposal_digest: str = Field(min_length=64, max_length=64)
     model_version: str = Field(min_length=1)
     snapshot_id: str = Field(min_length=1)
+    model_snapshot_digest: str = Field(min_length=64, max_length=64)
     observed_state_digest: str = Field(min_length=64, max_length=64)
+    scenario_generation_version: str = Field(min_length=1)
     started_at: datetime
     distribution: OutcomeDistribution
     score: ScenarioScore
@@ -285,8 +309,10 @@ class PlanningDecision(FrozenModel):
     model_validity: ModelValidity
     recommended_proposal_id: str | None
     simulation_results: tuple[SimulationResult, ...]
-    sensitivity_winners: tuple[str, ...]
+    joint_stress_winners: tuple[str, ...]
     reason_codes: tuple[str, ...]
+    utility_policy_version: str = Field(min_length=1)
+    constraint_policy_version: str = Field(min_length=1)
     created_at: datetime
 
 
@@ -300,7 +326,8 @@ class ApprovalReceipt(FrozenModel):
     proposal_digest: str = Field(min_length=64, max_length=64)
     simulation_run_id: str = Field(min_length=1)
     world_model_snapshot_id: str = Field(min_length=1)
-    snapshot_digest: str = Field(min_length=64, max_length=64)
+    model_snapshot_digest: str = Field(min_length=64, max_length=64)
+    observed_state_digest: str = Field(min_length=64, max_length=64)
     policy_version: str = Field(min_length=1)
     issued_at: datetime
     expires_at: datetime
@@ -319,7 +346,8 @@ class ExecutionProposal(FrozenModel):
     proposal_id: str = Field(min_length=1)
     proposal_digest: str = Field(min_length=64, max_length=64)
     simulation_run_id: str = Field(min_length=1)
-    snapshot_digest: str = Field(min_length=64, max_length=64)
+    model_snapshot_digest: str = Field(min_length=64, max_length=64)
+    observed_state_digest: str = Field(min_length=64, max_length=64)
     action: ActionType
     target: str
     parameters: Mapping[str, Any]
@@ -355,10 +383,28 @@ class CalibrationRecord(FrozenModel):
     record_id: str
     model_version: str
     prediction_error: PredictionError
+    predicted_recovery_minutes: float = Field(ge=0)
+    observed_recovery_minutes: float = Field(ge=0)
     predicted_recovery_probability: float = Field(ge=0, le=1)
     recovery_occurred: bool
     interval_lower_minutes: float = Field(ge=0)
     interval_upper_minutes: float = Field(ge=0)
+
+    @model_validator(mode="after")
+    def valid_interval_and_error(self) -> "CalibrationRecord":
+        if self.interval_lower_minutes > self.interval_upper_minutes:
+            raise ValueError("PREDICTION_INTERVAL_INVALID")
+        expected_error = abs(
+            self.predicted_recovery_minutes - self.observed_recovery_minutes
+        )
+        if not math.isclose(
+            expected_error,
+            self.prediction_error.absolute_recovery_error_minutes,
+            rel_tol=1e-9,
+            abs_tol=1e-9,
+        ):
+            raise ValueError("CALIBRATION_ERROR_MISMATCH")
+        return self
 
 
 class CalibrationMetrics(FrozenModel):
@@ -410,6 +456,12 @@ def observed_state_digest(state: ObservedState) -> str:
     return canonical_digest(state)
 
 
+def model_snapshot_digest(snapshot: ModelSnapshot) -> str:
+    """Bind the immutable, application-owned model artifact and its metadata."""
+
+    return canonical_digest(snapshot)
+
+
 def action_proposal_payload(proposal: ActionProposal | Mapping[str, Any]) -> dict[str, Any]:
     data = (
         proposal.model_dump(mode="json")
@@ -434,7 +486,7 @@ def validate_action_proposal(
     *,
     observed_state: ObservedState,
     snapshot: ModelSnapshot,
-    planning_capabilities: Sequence[str],
+    allowed_proposal_actions: Sequence[ActionType],
 ) -> None:
     """Validate whether planning may propose an action, not whether it may execute."""
 
@@ -448,8 +500,9 @@ def validate_action_proposal(
         == snapshot.snapshot_id,
         "PROPOSAL_STATE_DIGEST_MISMATCH": proposal.observed_state_digest
         == observed_state_digest(observed_state),
-        "PLANNING_CAPABILITY_DENIED": proposal.required_capability
-        in planning_capabilities,
+        "PROPOSAL_ACTION_DENIED": proposal.action_type in allowed_proposal_actions,
+        "ACTION_CAPABILITY_BINDING_INVALID": proposal.required_capability
+        == ACTION_EXECUTION_CAPABILITY[proposal.action_type],
     }
     for code, valid in checks.items():
         if not valid:
@@ -480,11 +533,22 @@ def assess_model_validity(
     maximum_snapshot_age: timedelta = timedelta(minutes=5),
     maximum_calibration_age: timedelta = timedelta(days=30),
 ) -> ModelValidity:
-    sensor_ages = [max(0.0, (now - item.observed_at).total_seconds()) for item in state.observations]
+    sensor_ages = [(now - item.observed_at).total_seconds() for item in state.observations]
     oldest_sensor_age = max(sensor_ages, default=0.0)
-    snapshot_age = max(0.0, (now - snapshot.snapshot_time).total_seconds())
-    model_age = max(0.0, (now - snapshot.calibration_time).total_seconds())
+    snapshot_age = (now - snapshot.snapshot_time).total_seconds()
+    model_age = (now - snapshot.calibration_time).total_seconds()
     reasons: list[str] = []
+
+    if state.captured_at > now:
+        reasons.append("OBSERVED_STATE_FROM_FUTURE")
+    if any(item.observed_at > now for item in state.observations):
+        reasons.append("OBSERVATION_FROM_FUTURE")
+    if any(item.retrieved_at > now for item in state.observations):
+        reasons.append("OBSERVATION_RETRIEVAL_FROM_FUTURE")
+    if snapshot.snapshot_time > now:
+        reasons.append("MODEL_SNAPSHOT_FROM_FUTURE")
+    if snapshot.calibration_time > snapshot.snapshot_time:
+        reasons.append("CALIBRATION_AFTER_SNAPSHOT")
 
     if snapshot.tenant != state.tenant:
         reasons.append("MODEL_TENANT_MISMATCH")
@@ -534,6 +598,11 @@ def assess_model_validity(
             "MODEL_TENANT_MISMATCH",
             "MODEL_INPUT_DIGEST_MISMATCH",
             "OBSERVATION_TENANT_MISMATCH",
+            "OBSERVED_STATE_FROM_FUTURE",
+            "OBSERVATION_FROM_FUTURE",
+            "OBSERVATION_RETRIEVAL_FROM_FUTURE",
+            "MODEL_SNAPSHOT_FROM_FUTURE",
+            "CALIBRATION_AFTER_SNAPSHOT",
         )
     ):
         status = ModelValidityStatus.UNVALIDATED
@@ -620,6 +689,8 @@ def score_distribution(
     *,
     weights: UtilityWeights,
     constraints: PlanningConstraints,
+    utility_policy_version: str = UTILITY_POLICY_VERSION,
+    constraint_policy_version: str = CONSTRAINT_POLICY_VERSION,
 ) -> ScenarioScore:
     violations: list[str] = []
     outcomes = distribution.outcomes
@@ -666,6 +737,8 @@ def score_distribution(
         uncertainty_penalty=uncertainty_penalty,
         robustness_score=distribution.robustness_score,
         hard_constraint_violations=tuple(dict.fromkeys(violations)),
+        utility_policy_version=utility_policy_version,
+        constraint_policy_version=constraint_policy_version,
     )
 
 
@@ -675,6 +748,7 @@ def validate_approval(
     decision: PlanningDecision,
     approval: ApprovalReceipt | None,
     *,
+    snapshot: ModelSnapshot,
     current_state: ObservedState,
     executor_capabilities: Sequence[str],
     now: datetime,
@@ -689,6 +763,10 @@ def validate_approval(
         raise WorldModelPolicyError("PROPOSAL_NOT_RECOMMENDED")
     if simulation not in decision.simulation_results:
         raise WorldModelPolicyError("SIMULATION_NOT_IN_DECISION")
+    if simulation.score.hard_constraint_violations:
+        raise WorldModelPolicyError("SIMULATION_HARD_CONSTRAINT_VIOLATION")
+    if decision.model_validity.status is not ModelValidityStatus.VALID:
+        raise WorldModelPolicyError("DECISION_MODEL_INVALID")
     checks = {
         "PROPOSAL_DIGEST_MISMATCH": proposal.proposal_digest
         == canonical_digest(action_proposal_payload(proposal)),
@@ -696,6 +774,19 @@ def validate_approval(
         and simulation.proposal_digest == proposal.proposal_digest
         and simulation.snapshot_id == proposal.world_model_snapshot_id
         and simulation.observed_state_digest == proposal.observed_state_digest,
+        "MODEL_SNAPSHOT_ID_MISMATCH": snapshot.snapshot_id
+        == proposal.world_model_snapshot_id,
+        "MODEL_SNAPSHOT_DIGEST_MISMATCH": simulation.model_snapshot_digest
+        == model_snapshot_digest(snapshot),
+        "MODEL_VERSION_MISMATCH": simulation.model_version == snapshot.model_version,
+        "SCENARIO_GENERATION_VERSION_MISMATCH": simulation.scenario_generation_version
+        == SCENARIO_GENERATION_VERSION,
+        "UTILITY_POLICY_VERSION_MISMATCH": simulation.score.utility_policy_version
+        == decision.utility_policy_version
+        == UTILITY_POLICY_VERSION,
+        "CONSTRAINT_POLICY_VERSION_MISMATCH": simulation.score.constraint_policy_version
+        == decision.constraint_policy_version
+        == CONSTRAINT_POLICY_VERSION,
         "APPROVAL_STATUS_INVALID": approval.status is ApprovalStatus.VALID,
         "APPROVER_ROLE_DENIED": APPROVER_ROLE in approval.approver_roles,
         "APPROVAL_TENANT_MISMATCH": approval.tenant == proposal.tenant,
@@ -707,7 +798,9 @@ def validate_approval(
         == simulation.simulation_run_id,
         "APPROVAL_SNAPSHOT_MISMATCH": approval.world_model_snapshot_id
         == proposal.world_model_snapshot_id,
-        "APPROVAL_STATE_MISMATCH": approval.snapshot_digest
+        "APPROVAL_MODEL_DIGEST_MISMATCH": approval.model_snapshot_digest
+        == simulation.model_snapshot_digest,
+        "APPROVAL_STATE_MISMATCH": approval.observed_state_digest
         == proposal.observed_state_digest,
         "APPROVAL_POLICY_MISMATCH": approval.policy_version == POLICY_VERSION,
         "APPROVAL_NOT_YET_VALID": approval.issued_at <= now,
@@ -726,6 +819,10 @@ def validate_approval(
         raise WorldModelPolicyError("SIMULATION_STALE")
     if current_state.tenant != proposal.tenant:
         raise WorldModelPolicyError("EXECUTION_TENANT_MISMATCH")
+
+    current_validity = assess_model_validity(snapshot, current_state, now=now)
+    if current_validity.status is not ModelValidityStatus.VALID:
+        raise WorldModelPolicyError("MODEL_STATE_STALE")
     if proposal.action_type is ActionType.ROLLBACK_DEPLOYMENT:
         if current_state.deployment_version != proposal.parameters["from_deployment"]:
             raise WorldModelPolicyError("PRECONDITION_STALE")
@@ -736,7 +833,8 @@ def validate_approval(
         proposal_id=proposal.proposal_id,
         proposal_digest=proposal.proposal_digest,
         simulation_run_id=simulation.simulation_run_id,
-        snapshot_digest=current_digest,
+        model_snapshot_digest=simulation.model_snapshot_digest,
+        observed_state_digest=current_digest,
         action=proposal.action_type,
         target=proposal.target,
         parameters=proposal.parameters,
@@ -782,7 +880,7 @@ def calculate_calibration_metrics(
     relative = [item.prediction_error.relative_recovery_error for item in records]
     coverage = [
         item.interval_lower_minutes
-        <= item.prediction_error.absolute_recovery_error_minutes
+        <= item.observed_recovery_minutes
         <= item.interval_upper_minutes
         for item in records
     ]
@@ -837,6 +935,8 @@ def validate_model_update(
     ranking_accuracy: float,
     now: datetime,
 ) -> ValidationReport:
+    if update.candidate_model_version == update.current_model_version:
+        raise WorldModelPolicyError("MODEL_VERSION_NOT_ADVANCED")
     known_ids = {item.record_id for item in records}
     if not set(update.calibration_record_ids).issubset(known_ids):
         raise WorldModelPolicyError("CALIBRATION_LINEAGE_MISSING")

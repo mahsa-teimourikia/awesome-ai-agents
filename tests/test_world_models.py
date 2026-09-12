@@ -223,6 +223,42 @@ def test_stale_calibration_is_rejected():
     assert "MODEL_CALIBRATION_STALE" in result.reason_codes
 
 
+def test_future_observation_is_rejected_instead_of_treated_as_age_zero():
+    state = lab.observed_state()
+    future = state.observations[0].model_copy(
+        update={
+            "observed_at": lab.FIXED_TIME + timedelta(minutes=1),
+            "retrieved_at": lab.FIXED_TIME + timedelta(minutes=1),
+        }
+    )
+    state = state.model_copy(update={"observations": (future, *state.observations[1:])})
+    result = policy.assess_model_validity(
+        lab.model_snapshot(state), state, now=lab.FIXED_TIME
+    )
+    assert result.status is policy.ModelValidityStatus.UNVALIDATED
+    assert "OBSERVATION_FROM_FUTURE" in result.reason_codes
+
+
+def test_future_model_snapshot_is_rejected():
+    state = lab.observed_state()
+    snapshot = lab.model_snapshot(
+        state, snapshot_time=lab.FIXED_TIME + timedelta(minutes=1)
+    )
+    result = policy.assess_model_validity(snapshot, state, now=lab.FIXED_TIME)
+    assert result.status is policy.ModelValidityStatus.UNVALIDATED
+    assert "MODEL_SNAPSHOT_FROM_FUTURE" in result.reason_codes
+
+
+def test_calibration_after_snapshot_is_rejected():
+    state = lab.observed_state()
+    with pytest.raises(ValidationError, match="CALIBRATION_AFTER_SNAPSHOT"):
+        lab.model_snapshot(
+            state,
+            snapshot_time=lab.FIXED_TIME - timedelta(minutes=2),
+            calibration_time=lab.FIXED_TIME - timedelta(minutes=1),
+        )
+
+
 def test_unit_mismatch_makes_model_unvalidated():
     state = lab.observed_state()
     first = state.observations[0].model_copy(update={"unit": "milliseconds"})
@@ -269,9 +305,22 @@ def test_valid_plan_may_contain_approval_gated_actions():
             proposal,
             observed_state=state,
             snapshot=snapshot,
-            planning_capabilities=lab.PLANNING_CAPABILITIES,
+            allowed_proposal_actions=lab.ALLOWED_PROPOSAL_ACTIONS,
         )
     assert any(item.approval_required for item in proposals)
+
+
+def test_planner_may_propose_rollback_without_production_rollback_authority():
+    state = lab.observed_state()
+    snapshot = lab.model_snapshot(state)
+    rollback = lab.action_proposals(state, snapshot)[0]
+    assert rollback.required_capability == "production.rollback"
+    policy.validate_action_proposal(
+        rollback,
+        observed_state=state,
+        snapshot=snapshot,
+        allowed_proposal_actions=(policy.ActionType.ROLLBACK_DEPLOYMENT,),
+    )
 
 
 def test_consequential_action_cannot_disable_approval_gate():
@@ -295,7 +344,7 @@ def test_consequential_action_cannot_disable_approval_gate():
             proposal,
             observed_state=state,
             snapshot=snapshot,
-            planning_capabilities=lab.PLANNING_CAPABILITIES,
+            allowed_proposal_actions=lab.ALLOWED_PROPOSAL_ACTIONS,
         )
 
 
@@ -316,20 +365,46 @@ def test_action_schema_rejects_arbitrary_sql_or_shell_parameters():
             unsafe,
             observed_state=state,
             snapshot=snapshot,
-            planning_capabilities=lab.PLANNING_CAPABILITIES,
+            allowed_proposal_actions=lab.ALLOWED_PROPOSAL_ACTIONS,
         )
 
 
-def test_planning_capability_is_required_to_propose_action():
+def test_proposal_policy_is_separate_from_production_capability():
     state = lab.observed_state()
     snapshot = lab.model_snapshot(state)
     proposal = lab.action_proposals(state, snapshot)[0]
-    with pytest.raises(policy.WorldModelPolicyError, match="PLANNING_CAPABILITY_DENIED"):
+    # The planning gate reasons over action types, never production credentials.
+    with pytest.raises(policy.WorldModelPolicyError, match="PROPOSAL_ACTION_DENIED"):
         policy.validate_action_proposal(
             proposal,
             observed_state=state,
             snapshot=snapshot,
-            planning_capabilities=("telemetry.read",),
+            allowed_proposal_actions=(policy.ActionType.WAIT_AND_OBSERVE,),
+        )
+
+
+def test_action_cannot_claim_a_weaker_execution_capability():
+    state = lab.observed_state()
+    snapshot = lab.model_snapshot(state)
+    proposal = lab.action_proposals(state, snapshot)[0].model_copy(
+        update={"required_capability": "telemetry.read"}
+    )
+    proposal = proposal.model_copy(
+        update={
+            "proposal_digest": policy.canonical_digest(
+                policy.action_proposal_payload(proposal)
+            )
+        }
+    )
+    with pytest.raises(
+        policy.WorldModelPolicyError,
+        match="ACTION_CAPABILITY_BINDING_INVALID",
+    ):
+        policy.validate_action_proposal(
+            proposal,
+            observed_state=state,
+            snapshot=snapshot,
+            allowed_proposal_actions=lab.ALLOWED_PROPOSAL_ACTIONS,
         )
 
 
@@ -342,7 +417,7 @@ def test_stale_rollback_precondition_rejected_during_planning():
             proposal,
             observed_state=state,
             snapshot=snapshot,
-            planning_capabilities=lab.PLANNING_CAPABILITIES,
+            allowed_proposal_actions=lab.ALLOWED_PROPOSAL_ACTIONS,
         )
 
 
@@ -357,7 +432,7 @@ def test_tampered_proposal_digest_is_rejected():
             proposal,
             observed_state=state,
             snapshot=snapshot,
-            planning_capabilities=lab.PLANNING_CAPABILITIES,
+            allowed_proposal_actions=lab.ALLOWED_PROPOSAL_ACTIONS,
         )
 
 
@@ -377,6 +452,24 @@ def test_seed_offset_changes_simulated_trajectory():
     first = lab.simulate_proposal(proposal, snapshot, samples=40)
     second = lab.simulate_proposal(proposal, snapshot, samples=40, seed_offset=1)
     assert first.outcomes != second.outcomes
+
+
+def test_provider_latency_sensitivity_is_independent_of_traffic():
+    state = lab.observed_state()
+    snapshot = lab.model_snapshot(state)
+    proposal = lab.action_proposals(state, snapshot)[0]
+    baseline = lab.simulate_proposal(proposal, snapshot, samples=40)
+    provider_only = lab.simulate_proposal(
+        proposal,
+        snapshot,
+        samples=40,
+        traffic_multiplier=1.0,
+        provider_latency_multiplier=2.0,
+    )
+    scenario = provider_only.outcomes[0].scenario
+    assert scenario.traffic_multiplier == 1.0
+    assert scenario.provider_latency_multiplier == 2.0
+    assert scenario.simulation_run_id != baseline.outcomes[0].scenario.simulation_run_id
 
 
 def test_distribution_reports_real_quantiles_and_probabilities():
@@ -424,6 +517,15 @@ def test_default_planning_decision_is_ready_for_review_not_execution():
     assert decision.recommended_proposal_id == "proposal-rollback"
     assert proposal.approval_required is True
     assert "REVIEW_AND_APPROVAL_STILL_REQUIRED" in decision.reason_codes
+
+
+def test_utility_and_constraint_policy_versions_are_recorded():
+    _, _, decision, _, simulation = _planned()
+    assert decision.utility_policy_version == policy.UTILITY_POLICY_VERSION
+    assert decision.constraint_policy_version == policy.CONSTRAINT_POLICY_VERSION
+    assert simulation.score.utility_policy_version == decision.utility_policy_version
+    assert simulation.score.constraint_policy_version == decision.constraint_policy_version
+    assert simulation.scenario_generation_version == policy.SCENARIO_GENERATION_VERSION
 
 
 def test_database_rollback_is_hard_constraint_blocked():
@@ -483,7 +585,7 @@ def test_impossible_constraints_produce_no_feasible_action():
     assert decision.recommended_proposal_id is None
 
 
-def test_sensitivity_winner_change_produces_unstable_decision():
+def test_joint_stress_winner_change_produces_unstable_decision():
     state = lab.observed_state()
     snapshot = lab.model_snapshot(state)
     constraints = lab.planning_constraints().model_copy(
@@ -493,11 +595,11 @@ def test_sensitivity_winner_change_produces_unstable_decision():
         state,
         snapshot,
         samples=200,
-        sensitivity_multipliers=(1.0, 2.0),
+        joint_stress_multipliers=(1.0, 2.0),
         constraints=constraints,
     )
     assert decision.status is policy.PlanningStatus.DECISION_UNSTABLE
-    assert len(set(decision.sensitivity_winners)) > 1
+    assert len(set(decision.joint_stress_winners)) > 1
 
 
 def test_invalid_model_is_blocked_before_simulation():
@@ -509,32 +611,34 @@ def test_invalid_model_is_blocked_before_simulation():
 
 
 def test_execution_without_approval_is_blocked():
-    state, _, decision, proposal, simulation = _planned()
+    state, snapshot, decision, proposal, simulation = _planned()
     with pytest.raises(policy.WorldModelPolicyError, match="APPROVAL_REQUIRED"):
         lab.authorize_recommended_action(
-            state, decision, proposal, simulation, None
+            state, snapshot, decision, proposal, simulation, None
         )
 
 
 def test_valid_approval_may_create_execution_envelope():
-    state, _, decision, proposal, simulation = _planned()
+    state, snapshot, decision, proposal, simulation = _planned()
     approval = lab.approval_receipt(proposal, simulation)
     command = lab.authorize_recommended_action(
-        state, decision, proposal, simulation, approval
+        state, snapshot, decision, proposal, simulation, approval
     )
     assert command.approval_id == approval.approval_id
-    assert command.snapshot_digest == policy.observed_state_digest(state)
+    assert command.observed_state_digest == policy.observed_state_digest(state)
+    assert command.model_snapshot_digest == policy.model_snapshot_digest(snapshot)
     assert command.action is policy.ActionType.ROLLBACK_DEPLOYMENT
 
 
 def test_simulation_cannot_expand_execution_capabilities():
-    state, _, decision, proposal, simulation = _planned()
+    state, snapshot, decision, proposal, simulation = _planned()
     approval = lab.approval_receipt(proposal, simulation)
     with pytest.raises(
         policy.WorldModelPolicyError, match="EXECUTION_CAPABILITY_DENIED"
     ):
         lab.authorize_recommended_action(
             state,
+            snapshot,
             decision,
             proposal,
             simulation,
@@ -549,24 +653,25 @@ def test_simulation_cannot_expand_execution_capabilities():
         ({"tenant": "globex"}, "APPROVAL_TENANT_MISMATCH"),
         ({"proposal_digest": "0" * 64}, "APPROVAL_DIGEST_MISMATCH"),
         ({"simulation_run_id": "sim-other"}, "APPROVAL_SIMULATION_MISMATCH"),
+        ({"model_snapshot_digest": "0" * 64}, "APPROVAL_MODEL_DIGEST_MISMATCH"),
         ({"approver_roles": ("incident.viewer",)}, "APPROVER_ROLE_DENIED"),
         ({"status": policy.ApprovalStatus.REVOKED}, "APPROVAL_STATUS_INVALID"),
         ({"policy_version": "obsolete-policy"}, "APPROVAL_POLICY_MISMATCH"),
     ],
 )
 def test_approval_binding_failures_are_rejected(approval_updates, reason):
-    state, _, decision, proposal, simulation = _planned()
+    state, snapshot, decision, proposal, simulation = _planned()
     approval = lab.approval_receipt(proposal, simulation).model_copy(
         update=approval_updates
     )
     with pytest.raises(policy.WorldModelPolicyError, match=reason):
         lab.authorize_recommended_action(
-            state, decision, proposal, simulation, approval
+            state, snapshot, decision, proposal, simulation, approval
         )
 
 
 def test_expired_approval_is_rejected():
-    state, _, decision, proposal, simulation = _planned()
+    state, snapshot, decision, proposal, simulation = _planned()
     approval = lab.approval_receipt(
         proposal,
         simulation,
@@ -575,7 +680,7 @@ def test_expired_approval_is_rejected():
     )
     with pytest.raises(policy.WorldModelPolicyError, match="APPROVAL_EXPIRED"):
         lab.authorize_recommended_action(
-            state, decision, proposal, simulation, approval
+            state, snapshot, decision, proposal, simulation, approval
         )
 
 
@@ -588,34 +693,123 @@ def test_approval_receipt_rejects_non_positive_time_window():
 
 
 def test_execution_rejects_simulation_not_contained_in_decision():
-    state, _, decision, proposal, simulation = _planned()
+    state, snapshot, decision, proposal, simulation = _planned()
     fabricated = simulation.model_copy(update={"simulation_run_id": "sim-fabricated"})
     approval = lab.approval_receipt(proposal, fabricated)
     with pytest.raises(
         policy.WorldModelPolicyError, match="SIMULATION_NOT_IN_DECISION"
     ):
         lab.authorize_recommended_action(
-            state, decision, proposal, fabricated, approval
+            state, snapshot, decision, proposal, fabricated, approval
         )
 
 
 def test_material_state_change_invalidates_approved_simulation():
-    state, _, decision, proposal, simulation = _planned()
+    state, snapshot, decision, proposal, simulation = _planned()
     approval = lab.approval_receipt(proposal, simulation)
     changed_state = lab.observed_state(deployment_version="deploy-1843")
     with pytest.raises(policy.WorldModelPolicyError, match="SIMULATION_STALE"):
         lab.authorize_recommended_action(
-            changed_state, decision, proposal, simulation, approval
+            changed_state, snapshot, decision, proposal, simulation, approval
+        )
+
+
+def test_unexpired_approval_cannot_authorize_stale_sensor_state():
+    state, snapshot, decision, proposal, simulation = _planned()
+    approval = lab.approval_receipt(proposal, simulation)
+    with pytest.raises(policy.WorldModelPolicyError, match="MODEL_STATE_STALE"):
+        lab.authorize_recommended_action(
+            state,
+            snapshot,
+            decision,
+            proposal,
+            simulation,
+            approval,
+            now=lab.FIXED_TIME + timedelta(minutes=5),
+        )
+
+
+def test_fabricated_ready_decision_cannot_bypass_hard_constraints():
+    state = lab.observed_state()
+    snapshot = lab.model_snapshot(state)
+    original = lab.run_planning_cycle(state, snapshot)
+    simulation = next(
+        item
+        for item in original.simulation_results
+        if item.score.action_type is policy.ActionType.DATABASE_ROLLBACK
+    )
+    proposal = next(
+        item
+        for item in lab.action_proposals(state, snapshot)
+        if item.proposal_id == simulation.proposal_id
+    )
+    fabricated = original.model_copy(
+        update={
+            "status": policy.PlanningStatus.READY_FOR_REVIEW,
+            "recommended_proposal_id": proposal.proposal_id,
+        }
+    )
+    approval = lab.approval_receipt(proposal, simulation)
+    with pytest.raises(
+        policy.WorldModelPolicyError,
+        match="SIMULATION_HARD_CONSTRAINT_VIOLATION",
+    ):
+        lab.authorize_recommended_action(
+            state,
+            snapshot,
+            fabricated,
+            proposal,
+            simulation,
+            approval,
+            executor_capabilities=("database.restore",),
+        )
+
+
+def test_execution_rejects_non_valid_planning_model_status():
+    state, snapshot, decision, proposal, simulation = _planned()
+    invalid_validity = decision.model_validity.model_copy(
+        update={
+            "status": policy.ModelValidityStatus.STALE,
+            "reason_codes": ("SENSOR_STATE_STALE",),
+        }
+    )
+    fabricated = decision.model_copy(update={"model_validity": invalid_validity})
+    approval = lab.approval_receipt(proposal, simulation)
+    with pytest.raises(policy.WorldModelPolicyError, match="DECISION_MODEL_INVALID"):
+        lab.authorize_recommended_action(
+            state,
+            snapshot,
+            fabricated,
+            proposal,
+            simulation,
+            approval,
+        )
+
+
+def test_model_snapshot_digest_mismatch_is_rejected():
+    state, snapshot, decision, proposal, simulation = _planned()
+    approval = lab.approval_receipt(proposal, simulation)
+    altered_snapshot = snapshot.model_copy(update={"random_seed": 999})
+    with pytest.raises(
+        policy.WorldModelPolicyError, match="MODEL_SNAPSHOT_DIGEST_MISMATCH"
+    ):
+        lab.authorize_recommended_action(
+            state,
+            altered_snapshot,
+            decision,
+            proposal,
+            simulation,
+            approval,
         )
 
 
 def test_text_token_is_not_an_approval_receipt():
-    state, _, decision, proposal, simulation = _planned()
+    state, snapshot, decision, proposal, simulation = _planned()
     with pytest.raises(ValidationError):
         policy.ApprovalReceipt.model_validate({"text": "APPROVED"})
     with pytest.raises(policy.WorldModelPolicyError, match="APPROVAL_REQUIRED"):
         lab.authorize_recommended_action(
-            state, decision, proposal, simulation, None
+            state, snapshot, decision, proposal, simulation, None
         )
 
 
@@ -627,7 +821,8 @@ def test_small_relative_latency_error_is_not_automatically_material():
         proposal_id=proposal.proposal_id,
         proposal_digest=proposal.proposal_digest,
         simulation_run_id=simulation.simulation_run_id,
-        snapshot_digest=proposal.observed_state_digest,
+        model_snapshot_digest=simulation.model_snapshot_digest,
+        observed_state_digest=proposal.observed_state_digest,
         action=proposal.action_type,
         target=proposal.target,
         parameters=proposal.parameters,
@@ -656,7 +851,8 @@ def test_large_latency_error_crossing_slo_is_material():
         proposal_id=proposal.proposal_id,
         proposal_digest=proposal.proposal_digest,
         simulation_run_id=simulation.simulation_run_id,
-        snapshot_digest=proposal.observed_state_digest,
+        model_snapshot_digest=simulation.model_snapshot_digest,
+        observed_state_digest=proposal.observed_state_digest,
         action=proposal.action_type,
         target=proposal.target,
         parameters=proposal.parameters,
@@ -684,6 +880,26 @@ def test_calibration_metrics_include_mae_rmse_coverage_and_brier():
     assert metrics.rmse_minutes > metrics.mae_minutes
     assert metrics.interval_coverage == 1
     assert 0 <= metrics.brier_score <= 1
+
+
+def test_prediction_interval_coverage_uses_observed_value_not_absolute_error():
+    record = lab.shadow_calibration_records()[0]
+    assert record.predicted_recovery_minutes == 10
+    assert record.observed_recovery_minutes == 12
+    assert record.prediction_error.absolute_recovery_error_minutes == 2
+    assert not (
+        record.interval_lower_minutes
+        <= record.prediction_error.absolute_recovery_error_minutes
+        <= record.interval_upper_minutes
+    )
+    assert policy.calculate_calibration_metrics((record,)).interval_coverage == 1
+
+
+def test_calibration_record_rejects_inconsistent_prediction_error():
+    values = lab.shadow_calibration_records()[0].model_dump()
+    values["observed_recovery_minutes"] = 20
+    with pytest.raises(ValidationError, match="CALIBRATION_ERROR_MISMATCH"):
+        policy.CalibrationRecord.model_validate(values)
 
 
 def test_well_calibrated_shadow_fixture_has_no_drift_signal():
@@ -726,6 +942,26 @@ def test_model_update_requires_calibration_lineage():
         policy.validate_model_update(
             update,
             lab.shadow_calibration_records(),
+            constraint_violation_miss_rate=0,
+            ranking_accuracy=0.9,
+            now=lab.FIXED_TIME,
+        )
+
+
+def test_model_update_rejects_same_version_candidate():
+    records = lab.shadow_calibration_records()
+    update = policy.ModelUpdateProposal(
+        update_id="update-v12-noop",
+        current_model_version="world-model-v12",
+        candidate_model_version="world-model-v12",
+        calibration_record_ids=tuple(item.record_id for item in records),
+        proposed_by="calibration-pipeline",
+        created_at=lab.FIXED_TIME,
+    )
+    with pytest.raises(policy.WorldModelPolicyError, match="MODEL_VERSION_NOT_ADVANCED"):
+        policy.validate_model_update(
+            update,
+            records,
             constraint_violation_miss_rate=0,
             ranking_accuracy=0.9,
             now=lab.FIXED_TIME,

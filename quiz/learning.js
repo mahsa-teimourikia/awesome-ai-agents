@@ -278,7 +278,7 @@ export const learningPath = [
   {
     "id": "a7",
     "title": "World models environment modeling",
-    "description": "Fallible world models, uncertainty-aware counterfactual planning, sim-to-real validation, and independent authorization controls.",
+    "description": "Fallible world models, uncertainty-aware scenario and intervention planning, sim-to-real validation, and independent authorization controls.",
     "material": "../curriculum/advanced/07-world-models-environment-modeling/README.md",
     "notebook": "../curriculum/advanced/07-world-models-environment-modeling/07_world_models.ipynb",
     "category": "Advanced - World models environment modeling",
