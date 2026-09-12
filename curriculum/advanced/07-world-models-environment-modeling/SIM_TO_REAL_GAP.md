@@ -1,15 +1,34 @@
-# Deep Dive: The Sim-to-Real Gap
+# Deep Dive: Sim-to-Real Gap, Calibration, and Drift
 
-If World Models are so powerful, why doesn't every agent use them?
-Because simulations lie. This is known in robotics as the **Sim-to-Real Gap**.
+A model can predict success while the real system fails because its state, structure, parameters, or disturbances differ from production. This is the sim-to-real gap.
 
-## Hallucinated Physics
-A Digital Twin is only as good as its underlying assumptions. 
-If you build a simulation of your microservice architecture, and you hardcode the assumption that `Service_A` always responds to `Service_B` in 10 milliseconds, your Twin is flawed.
+## Validate before simulation
 
-If the agent tests a plan in the Twin, the Twin will say: *"Success! The API calls completed in 20ms."*
-The agent executes the plan in Production. In reality, the network is congested, `Service_A` takes 5000ms to respond, the connection times out, and the database locks up.
+The lab does not compress applicability into a confidence score. `assess_model_validity()` checks:
 
-## Mitigating the Gap
-1. **Calibrated Sensors:** The Twin must be continuously updated with live telemetry data. If latency spikes in prod, the Twin must update its internal latency variables.
-2. **Confidence Scores:** The agent must be aware of its own uncertainty. If the agent knows the Twin hasn't synced with prod in 24 hours, it should lower its confidence score and request human approval before executing the winning simulation.
+- model, snapshot, and sensor age, including impossible future timestamps;
+- input-state digest and tenant binding;
+- required variables and units;
+- sensor quality (`GOOD`, `DELAYED`, `MISSING`, `NOISY`, `UNTRUSTED`); and
+- each variable's validated range.
+
+It returns `VALID`, `DEGRADED`, `STALE`, `OUT_OF_DISTRIBUTION`, or `UNVALIDATED` with explicit reasons. Black Friday traffic outside the calibrated range is `MODEL_OUT_OF_DOMAIN`, not “lower confidence and continue.”
+
+## Measure material error
+
+Percentage error alone is misleading. A 1 ms prediction followed by 2 ms is 100% relative error but may be operationally irrelevant. A 10 ms prediction followed by 4,200 ms has large absolute error and can cross an SLO.
+
+Track absolute error, relative error, SLO impact, interval coverage, decision sensitivity, and whether the recommended ranking would change. Prediction-interval coverage measures whether the observed outcome fell inside the predicted interval; it does not compare interval bounds with absolute error. For event predictions, track Brier score or another proper scoring rule.
+
+## Calibrate without silent self-modification
+
+After independently authorized execution, trusted observations produce `ObservedOutcome`. The application stores prediction error and calibration records. Candidate models run in shadow mode and backtest against historical scenarios.
+
+```text
+prediction -> observed outcome -> error -> update proposal
+-> backtest -> validation report -> staged promotion or rejection
+```
+
+The agent does not silently rewrite the active model, and an untrusted or broken sensor cannot become calibration truth. Versions remain immutable so decisions can be reproduced and rolled back. In this deterministic fixture, ranking accuracy is supplied by a separate backtest rather than derived from `compare_prediction()`.
+
+Predictive fit does not by itself establish causal counterfactual validity. Comparing interventions is justified only to the extent that the transition model and its assumptions support those interventions.

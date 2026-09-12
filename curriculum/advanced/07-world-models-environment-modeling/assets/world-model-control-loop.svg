@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1000" viewBox="0 0 1800 1000" role="img" aria-labelledby="title description">
+<title id="title">World-model decision support with independent execution control</title>
+<desc id="description">A world-model workflow from observed state through validity, simulation, predicted distributions, constraints, and a planning decision; a separate authority boundary validates approval and fresh state before the external execution control plane; observed outcomes feed calibration and model validation.</desc>
+<defs>
+<filter id="shadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#16324F" flood-opacity="0.10"/></filter>
+<marker id="arrow-primary" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#2F6BFF"/></marker>
+<marker id="arrow-secondary" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#52606D"/></marker>
+</defs>
+<rect width="100%" height="100%" fill="#F7F9FC"/>
+<text x="60" y="66" font-family="Inter, Arial, sans-serif" font-size="31" font-weight="700" fill="#16324F">World-model decision support with independent execution control</text>
+<text x="60" y="105" font-family="Inter, Arial, sans-serif" font-size="20" fill="#52606D">Simulation supports a proposal. It never proves safety or grants execution authority.</text>
+<rect x="60" y="150" width="1270" height="500" rx="18" fill="#FFFFFF" stroke="#D7DEE8" stroke-width="2"/>
+<text x="84" y="188" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="700" fill="#16324F">Decision support — prediction is not authority</text>
+<rect x="1370" y="150" width="370" height="780" rx="18" fill="#FFF9F0" stroke="#F59E42" stroke-width="2"/>
+<text x="1394" y="188" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="700" fill="#16324F">Authority boundary</text>
+<rect x="60" y="700" width="1270" height="230" rx="18" fill="#F3FAFA" stroke="#16A3A5" stroke-width="2"/>
+<text x="84" y="738" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="700" fill="#16324F">Independent observation, calibration, and promotion</text>
+<polyline points="300,325 360,325" fill="none" stroke="#2F6BFF" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-primary)"/>
+<polyline points="560,325 620,325" fill="none" stroke="#2F6BFF" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-primary)"/>
+<rect x="584.0" y="296" width="72" height="24" rx="7" fill="#F7F9FC" stroke="#D7DEE8"/>
+<text x="620" y="313" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="600" fill="#52606D">VALID</text>
+<polyline points="460,380 460,490" fill="none" stroke="#52606D" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-secondary)" stroke-dasharray="8 7"/>
+<rect x="409.5" y="461" width="101" height="24" rx="7" fill="#F7F9FC" stroke="#D7DEE8"/>
+<text x="460" y="478" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="600" fill="#52606D">not valid</text>
+<polyline points="820,325 880,325" fill="none" stroke="#2F6BFF" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-primary)"/>
+<polyline points="1080,325 1130,325" fill="none" stroke="#2F6BFF" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-primary)"/>
+<polyline points="1215,380 1215,430 1135,430 1135,490" fill="none" stroke="#2F6BFF" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-primary)"/>
+<polyline points="1250,540 1345,540 1345,315 1410,315" fill="none" stroke="#2F6BFF" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-primary)"/>
+<rect x="1272.0" y="286" width="146" height="24" rx="7" fill="#F7F9FC" stroke="#D7DEE8"/>
+<text x="1345" y="303" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="600" fill="#52606D">review request</text>
+<polyline points="1555,370 1555,450" fill="none" stroke="#2F6BFF" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-primary)"/>
+<rect x="1468.5" y="421" width="173" height="24" rx="7" fill="#F7F9FC" stroke="#D7DEE8"/>
+<text x="1555" y="438" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="600" fill="#52606D">validated receipt</text>
+<polyline points="1555,560 1555,640" fill="none" stroke="#2F6BFF" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-primary)"/>
+<rect x="1459.5" y="611" width="191" height="24" rx="7" fill="#F7F9FC" stroke="#D7DEE8"/>
+<text x="1555" y="628" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="600" fill="#52606D">authorized envelope</text>
+<polyline points="1555,750 1555,825 1280,825" fill="none" stroke="#52606D" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-secondary)" stroke-dasharray="8 7"/>
+<rect x="1450.5" y="796" width="209" height="24" rx="7" fill="#F7F9FC" stroke="#D7DEE8"/>
+<text x="1555" y="813" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="14" font-weight="600" fill="#52606D">observe independently</text>
+<polyline points="1040,825 970,825" fill="none" stroke="#52606D" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-secondary)" stroke-dasharray="8 7"/>
+<polyline points="730,825 660,825" fill="none" stroke="#52606D" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-secondary)" stroke-dasharray="8 7"/>
+<polyline points="420,825 350,825" fill="none" stroke="#52606D" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-secondary)" stroke-dasharray="8 7"/>
+<rect x="100" y="270" width="200" height="110" rx="14" fill="#E5F7F6" stroke="#16A3A5" stroke-width="2.5" filter="url(#shadow)"/>
+<text x="200.0" y="307" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="700" fill="#16324F">ObservedState</text>
+<text x="200.0" y="340" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="13" fill="#52606D">provenance · units ·</text>
+<text x="200.0" y="358" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="13" fill="#52606D">quality</text>
+<rect x="360" y="270" width="200" height="110" rx="14" fill="#EAF1FF" stroke="#2F6BFF" stroke-width="2.5" filter="url(#shadow)"/>
+<text x="460.0" y="307" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="700" fill="#16324F">Model validity</text>
+<text x="460.0" y="340" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="13" fill="#52606D">fresh · complete ·</text>
+<text x="460.0" y="358" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="13" fill="#52606D">in-domain</text>
+<rect x="620" y="270" width="200" height="110" rx="14" fill="#F0EEFF" stroke="#7667E8" stroke-width="2.5" filter="url(#shadow)"/>
+<text x="720.0" y="307" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="700" fill="#16324F">Scenario simulator</text>
+<text x="720.0" y="349" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="13" fill="#52606D">seeded Monte Carlo</text>
+<rect x="880" y="270" width="200" height="110" rx="14" fill="#F0EEFF" stroke="#7667E8" stroke-width="2.5" filter="url(#shadow)"/>
+<text x="980.0" y="307" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="700" fill="#16324F">PredictedState</text>
+<text x="980.0" y="349" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="13" fill="#52606D">outcome distributions</text>
+<rect x="1130" y="270" width="170" height="110" rx="14" fill="#EAF1FF" stroke="#2F6BFF" stroke-width="2.5" filter="url(#shadow)"/>
+<text x="1215.0" y="307" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="700" fill="#16324F">Constraints + utility</text>
+<text x="1215.0" y="349" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="13" fill="#52606D">blast radius · robustness</text>
+<rect x="350" y="490" width="220" height="100" rx="14" fill="#FFFFFF" stroke="#52606D" stroke-width="2.5" filter="url(#shadow)"/>
+<text x="460.0" y="517" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="700" fill="#16324F">Stop / refresh</text>
+<text x="460.0" y="539" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="700" fill="#16324F">evidence</text>
+<text x="460.0" y="550" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="13" fill="#52606D">stale · OOD ·</text>
+<text x="460.0" y="568" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="13" fill="#52606D">unvalidated</text>
+<rect x="1020" y="490" width="230" height="100" rx="14" fill="#FFF1DF" stroke="#F59E42" stroke-width="2.5" filter="url(#shadow)"/>
+<text x="1135.0" y="527" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="700" fill="#16324F">PlanningDecision</text>
+<text x="1135.0" y="559" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="13" fill="#52606D">proposal for review</text>
+<rect x="1410" y="260" width="290" height="110" rx="14" fill="#FFF1DF" stroke="#F59E42" stroke-width="2.5" filter="url(#shadow)"/>
+<text x="1555.0" y="297" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="700" fill="#16324F">Bound ApprovalReceipt</text>
+<text x="1555.0" y="330" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="13" fill="#52606D">identity · role ·</text>
+<text x="1555.0" y="348" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="13" fill="#52606D">expiry</text>
+<rect x="1410" y="450" width="290" height="110" rx="14" fill="#EAF1FF" stroke="#2F6BFF" stroke-width="2.5" filter="url(#shadow)"/>
+<text x="1555.0" y="487" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="700" fill="#16324F">Fresh-state + capability</text>
+<text x="1555.0" y="520" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="13" fill="#52606D">same digest · least</text>
+<text x="1555.0" y="538" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="13" fill="#52606D">privilege</text>
+<rect x="1410" y="640" width="290" height="110" rx="14" fill="#FFFFFF" stroke="#52606D" stroke-width="2.5" filter="url(#shadow)"/>
+<text x="1555.0" y="677" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="700" fill="#16324F">External execution plane</text>
+<text x="1555.0" y="719" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="13" fill="#52606D">idempotency · reconciliation</text>
+<rect x="1040" y="775" width="240" height="100" rx="14" fill="#E5F7F6" stroke="#16A3A5" stroke-width="2.5" filter="url(#shadow)"/>
+<text x="1160.0" y="812" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="700" fill="#16324F">ObservedOutcome</text>
+<text x="1160.0" y="844" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="13" fill="#52606D">trusted production sensors</text>
+<rect x="730" y="775" width="240" height="100" rx="14" fill="#E5F7F6" stroke="#16A3A5" stroke-width="2.5" filter="url(#shadow)"/>
+<text x="850.0" y="812" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="700" fill="#16324F">PredictionError</text>
+<text x="850.0" y="844" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="13" fill="#52606D">SLO impact · calibration</text>
+<rect x="420" y="775" width="240" height="100" rx="14" fill="#EAF1FF" stroke="#2F6BFF" stroke-width="2.5" filter="url(#shadow)"/>
+<text x="540.0" y="812" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="700" fill="#16324F">Shadow + backtest</text>
+<text x="540.0" y="835" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="13" fill="#52606D">miss rate · ranking</text>
+<text x="540.0" y="853" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="13" fill="#52606D">· coverage</text>
+<rect x="110" y="775" width="240" height="100" rx="14" fill="#F0EEFF" stroke="#7667E8" stroke-width="2.5" filter="url(#shadow)"/>
+<text x="230.0" y="812" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="700" fill="#16324F">Versioned model registry</text>
+<text x="230.0" y="835" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="13" fill="#52606D">validate · promote ·</text>
+<text x="230.0" y="853" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="13" fill="#52606D">roll back</text>
+<rect x="60" y="955" width="1680" height="1" fill="#D7DEE8"/>
+<text x="60" y="982" font-family="Inter, Arial, sans-serif" font-size="14" fill="#52606D">Northstar credential-free teaching fixture · application-owned policy boundaries · zero production side effects</text>
+</svg>
