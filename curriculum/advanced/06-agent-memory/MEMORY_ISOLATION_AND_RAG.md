@@ -26,6 +26,13 @@ not be visible to another user in the same tenant. Scope can include
 `USER_PRIVATE`, `TEAM_SHARED`, `TENANT_SHARED`, `SERVICE`, or `GLOBAL_PUBLIC`, and
 viewer roles determine which scopes and sensitivity levels are usable.
 
+Write-time policy is equally strict. A key schema defines its minimum
+sensitivity and exact allowed/default audience. A model proposal marked
+`INTERNAL` cannot downgrade a `SENSITIVE` billing address, and a private account
+fact cannot be widened to `TENANT_SHARED` merely because the writer context can
+write both scopes. The repository repeats these checks as a defense-in-depth
+trusted-writer boundary.
+
 ## Retrieval quality and budgets
 
 Rank authorized, active candidates using task relevance, verification, freshness,

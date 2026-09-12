@@ -43,9 +43,11 @@ from policy import (
     build_memory_record,
     build_source,
     calculate_classification_metrics,
+    candidate_digest,
     canonical_digest,
     decide_memory_write,
     default_schema_registry,
+    retention_expiry,
 )
 from pydantic import BaseModel, ConfigDict
 
@@ -122,6 +124,14 @@ def fixture_sources(
             source_version="accounts-api:v7:etag-18",
             artifact_handle="artifact://accounts/user-123/etag-18",
             safe_excerpt="Account tier Basic; billing address New York.",
+        ),
+        "src-iam": build_source(
+            **common,
+            source_id="src-iam",
+            source_type=SourceType.IAM_API,
+            source_version="iam-api:v4:etag-91",
+            artifact_handle="artifact://iam/user-123/etag-91",
+            safe_excerpt="Current role assignment from IAM.",
         ),
         "src-postmortem": build_source(
             **common,
@@ -211,16 +221,35 @@ def verification_receipt(
     verifier_type: SourceType = SourceType.ACCOUNT_API,
     result: VerificationStatus = VerificationStatus.VERIFIED,
     tenant_id: str = TENANT_ID,
+    sources: Mapping[str, MemorySource] | None = None,
 ) -> VerificationReceipt:
+    available_sources = sources or fixture_sources()
+    source_id = {
+        SourceType.ACCOUNT_API: "src-account",
+        SourceType.HUMAN_REVIEW: "src-review",
+        SourceType.IAM_API: "src-iam",
+    }[verifier_type]
+    verified_source = available_sources[source_id]
+    expires_at = (
+        FIXED_TIME + timedelta(minutes=5)
+        if verifier_type in {SourceType.ACCOUNT_API, SourceType.IAM_API}
+        else None
+    )
     return VerificationReceipt(
         verification_id=f"verify-{item.candidate_id}",
         memory_candidate_id=item.candidate_id,
+        candidate_digest=candidate_digest(item),
+        verified_key=item.key,
+        verified_value_digest=canonical_digest(item.value),
         verifier_type=verifier_type,
         verifier_id="account-verifier-service",
         tenant_id=tenant_id,
         result=result,
         verified_at=FIXED_TIME,
-        source_reference="accounts-api:v7:etag-18",
+        expires_at=expires_at,
+        verified_source_id=verified_source.source_id,
+        source_reference=verified_source.artifact_handle,
+        source_version=verified_source.source_version,
         policy_version=POLICY_VERSION,
     )
 
@@ -323,6 +352,37 @@ class SQLiteMemoryRepository:
             (record.tenant_id, record.subject_id, record.key),
         ).fetchone()
 
+    @staticmethod
+    def _validate_admitted_record(
+        record: MemoryRecord, schema_registry: MemorySchemaRegistry
+    ) -> None:
+        schema = schema_registry.schemas.get(record.key)
+        if schema is None:
+            raise MemoryPolicyError("MEMORY_SCHEMA_UNKNOWN")
+        if record.policy_version != POLICY_VERSION:
+            raise MemoryPolicyError("MEMORY_ADMISSION_POLICY_STALE")
+        if record.memory_type is not schema.memory_type:
+            raise MemoryPolicyError("MEMORY_TYPE_MISMATCH")
+        if record.retention_class is not schema.retention_class:
+            raise MemoryPolicyError("MEMORY_RETENTION_MISMATCH")
+        if record.scope is not schema.default_scope:
+            raise MemoryPolicyError("MEMORY_SCOPE_MISMATCH")
+        if record.sensitivity < schema.sensitivity:
+            raise MemoryPolicyError("MEMORY_SENSITIVITY_DOWNGRADE")
+        if record.source_type not in schema.authority_order:
+            raise MemoryPolicyError("MEMORY_SOURCE_NOT_ALLOWED")
+        mandatory_expiry = retention_expiry(
+            schema.retention_class, created_at=record.created_at
+        )
+        if mandatory_expiry is not None and (
+            record.expires_at is None or record.expires_at > mandatory_expiry
+        ):
+            raise MemoryPolicyError("MEMORY_RETENTION_BOUND_MISSING")
+        if record.content_digest != canonical_digest(record.value):
+            raise MemoryPolicyError("MEMORY_CONTENT_DIGEST_MISMATCH")
+        if record.status is not MemoryStatus.ACTIVE:
+            raise MemoryPolicyError("MEMORY_WRITER_REQUIRES_ACTIVE_RECORD")
+
     def write(
         self,
         record: MemoryRecord,
@@ -332,6 +392,7 @@ class SQLiteMemoryRepository:
         actor_id: str = "memory-writer",
         now: datetime = FIXED_TIME,
     ) -> WriteResult:
+        self._validate_admitted_record(record, schema_registry)
         with self._connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
             row = self._active_row(connection, record)
@@ -364,10 +425,56 @@ class SQLiteMemoryRepository:
 
             active = self._record(row)
             if active.content_digest == record.content_digest:
+                policy = schema_registry.schemas[record.key]
                 merged_sources = tuple(
                     sorted(set(active.source_ids) | set(record.source_ids))
                 )
-                merged = active.model_copy(update={"source_ids": merged_sources})
+                strongest_source = min(
+                    (active.source_type, record.source_type),
+                    key=policy.authority_order.index,
+                )
+                verification_rank = {
+                    VerificationStatus.FAILED: 0,
+                    VerificationStatus.DISPUTED: 0,
+                    VerificationStatus.UNVERIFIED: 1,
+                    VerificationStatus.INFERRED: 2,
+                    VerificationStatus.USER_STATED: 3,
+                    VerificationStatus.VERIFIED: 4,
+                }
+                strongest_verification = max(
+                    (active.verification_status, record.verification_status),
+                    key=verification_rank.__getitem__,
+                )
+                incoming_is_stronger = (
+                    policy.authority_order.index(record.source_type),
+                    -verification_rank[record.verification_status],
+                ) < (
+                    policy.authority_order.index(active.source_type),
+                    -verification_rank[active.verification_status],
+                )
+                merged = active.model_copy(
+                    update={
+                        "source_ids": merged_sources,
+                        "source_type": strongest_source,
+                        "verification_status": strongest_verification,
+                        "sensitivity": max(active.sensitivity, record.sensitivity),
+                        "candidate_id": (
+                            record.candidate_id
+                            if incoming_is_stronger
+                            else active.candidate_id
+                        ),
+                        "candidate_digest": (
+                            record.candidate_digest
+                            if incoming_is_stronger
+                            else active.candidate_digest
+                        ),
+                        "admission_decision_digest": (
+                            record.admission_decision_digest
+                            if incoming_is_stronger
+                            else active.admission_decision_digest
+                        ),
+                    }
+                )
                 connection.execute(
                     "UPDATE memories SET record_json = ? WHERE memory_id = ?",
                     (merged.model_dump_json(), active.memory_id),
@@ -839,6 +946,7 @@ def admit_and_build_record(
     *,
     sources: Mapping[str, MemorySource],
     verification: VerificationReceipt | None = None,
+    registry: MemorySchemaRegistry = SCHEMA_REGISTRY,
     consolidation_job_id: str | None = None,
     now: datetime = FIXED_TIME,
 ) -> tuple[MemoryRecord, Any]:
@@ -846,7 +954,7 @@ def admit_and_build_record(
         context,
         item,
         sources=sources,
-        registry=SCHEMA_REGISTRY,
+        registry=registry,
         verification=verification,
         now=now,
     )
@@ -855,7 +963,7 @@ def admit_and_build_record(
         item,
         decision,
         sources=sources,
-        registry=SCHEMA_REGISTRY,
+        registry=registry,
         verification=verification,
         now=now,
         consolidation_job_id=consolidation_job_id,
@@ -979,6 +1087,30 @@ class EvaluationRow(BaseModel):
     privacy_or_safety_violations: int
 
 
+class WriteEvaluationCase(BaseModel):
+    """Label and observed result for one deterministic admission fixture."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    case_id: str
+    expected_write: bool
+    observed_write: bool
+    unsafe_attempt: bool = False
+    duplicate_attempt: bool = False
+    duplicate_active_created: bool = False
+    correction: bool = False
+
+
+class RetrievalEvaluationCase(BaseModel):
+    """Label and observed result for one deterministic retrieval fixture."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    case_id: str
+    expected_retrieval: bool
+    observed_retrieval: bool
+    forbidden_slice: str | None = None
+    context_tokens: int = 0
+
+
 def same_task_baseline() -> tuple[EvaluationRow, ...]:
     """Deterministic fixture labels, not a live model or product benchmark."""
     return (
@@ -1009,31 +1141,150 @@ def same_task_baseline() -> tuple[EvaluationRow, ...]:
     )
 
 
-def evaluation_metrics() -> MemoryMetrics:
-    write_expected = (True, False, False, True, False, False, False, False)
-    write_predicted = (True, False, False, True, False, False, False, False)
+def memory_evaluation_cases() -> tuple[
+    tuple[WriteEvaluationCase, ...], tuple[RetrievalEvaluationCase, ...]
+]:
+    """Return labelled fixture observations, not production-quality claims."""
+    writes = (
+        WriteEvaluationCase(
+            case_id="explicit-preference",
+            expected_write=True,
+            observed_write=True,
+        ),
+        WriteEvaluationCase(
+            case_id="temporary-request",
+            expected_write=False,
+            observed_write=False,
+        ),
+        WriteEvaluationCase(
+            case_id="authority-claim",
+            expected_write=False,
+            observed_write=False,
+            unsafe_attempt=True,
+        ),
+        WriteEvaluationCase(
+            case_id="verified-account-tier",
+            expected_write=True,
+            observed_write=True,
+        ),
+        WriteEvaluationCase(
+            case_id="quoted-third-party",
+            expected_write=False,
+            observed_write=False,
+        ),
+        WriteEvaluationCase(
+            case_id="indirect-poison",
+            expected_write=False,
+            observed_write=False,
+            unsafe_attempt=True,
+        ),
+        WriteEvaluationCase(
+            case_id="uncertain-inference",
+            expected_write=False,
+            observed_write=False,
+        ),
+        WriteEvaluationCase(
+            case_id="same-value-replay",
+            expected_write=True,
+            observed_write=True,
+            duplicate_attempt=True,
+            duplicate_active_created=False,
+        ),
+        WriteEvaluationCase(
+            case_id="user-correction",
+            expected_write=True,
+            observed_write=True,
+            correction=True,
+        ),
+    )
+    retrievals = (
+        RetrievalEvaluationCase(
+            case_id="active-preference",
+            expected_retrieval=True,
+            observed_retrieval=True,
+            context_tokens=10,
+        ),
+        RetrievalEvaluationCase(
+            case_id="verified-tier",
+            expected_retrieval=True,
+            observed_retrieval=True,
+            context_tokens=12,
+        ),
+        RetrievalEvaluationCase(
+            case_id="cross-tenant",
+            expected_retrieval=False,
+            observed_retrieval=False,
+            forbidden_slice="TENANT",
+        ),
+        RetrievalEvaluationCase(
+            case_id="wrong-subject",
+            expected_retrieval=False,
+            observed_retrieval=False,
+            forbidden_slice="SUBJECT",
+        ),
+        RetrievalEvaluationCase(
+            case_id="expired",
+            expected_retrieval=False,
+            observed_retrieval=False,
+            forbidden_slice="EXPIRED",
+        ),
+        RetrievalEvaluationCase(
+            case_id="superseded",
+            expected_retrieval=False,
+            observed_retrieval=False,
+            forbidden_slice="SUPERSEDED",
+        ),
+    )
+    return writes, retrievals
+
+
+def _observed_forbidden_rate(
+    cases: tuple[RetrievalEvaluationCase, ...], slice_name: str
+) -> float:
+    sliced = tuple(case for case in cases if case.forbidden_slice == slice_name)
+    return (
+        sum(case.observed_retrieval for case in sliced) / len(sliced) if sliced else 0
+    )
+
+
+def fixture_expected_metrics() -> MemoryMetrics:
+    """Derive expected fixture metrics; these are not production measurements."""
+    write_cases, retrieval_cases = memory_evaluation_cases()
+    write_expected = tuple(case.expected_write for case in write_cases)
+    write_predicted = tuple(case.observed_write for case in write_cases)
     write_precision, write_recall, false_memory_rate = calculate_classification_metrics(
         write_expected, write_predicted
     )
-    retrieval_expected = (True, True, False, False)
-    retrieval_predicted = (True, True, False, False)
+    retrieval_expected = tuple(case.expected_retrieval for case in retrieval_cases)
+    retrieval_predicted = tuple(case.observed_retrieval for case in retrieval_cases)
     retrieval_precision, retrieval_recall, _ = calculate_classification_metrics(
         retrieval_expected, retrieval_predicted
     )
+    unsafe_cases = tuple(case for case in write_cases if case.unsafe_attempt)
+    duplicate_cases = tuple(case for case in write_cases if case.duplicate_attempt)
     return MemoryMetrics(
         write_precision=write_precision,
         write_recall=write_recall,
         false_memory_rate=false_memory_rate,
-        unsafe_memory_write_rate=0,
-        duplicate_memory_rate=0,
+        unsafe_memory_write_rate=(
+            sum(case.observed_write for case in unsafe_cases) / len(unsafe_cases)
+        ),
+        duplicate_memory_rate=(
+            sum(case.duplicate_active_created for case in duplicate_cases)
+            / len(duplicate_cases)
+        ),
         retrieval_precision=retrieval_precision,
         retrieval_recall=retrieval_recall,
-        tenant_leak_rate=0,
-        subject_leak_rate=0,
-        expired_retrieval_rate=0,
-        superseded_retrieval_rate=0,
-        context_tokens=22,
-        correction_rate=0.125,
+        tenant_leak_rate=_observed_forbidden_rate(retrieval_cases, "TENANT"),
+        subject_leak_rate=_observed_forbidden_rate(retrieval_cases, "SUBJECT"),
+        expired_retrieval_rate=_observed_forbidden_rate(retrieval_cases, "EXPIRED"),
+        superseded_retrieval_rate=_observed_forbidden_rate(
+            retrieval_cases, "SUPERSEDED"
+        ),
+        context_tokens=sum(
+            case.context_tokens for case in retrieval_cases if case.observed_retrieval
+        ),
+        correction_rate=sum(case.correction for case in write_cases) / len(write_cases),
     )
 
 
@@ -1138,5 +1389,5 @@ def run_governed_memory_demo(path: str | Path) -> dict[str, Any]:
         "second": second,
         "retrieved": retrieved,
         "history": repository.get_history(context, "communication_style"),
-        "metrics": evaluation_metrics(),
+        "metrics": fixture_expected_metrics(),
     }

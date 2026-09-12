@@ -107,10 +107,18 @@ unknown fields. The application then checks:
 - trusted tenant and subject bindings;
 - active, digest-verified source records;
 - allowed source types and key schema;
+- schema-owned minimum sensitivity and audience scope—a candidate cannot
+  downgrade classification or widen who may read a memory;
 - authority-bearing tokens and sensitive keys;
 - certainty and temporary/quoted/ambiguous language;
 - required verifier type and receipt bindings; and
 - retention, sensitivity, scope, and conflict policy.
+
+Every `MemoryWriteDecision` is an admission receipt bound to the full canonical
+candidate digest and policy version, not merely a candidate name. Record
+construction checks the candidate ID, digest, and policy version and recomputes
+the decision. An allow decision from one proposal therefore cannot authorize a
+different value, source set, scope, sensitivity, effective time, or expiry.
 
 The LLM never receives the repository object. Optional OpenAI extraction at the
 end of the lab uses structured output to produce a candidate only. A model
@@ -129,8 +137,15 @@ untrusted web content → model summary → still untrusted
 Authority is key-specific. A latest explicit user statement may replace a
 communication preference. A billing address or account tier requires the live
 account system. A security role is never created from memory; authorization is
-checked against the live IAM boundary. A typed verification receipt must bind
-the candidate, tenant, verifier type, result, and policy version.
+checked against the live IAM boundary. A typed verification receipt binds the
+candidate digest, key, value digest, tenant, verifier type, authoritative source
+ID/reference/version, result, and policy version. Dynamic account and IAM facts
+also require a policy-bounded expiry; the receipt cannot extend its own TTL or be
+replayed after its value changes.
+
+The local receipt is a deterministic structural fixture. A production verifier
+must authenticate the issuing service (for example, with a signed attestation or
+an identity-bound internal channel); a JSON shape alone is not proof of origin.
 
 For current transactional truth, the live system of record wins. A retrieved
 memory becomes operational evidence only after a fresh, bounded evidence receipt
@@ -145,11 +160,16 @@ The SQLite lab is intentionally small but not toy state. It demonstrates:
 - `effective_from`/`effective_to` valid time and `recorded_at` transaction time;
 - key-specific source authority and human-review conflict modes;
 - optimistic concurrency with `expected_version`;
-- provenance-aware duplicate merging;
+- provenance-aware duplicate merging that recomputes the strongest admitted
+  source and verification status;
 - idempotent, retry-safe consolidation jobs;
 - expiry, dispute, soft deletion, hard deletion, audit tombstones, and source
   invalidation; and
 - durable records that survive process restart.
+
+The schema also derives mandatory expiry for `SESSION`, `SHORT_TERM`, and
+`TIME_BOUND` retention. A candidate may request an earlier expiry but cannot
+remove or extend a policy lifecycle bound.
 
 Old facts are excluded from current retrieval when superseded. They remain
 available to an authorized historical query while their valid-time interval
@@ -186,11 +206,12 @@ See [Memory isolation and RAG](MEMORY_ISOLATION_AND_RAG.md).
 
 ## Evaluation: remembering more is not automatically better
 
-The deterministic fixture calculates write precision/recall, false-memory and
-unsafe-write rates, duplicate rate, retrieval precision/recall, tenant and
-subject leak rates, stale/expired retrieval rates, context tokens, and correction
-rate. Every denominator is explicit; a zero-denominator policy must be chosen
-rather than hidden.
+The deterministic fixture defines labelled write and retrieval cases, then
+derives `fixture_expected_metrics`: write precision/recall, false-memory and unsafe-write rates,
+duplicate rate, retrieval precision/recall, tenant and subject leak rates,
+stale/expired retrieval rates, context tokens, and correction rate. Every
+denominator is explicit; a zero-denominator policy must be chosen rather than
+hidden.
 
 It also compares the same cases across:
 
@@ -200,7 +221,8 @@ It also compares the same cases across:
   account tier; and
 - **governed memory** — stores only admitted records and rechecks current facts.
 
-These are deterministic teaching fixtures, not claims about model quality. Real
+These are expected deterministic fixture values, not measured production outcomes
+or claims about model quality. Real
 systems need representative labelled datasets, independent evaluators, slice
 metrics, confidence intervals, and production monitoring.
 
@@ -268,6 +290,9 @@ authenticated client. It uses the current Responses API structured-output path,
 8. When should a retrieved account-tier memory be checked against the live API?
 9. What does `content_is_data=True` communicate to downstream consumers?
 10. Name a task for which no persistent memory is preferable.
+11. Why must an admission decision include a digest rather than only a candidate
+    ID?
+12. Which component owns a memory's minimum sensitivity and maximum audience?
 
 <details>
 <summary>Answers</summary>
@@ -281,6 +306,9 @@ authenticated client. It uses the current Responses API structured-output path,
    and source retention serve different policies. 8. Whenever current business
    truth matters. 9. The text is evidence/context, never instructions or
    authority. 10. For example, a sensitive one-off query with no future need.
+   11. IDs can be reused or the proposal can change; the digest binds all
+   policy-relevant fields. 12. The application-owned key schema, constrained
+   again by the trusted writer context.
 </details>
 
 ## References

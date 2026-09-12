@@ -1195,6 +1195,8 @@ export const curriculumData:Subject[] = [
     "exercise": "Run the Northstar SQLite fixture, admit and supersede a preference, block poisoned and cross-subject data, enforce context budgets, and compare no-memory, naïve-memory, and governed-memory baselines.",
     "failures": [
       "A model writes extracted text directly to durable memory",
+      "A candidate downgrades schema sensitivity or widens a private scope",
+      "An allow or verification receipt is replayed for a changed candidate value",
       "A user statement or retrieved instruction creates authority",
       "Tenant, subject, scope, or sensitivity filters run after ranking",
       "Supersession overwrites history or leaves two active versions",
@@ -1218,7 +1220,8 @@ export const curriculumData:Subject[] = [
     "code": "uv run pytest -q tests/test_agent_memory.py\nuv run python scripts/execute-notebooks.py --timeout 90 curriculum/advanced/06-agent-memory",
     "goals": [
       "Separate working state from model context, episodes from audit logs, and semantic memory from verification.",
-      "Apply schema, provenance, source authority, verification, sensitivity, and retention rules to typed candidates.",
+      "Bind admission and verification receipts to exact candidate digests, source versions, and freshness windows.",
+      "Apply schema-owned scope, minimum sensitivity, source authority, and retention rules to typed candidates.",
       "Preserve valid time, recorded time, history, lineage, and optimistic concurrency during durable supersession.",
       "Enforce tenant, subject, scope, lifecycle, and sensitivity boundaries before relevance ranking.",
       "Treat retrieved content as data and refresh high-stakes facts against authoritative systems.",

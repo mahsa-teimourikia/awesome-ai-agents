@@ -27,6 +27,10 @@ malicious instructions require rejection or an ephemeral decision. A summary
 cannot become more trusted than its least-trusted supporting source without an
 independent verifier.
 
+Admission itself is also replay-safe: the decision records the candidate digest
+and policy version. The durable builder recomputes policy before persisting, so a
+decision for candidate A cannot be attached to candidate B or to a mutated value.
+
 ## Supersession instead of overwrite
 
 When an admissible value changes, close the prior record's valid-time interval
@@ -58,6 +62,12 @@ Different operations have different meanings:
 - **Source invalidation:** revoke or reverify derived memories when provenance is
   deleted, corrected, or loses authority.
 - **Legal hold/audit retention:** prevent deletion where policy requires it.
+
+The schema, not the candidate, supplies mandatory expiry for session, short-term,
+and time-bound records. Candidate expiry may shorten that lifetime but cannot
+remove or extend the policy bound. Verification freshness is separate: dynamic
+account facts can require a short-lived exact-source receipt even when the memory
+record itself has a longer retention period.
 
 Data minimization happens before storage: persist `communication_style=concise`,
 not the full personal explanation, when the extra text is unnecessary. A memory

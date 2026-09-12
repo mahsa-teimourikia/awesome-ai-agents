@@ -197,24 +197,36 @@ class MemoryCandidate(FrozenModel):
 class VerificationReceipt(FrozenModel):
     verification_id: str
     memory_candidate_id: str
+    candidate_digest: str = Field(min_length=64, max_length=64)
+    verified_key: str
+    verified_value_digest: str = Field(min_length=64, max_length=64)
     verifier_type: SourceType
     verifier_id: str
     tenant_id: str
     result: VerificationStatus
     verified_at: datetime
+    expires_at: datetime | None = None
+    verified_source_id: str
     source_reference: str
+    source_version: str
     policy_version: str
 
 
 class MemoryWriteDecision(FrozenModel):
     candidate_id: str
+    candidate_digest: str = Field(min_length=64, max_length=64)
+    policy_version: str
     decision: MemoryDecision
     reason_codes: tuple[str, ...]
     required_verifier: SourceType | None = None
+    verification_digest: str | None = Field(default=None, min_length=64, max_length=64)
 
 
 class MemoryRecord(FrozenModel):
     memory_id: str
+    candidate_id: str
+    candidate_digest: str = Field(min_length=64, max_length=64)
+    admission_decision_digest: str = Field(min_length=64, max_length=64)
     tenant_id: str
     subject_id: str
     memory_type: MemoryType
@@ -250,6 +262,7 @@ class MemoryKeyPolicy(FrozenModel):
     conflict_policy: ConflictPolicy
     authority_order: tuple[SourceType, ...]
     authority_bearing: bool = False
+    verification_ttl_seconds: int | None = Field(default=None, gt=0)
 
 
 class MemorySchemaRegistry(FrozenModel):
@@ -365,6 +378,11 @@ def canonical_digest(value: Any) -> str:
     return hashlib.sha256(encoded.encode()).hexdigest()
 
 
+def candidate_digest(candidate: MemoryCandidate) -> str:
+    """Bind admission and verification to every policy-relevant proposal field."""
+    return canonical_digest(candidate.model_dump(mode="json"))
+
+
 def source_payload(source: MemorySource | Mapping[str, Any]) -> Mapping[str, Any]:
     data = (
         source.model_dump(mode="json")
@@ -435,6 +453,7 @@ def default_schema_registry() -> MemorySchemaRegistry:
             default_scope=MemoryScope.USER_PRIVATE,
             conflict_policy=ConflictPolicy.AUTHORITATIVE_SOURCE_WINS,
             authority_order=(SourceType.ACCOUNT_API, SourceType.USER_STATEMENT),
+            verification_ttl_seconds=300,
         ),
         "account_tier": MemoryKeyPolicy(
             key="account_tier",
@@ -446,6 +465,7 @@ def default_schema_registry() -> MemorySchemaRegistry:
             default_scope=MemoryScope.USER_PRIVATE,
             conflict_policy=ConflictPolicy.AUTHORITATIVE_SOURCE_WINS,
             authority_order=(SourceType.ACCOUNT_API, SourceType.USER_STATEMENT),
+            verification_ttl_seconds=300,
         ),
         "current_project": MemoryKeyPolicy(
             key="current_project",
@@ -497,6 +517,7 @@ def default_schema_registry() -> MemorySchemaRegistry:
             conflict_policy=ConflictPolicy.AUTHORITATIVE_SOURCE_WINS,
             authority_order=(SourceType.IAM_API,),
             authority_bearing=True,
+            verification_ttl_seconds=300,
         ),
     }
     return MemorySchemaRegistry(schemas=schemas)
@@ -532,26 +553,83 @@ _AUTHORITY_TOKENS = (
 )
 
 
+def _memory_write_decision(
+    context: MemoryContext,
+    candidate: MemoryCandidate,
+    decision: MemoryDecision,
+    reason_codes: tuple[str, ...],
+    *,
+    required_verifier: SourceType | None = None,
+    verification: VerificationReceipt | None = None,
+) -> MemoryWriteDecision:
+    return MemoryWriteDecision(
+        candidate_id=candidate.candidate_id,
+        candidate_digest=candidate_digest(candidate),
+        policy_version=context.policy_version,
+        decision=decision,
+        reason_codes=reason_codes,
+        required_verifier=required_verifier,
+        verification_digest=(
+            canonical_digest(verification.model_dump(mode="json"))
+            if verification is not None
+            else None
+        ),
+    )
+
+
 def validate_verification_receipt(
     receipt: VerificationReceipt,
     *,
     candidate: MemoryCandidate,
     context: MemoryContext,
     required_verifier: SourceType,
+    verification_ttl_seconds: int | None,
+    sources: Mapping[str, MemorySource],
     now: datetime,
 ) -> None:
     if receipt.memory_candidate_id != candidate.candidate_id:
         raise MemoryPolicyError("VERIFICATION_CANDIDATE_MISMATCH")
+    if receipt.candidate_digest != candidate_digest(candidate):
+        raise MemoryPolicyError("VERIFICATION_CANDIDATE_DIGEST_MISMATCH")
+    if receipt.verified_key != candidate.key:
+        raise MemoryPolicyError("VERIFICATION_KEY_MISMATCH")
+    if receipt.verified_value_digest != canonical_digest(candidate.value):
+        raise MemoryPolicyError("VERIFICATION_VALUE_MISMATCH")
     if receipt.tenant_id != context.tenant_id:
         raise MemoryPolicyError("VERIFICATION_TENANT_MISMATCH")
     if receipt.verifier_type is not required_verifier:
         raise MemoryPolicyError("VERIFICATION_SOURCE_MISMATCH")
+    verified_source = sources.get(receipt.verified_source_id)
+    if verified_source is None:
+        raise MemoryPolicyError("VERIFICATION_SOURCE_NOT_FOUND")
+    validate_source(verified_source)
+    if (
+        verified_source.tenant_id != context.tenant_id
+        or verified_source.subject_id != context.subject_id
+    ):
+        raise MemoryPolicyError("VERIFICATION_SOURCE_SCOPE_MISMATCH")
+    if verified_source.source_type is not required_verifier:
+        raise MemoryPolicyError("VERIFICATION_SOURCE_MISMATCH")
+    if receipt.source_reference != verified_source.artifact_handle:
+        raise MemoryPolicyError("VERIFICATION_SOURCE_REFERENCE_MISMATCH")
+    if receipt.source_version != verified_source.source_version:
+        raise MemoryPolicyError("VERIFICATION_SOURCE_VERSION_MISMATCH")
     if receipt.result is not VerificationStatus.VERIFIED:
         raise MemoryPolicyError("VERIFICATION_FAILED")
     if receipt.policy_version != context.policy_version:
         raise MemoryPolicyError("VERIFICATION_POLICY_STALE")
-    if receipt.verified_at > now:
+    if receipt.verified_at > now or receipt.verified_at < verified_source.created_at:
         raise MemoryPolicyError("VERIFICATION_TIME_INVALID")
+    if verification_ttl_seconds is not None:
+        if receipt.expires_at is None:
+            raise MemoryPolicyError("VERIFICATION_EXPIRY_REQUIRED")
+        latest_expiry = receipt.verified_at + timedelta(
+            seconds=verification_ttl_seconds
+        )
+        if receipt.expires_at > latest_expiry:
+            raise MemoryPolicyError("VERIFICATION_TTL_EXCEEDED")
+    if receipt.expires_at is not None and receipt.expires_at <= now:
+        raise MemoryPolicyError("VERIFICATION_EXPIRED")
 
 
 def decide_memory_write(
@@ -570,61 +648,73 @@ def decide_memory_write(
     resolved_sources = _source_for_candidate(candidate, context, sources)
     schema = registry.schemas.get(candidate.key)
     if schema is None:
-        return MemoryWriteDecision(
-            candidate_id=candidate.candidate_id,
-            decision=MemoryDecision.REJECT,
-            reason_codes=("MEMORY_SCHEMA_UNKNOWN",),
+        return _memory_write_decision(
+            context,
+            candidate,
+            MemoryDecision.REJECT,
+            ("MEMORY_SCHEMA_UNKNOWN",),
         )
+    if candidate.scope is not schema.default_scope:
+        raise MemoryPolicyError("MEMORY_SCOPE_MISMATCH")
+    if candidate.sensitivity < schema.sensitivity:
+        raise MemoryPolicyError("MEMORY_SENSITIVITY_DOWNGRADE")
     normalized = f"{candidate.key} {candidate.value}".casefold()
     if schema.authority_bearing or any(
         token in normalized for token in _AUTHORITY_TOKENS
     ):
-        return MemoryWriteDecision(
-            candidate_id=candidate.candidate_id,
-            decision=MemoryDecision.REJECT,
-            reason_codes=("MEMORY_CANNOT_GRANT_AUTHORITY",),
+        return _memory_write_decision(
+            context,
+            candidate,
+            MemoryDecision.REJECT,
+            ("MEMORY_CANNOT_GRANT_AUTHORITY",),
         )
     if candidate.memory_type is MemoryType.WORKING:
-        return MemoryWriteDecision(
-            candidate_id=candidate.candidate_id,
-            decision=MemoryDecision.EPHEMERAL_ONLY,
-            reason_codes=("WORKING_STATE_NOT_DURABLE_MEMORY",),
+        return _memory_write_decision(
+            context,
+            candidate,
+            MemoryDecision.EPHEMERAL_ONLY,
+            ("WORKING_STATE_NOT_DURABLE_MEMORY",),
         )
     if candidate.memory_type is not schema.memory_type:
-        return MemoryWriteDecision(
-            candidate_id=candidate.candidate_id,
-            decision=MemoryDecision.REJECT,
-            reason_codes=("MEMORY_TYPE_MISMATCH",),
+        return _memory_write_decision(
+            context,
+            candidate,
+            MemoryDecision.REJECT,
+            ("MEMORY_TYPE_MISMATCH",),
         )
     if candidate.certainty_label in {
         CertaintyLabel.AMBIGUOUS,
         CertaintyLabel.QUOTED,
         CertaintyLabel.TEMPORARY,
     }:
-        return MemoryWriteDecision(
-            candidate_id=candidate.candidate_id,
-            decision=MemoryDecision.EPHEMERAL_ONLY,
-            reason_codes=(f"{candidate.certainty_label.value}_NOT_DURABLE",),
+        return _memory_write_decision(
+            context,
+            candidate,
+            MemoryDecision.EPHEMERAL_ONLY,
+            (f"{candidate.certainty_label.value}_NOT_DURABLE",),
         )
     source_types = {source.source_type for source in resolved_sources}
     if not source_types.issubset(schema.allowed_sources):
-        return MemoryWriteDecision(
-            candidate_id=candidate.candidate_id,
-            decision=MemoryDecision.REJECT,
-            reason_codes=("MEMORY_SOURCE_NOT_ALLOWED",),
+        return _memory_write_decision(
+            context,
+            candidate,
+            MemoryDecision.REJECT,
+            ("MEMORY_SOURCE_NOT_ALLOWED",),
         )
     if candidate.sensitivity > schema.sensitivity:
-        return MemoryWriteDecision(
-            candidate_id=candidate.candidate_id,
-            decision=MemoryDecision.SENSITIVE_REVIEW,
-            reason_codes=("SENSITIVITY_REVIEW_REQUIRED",),
+        return _memory_write_decision(
+            context,
+            candidate,
+            MemoryDecision.SENSITIVE_REVIEW,
+            ("SENSITIVITY_REVIEW_REQUIRED",),
         )
     if schema.verification_source is not None:
         if verification is None:
-            return MemoryWriteDecision(
-                candidate_id=candidate.candidate_id,
-                decision=MemoryDecision.REQUIRE_VERIFICATION,
-                reason_codes=("AUTHORITATIVE_VERIFICATION_REQUIRED",),
+            return _memory_write_decision(
+                context,
+                candidate,
+                MemoryDecision.REQUIRE_VERIFICATION,
+                ("AUTHORITATIVE_VERIFICATION_REQUIRED",),
                 required_verifier=schema.verification_source,
             )
         validate_verification_receipt(
@@ -632,12 +722,16 @@ def decide_memory_write(
             candidate=candidate,
             context=context,
             required_verifier=schema.verification_source,
+            verification_ttl_seconds=schema.verification_ttl_seconds,
+            sources=sources,
             now=now,
         )
-    return MemoryWriteDecision(
-        candidate_id=candidate.candidate_id,
-        decision=MemoryDecision.ALLOW,
-        reason_codes=("SCHEMA_ALLOWED", "PROVENANCE_VALIDATED"),
+    return _memory_write_decision(
+        context,
+        candidate,
+        MemoryDecision.ALLOW,
+        ("SCHEMA_ALLOWED", "PROVENANCE_VALIDATED"),
+        verification=verification,
     )
 
 
@@ -654,31 +748,66 @@ def build_memory_record(
     supersedes: str | None = None,
     consolidation_job_id: str | None = None,
 ) -> MemoryRecord:
+    if decision.candidate_id != candidate.candidate_id:
+        raise MemoryPolicyError("MEMORY_DECISION_CANDIDATE_MISMATCH")
+    if decision.candidate_digest != candidate_digest(candidate):
+        raise MemoryPolicyError("MEMORY_DECISION_CANDIDATE_DIGEST_MISMATCH")
+    if decision.policy_version != context.policy_version:
+        raise MemoryPolicyError("MEMORY_DECISION_POLICY_MISMATCH")
+    expected_decision = decide_memory_write(
+        context,
+        candidate,
+        sources=sources,
+        registry=registry,
+        verification=verification,
+        now=now,
+    )
+    if decision != expected_decision:
+        raise MemoryPolicyError("MEMORY_DECISION_INVALID")
     if decision.decision is not MemoryDecision.ALLOW:
         raise MemoryPolicyError("MEMORY_WRITE_NOT_ALLOWED")
     schema = registry.schemas[candidate.key]
-    resolved = _source_for_candidate(candidate, context, sources)
+    resolved = list(_source_for_candidate(candidate, context, sources))
+    if verification is not None and verification.verified_source_id not in {
+        source.source_id for source in resolved
+    }:
+        resolved.append(sources[verification.verified_source_id])
     primary = min(
         resolved,
         key=lambda item: schema.authority_order.index(item.source_type),
     )
-    if verification is not None:
+    if schema.verification_source is not None and verification is not None:
         verification_status = VerificationStatus.VERIFIED
     elif primary.source_type is SourceType.USER_STATEMENT:
         verification_status = VerificationStatus.USER_STATED
     elif primary.source_type is SourceType.MODEL_INFERENCE:
         verification_status = VerificationStatus.INFERRED
+    elif primary.source_type in {
+        SourceType.ACCOUNT_API,
+        SourceType.IAM_API,
+        SourceType.HUMAN_REVIEW,
+    }:
+        verification_status = VerificationStatus.VERIFIED
     else:
         verification_status = VerificationStatus.UNVERIFIED
+    policy_expiry = retention_expiry(schema.retention_class, created_at=now)
+    expiry_candidates = tuple(
+        expiry for expiry in (candidate.expires_at, policy_expiry) if expiry is not None
+    )
+    effective_expiry = min(expiry_candidates) if expiry_candidates else None
     identity = {
         "tenant_id": context.tenant_id,
         "subject_id": candidate.subject_id,
         "key": candidate.key,
         "value": candidate.value,
-        "source_ids": sorted(candidate.source_ids),
+        "source_ids": sorted(source.source_id for source in resolved),
+        "admission_decision_digest": canonical_digest(decision.model_dump(mode="json")),
     }
     return MemoryRecord(
         memory_id="mem-" + canonical_digest(identity)[:20],
+        candidate_id=candidate.candidate_id,
+        candidate_digest=decision.candidate_digest,
+        admission_decision_digest=canonical_digest(decision.model_dump(mode="json")),
         tenant_id=context.tenant_id,
         subject_id=candidate.subject_id,
         memory_type=candidate.memory_type,
@@ -686,16 +815,16 @@ def build_memory_record(
         value=candidate.value,
         status=MemoryStatus.ACTIVE,
         verification_status=verification_status,
-        source_ids=tuple(sorted(candidate.source_ids)),
+        source_ids=tuple(sorted(source.source_id for source in resolved)),
         source_type=primary.source_type,
         created_at=now,
         recorded_at=now,
         effective_from=candidate.effective_from,
-        expires_at=candidate.expires_at,
+        expires_at=effective_expiry,
         version=version,
         supersedes=supersedes,
-        sensitivity=candidate.sensitivity,
-        scope=candidate.scope,
+        sensitivity=max(candidate.sensitivity, schema.sensitivity),
+        scope=schema.default_scope,
         retention_class=schema.retention_class,
         policy_version=context.policy_version,
         content_digest=canonical_digest(candidate.value),
@@ -779,5 +908,7 @@ def retention_expiry(
     if retention is RetentionClass.SESSION:
         return created_at + timedelta(hours=8)
     if retention is RetentionClass.SHORT_TERM:
+        return created_at + timedelta(days=30)
+    if retention is RetentionClass.TIME_BOUND:
         return created_at + timedelta(days=30)
     return None
