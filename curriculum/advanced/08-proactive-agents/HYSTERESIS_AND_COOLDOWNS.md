@@ -34,17 +34,17 @@ New material information bypasses older suppression where policy requires it. Co
 
 ## Recipient rate limit
 
-The delivery boundary counts confirmed messages by tenant, recipient, channel, and rolling window. P4/P3 floods can be deferred or rejected with `RATE_LIMIT`. Mandatory P1 routing bypasses that optional interruption budget; this exception is explicit and auditable.
+The delivery boundary counts confirmed messages by tenant, recipient, channel, and rolling window. P4/P3 floods produce a typed `DEFERRED` delivery receipt with `RATE_LIMIT`, persist that state, and emit an audit event without making a provider call. Mandatory P1 routing bypasses that optional interruption budget; this exception is explicit and auditable.
 
 ## Stream backpressure
 
-`evaluate_backpressure()` consumes queue depth, consumer lag, event severity, and tenant policy:
+The pure `evaluate_backpressure()` decision consumes queue depth, consumer lag, event severity, and tenant policy; `ProactiveEngine.apply_backpressure()` records an auditable shed outcome:
 
 - P1: preserve and process now;
 - moderate depth: batch correlated low-priority work before optional model enrichment;
 - overload: shed only explicitly eligible low-priority events.
 
-This avoids one model call per raw event. Operators should measure queue lag, shed counts, trigger recall, P1 misses, and model/notification budgets. Less noise is not success if critical-event recall declines.
+Each shed record includes tenant, derived severity, reason, event count, and policy version. `shed_event_rate` relates shedding to all observed events. This avoids one model call per raw event while keeping recall impact observable. Operators should measure queue lag, shed counts, trigger recall, P1 misses, and model/notification budgets. Less noise is not success if critical-event recall declines.
 
 ## Failure cases to test
 

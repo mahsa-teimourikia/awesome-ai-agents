@@ -134,7 +134,7 @@ def test_duplicate_source_event_is_idempotent_and_counted():
     second = engine.process_event(event, **kwargs)
     incident = store.get_incident(lab.TENANT, first.incident_id)
     assert second.event_status is policy.EventStatus.DUPLICATE
-    assert incident.occurrence_count == 2
+    assert incident.occurrence_count == 1
     assert incident.duplicate_delivery_count == 1
 
 
@@ -149,19 +149,39 @@ def test_atomic_dedupe_produces_one_owner(tmp_path):
 
 def test_same_fingerprint_with_new_source_id_is_suppressed():
     store, engine = _engine()
-    kwargs = dict(policy=lab.default_trigger_policy(), preference=lab.default_preference(timezone="UTC"), on_call=lab.on_call_assignment(), now=lab.FIXED_TIME)
+    trigger = lab.default_trigger_policy().model_copy(update={"sustain_duration_seconds": 0, "cooldown_seconds": 0})
+    kwargs = dict(policy=trigger, preference=lab.default_preference(timezone="UTC"), on_call=lab.on_call_assignment())
     first = lab.metric_event("unstable-id-a", value=0.4, event_time=lab.FIXED_TIME, sequence=1)
-    second = lab.metric_event("unstable-id-b", value=0.4, event_time=lab.FIXED_TIME, sequence=1)
-    engine.process_event(first, **kwargs)
-    result = engine.process_event(second, **kwargs)
+    second_time = lab.FIXED_TIME + timedelta(seconds=5)
+    second = lab.metric_event("unstable-id-b", value=0.4, event_time=second_time, sequence=2)
+    engine.process_event(first, now=lab.FIXED_TIME, **kwargs)
+    result = engine.process_event(second, now=second_time, **kwargs)
     assert result.event_status is policy.EventStatus.DUPLICATE
     assert result.terminal_reason == "FINGERPRINT_ALREADY_CLAIMED"
 
 
-def test_fingerprint_keeps_material_severity_change_distinct():
+def test_fingerprint_duplicate_is_linked_even_if_claim_precedes_incident():
+    store, engine = _engine()
+    at = lab.FIXED_TIME
+    event = lab.metric_event("interleaved-b", value=0.4, event_time=at, sequence=1)
+    fingerprint = policy.fingerprint_event(event)
+    assert store.claim_dedupe(tenant_id=lab.TENANT, dedupe_key=fingerprint.dedupe_key, owner_id="interleaved-a", expires_at=at + timedelta(minutes=5), now=at)
+    trigger = lab.default_trigger_policy().model_copy(update={"sustain_duration_seconds": 0})
+    result = engine.process_event(event, policy=trigger, preference=lab.default_preference(timezone="UTC"), on_call=lab.on_call_assignment(), now=at)
+    row = store.connection.execute("SELECT incident_id FROM processed_events WHERE tenant_id = ? AND event_id = ?", (lab.TENANT, event.event_id)).fetchone()
+    assert result.event_status is policy.EventStatus.DUPLICATE
+    assert result.incident_id is not None
+    assert row["incident_id"] == result.incident_id
+
+
+def test_fingerprint_class_is_stable_while_severity_is_derived_separately():
     low = lab.metric_event("material-low", value=0.4, affected_customer_pct=25, event_time=lab.FIXED_TIME, sequence=1)
     high = lab.metric_event("material-high", value=0.7, affected_customer_pct=70, event_time=lab.FIXED_TIME, sequence=2)
-    assert policy.fingerprint_event(low).dedupe_key != policy.fingerprint_event(high).dedupe_key
+    low_fingerprint = policy.fingerprint_event(low)
+    high_fingerprint = policy.fingerprint_event(high)
+    assert low_fingerprint.dedupe_key == high_fingerprint.dedupe_key
+    assert low_fingerprint.derived_severity is policy.Severity.P2
+    assert high_fingerprint.derived_severity is policy.Severity.P1
 
 
 def test_same_incident_updates_occurrence_count():
@@ -188,6 +208,10 @@ def test_severity_escalation_bypasses_cooldown():
     assert state.notification_id != escalated.notification_id
     assert escalated.terminal_reason == "NOTIFICATION_PROPOSED"
     assert escalated.notification_id.endswith("-P1")
+    assert any(
+        row["reason_code"] == "SEVERITY_ESCALATION_BYPASS"
+        for row in store.audit_events(lab.TENANT)
+    )
 
 
 def test_stale_event_cannot_reopen_resolved_incident():
@@ -258,7 +282,7 @@ def test_recovery_requires_sustained_healthy_readings():
 
 def test_cooldown_is_separate_from_hysteresis():
     _, engine, _, preference, on_call = _activate()
-    at = lab.FIXED_TIME + timedelta(seconds=180)
+    at = lab.FIXED_TIME + timedelta(seconds=421)
     result = engine.process_event(lab.metric_event("continued-breach", value=0.4, event_time=at, sequence=4), policy=lab.default_trigger_policy(), preference=preference, on_call=on_call, now=at)
     assert result.suppression_reason is policy.SuppressionReason.COOLDOWN
 
@@ -304,6 +328,35 @@ def test_notification_capability_does_not_authorize_remediation():
         policy.authorize_proactive_action(policy.ProactiveActionType.RUN_PREAUTHORIZED_WORKFLOW, actor_capabilities=("notify.oncall",))
 
 
+def test_trigger_policy_cannot_self_grant_notify_capability():
+    store = lab.DurableProactiveStore()
+    engine = lab.ProactiveEngine(store, actor_capabilities=())
+    trigger = lab.default_trigger_policy().model_copy(update={"sustain_duration_seconds": 0})
+    event = lab.metric_event("no-notify-grant", value=0.4, event_time=lab.FIXED_TIME, sequence=1)
+    with pytest.raises(policy.ProactivePolicyError, match="CAPABILITY_DENIED"):
+        engine.process_event(event, policy=trigger, preference=lab.default_preference(timezone="UTC"), on_call=lab.on_call_assignment(), now=lab.FIXED_TIME)
+    assert store.connection.execute("SELECT COUNT(*) FROM notifications").fetchone()[0] == 0
+    assert store.audit_events(lab.TENANT)[-1]["event_type"] == policy.AuditEventType.ACTION_DENIED.value
+
+
+def test_policy_workflow_requirement_is_not_an_actor_grant():
+    store = lab.DurableProactiveStore()
+    engine = lab.ProactiveEngine(store, actor_capabilities=("notify.oncall",))
+    trigger = lab.default_trigger_policy().model_copy(update={"sustain_duration_seconds": 0, "allowed_proactive_action": policy.ProactiveActionType.RUN_PREAUTHORIZED_WORKFLOW, "required_capabilities": ("workflow.execute.preapproved",)})
+    event = lab.metric_event("metric-workflow", value=0.4, event_time=lab.FIXED_TIME, sequence=1)
+    with pytest.raises(policy.ProactivePolicyError, match="CAPABILITY_DENIED"):
+        engine.process_event(event, policy=trigger, preference=lab.default_preference(timezone="UTC"), on_call=lab.on_call_assignment(), now=lab.FIXED_TIME)
+
+
+def test_adding_policy_requirement_cannot_widen_actor_authority():
+    store = lab.DurableProactiveStore()
+    engine = lab.ProactiveEngine(store, actor_capabilities=("notify.oncall",))
+    trigger = lab.default_trigger_policy().model_copy(update={"sustain_duration_seconds": 0, "required_capabilities": ("notify.oncall", "workflow.execute.preapproved")})
+    event = lab.metric_event("edited-policy", value=0.4, event_time=lab.FIXED_TIME, sequence=1)
+    with pytest.raises(policy.ProactivePolicyError, match="CAPABILITY_DENIED"):
+        engine.process_event(event, policy=trigger, preference=lab.default_preference(timezone="UTC"), on_call=lab.on_call_assignment(), now=lab.FIXED_TIME)
+
+
 def test_duplicate_delivery_uses_stable_logical_id():
     store, _, state, pref, oncall = _activate()
     first = lab.deliver_notification(store, tenant_id=lab.TENANT, logical_notification_id=state.notification_id, preference=pref, current_on_call=oncall, provider_outcomes={"slack": policy.DeliveryStatus.DELIVERED}, now=lab.FIXED_TIME + timedelta(seconds=130))
@@ -327,6 +380,12 @@ def test_provider_failure_uses_p1_fallback():
     receipt = lab.deliver_notification(store, tenant_id=lab.TENANT, logical_notification_id=state.notification_id, preference=pref, current_on_call=oncall, provider_outcomes={"pagerduty": policy.DeliveryStatus.TRANSIENT_FAILURE, "sms": policy.DeliveryStatus.DELIVERED}, now=lab.FIXED_TIME + timedelta(seconds=130))
     assert receipt.status is policy.DeliveryStatus.DELIVERED
     assert receipt.channel == "sms"
+    attempts = store.delivery_attempts(lab.TENANT, state.notification_id)
+    assert [(item.attempt_number, item.channel, item.status) for item in attempts] == [
+        (1, "pagerduty", policy.DeliveryStatus.TRANSIENT_FAILURE),
+        (2, "sms", policy.DeliveryStatus.DELIVERED),
+    ]
+    assert sum(item.estimated_cost_usd for item in attempts) > 0
 
 
 def test_delivery_retries_are_bounded():
@@ -341,18 +400,40 @@ def test_delivery_retries_are_bounded():
 def test_acknowledgment_cancels_escalation():
     store, _, state, _, _ = _activate(value=0.7, affected_customer_pct=70)
     lab.acknowledge_incident(store, tenant_id=lab.TENANT, incident_id=state.incident_id, now=lab.FIXED_TIME + timedelta(seconds=150))
-    assert not lab.execute_due_escalations(store, tenant_id=lab.TENANT, now=lab.FIXED_TIME + timedelta(minutes=5))
+    assert not lab.execute_due_escalations(store, tenant_id=lab.TENANT, now=lab.FIXED_TIME + timedelta(minutes=5), role_routes={}, provider_outcomes={})
 
 
 def test_unacknowledged_p1_escalates():
     store, _, state, _, _ = _activate(value=0.7, affected_customer_pct=70)
-    assert lab.execute_due_escalations(store, tenant_id=lab.TENANT, now=lab.FIXED_TIME + timedelta(seconds=181)) == ("incident_commander",)
+    now = lab.FIXED_TIME + timedelta(seconds=181)
+    preference = lab.default_preference(recipient_id="commander", timezone="UTC")
+    oncall = lab.on_call_assignment(recipient_id="commander", role="incident_commander", valid_from=now - timedelta(hours=1), valid_until=now + timedelta(hours=1))
+    receipts = lab.execute_due_escalations(store, tenant_id=lab.TENANT, now=now, role_routes={"incident_commander": (preference, oncall)}, provider_outcomes={"pagerduty": policy.DeliveryStatus.DELIVERED})
+    assert len(receipts) == 1
+    assert receipts[0].status is policy.DeliveryStatus.DELIVERED
+    assert receipts[0].recipient_id == "commander"
+
+
+def test_escalation_delivery_requires_an_independent_actor_grant():
+    store, _, _, _, _ = _activate(value=0.7, affected_customer_pct=70)
+    now = lab.FIXED_TIME + timedelta(seconds=181)
+    preference = lab.default_preference(recipient_id="commander", timezone="UTC")
+    oncall = lab.on_call_assignment(recipient_id="commander", role="incident_commander", valid_from=now - timedelta(hours=1), valid_until=now + timedelta(hours=1))
+    with pytest.raises(policy.ProactivePolicyError, match="CAPABILITY_DENIED"):
+        lab.execute_due_escalations(
+            store,
+            tenant_id=lab.TENANT,
+            now=now,
+            role_routes={"incident_commander": (preference, oncall)},
+            provider_outcomes={"pagerduty": policy.DeliveryStatus.DELIVERED},
+            actor_capabilities=(),
+        )
 
 
 def test_resolved_incident_cancels_pending_escalation():
     store, engine, state, _, _ = _activate(value=0.7, affected_customer_pct=70)
     engine.resolve_incident(lab.TENANT, state.incident_id, now=lab.FIXED_TIME + timedelta(seconds=150))
-    assert not lab.execute_due_escalations(store, tenant_id=lab.TENANT, now=lab.FIXED_TIME + timedelta(minutes=5))
+    assert not lab.execute_due_escalations(store, tenant_id=lab.TENANT, now=lab.FIXED_TIME + timedelta(minutes=5), role_routes={}, provider_outcomes={})
 
 
 def test_resolved_digest_item_is_not_reported_as_active():
@@ -373,7 +454,9 @@ def test_restart_preserves_dedupe_and_incident_state(tmp_path):
     second = lab.DurableProactiveStore(path)
     duplicate = lab.ProactiveEngine(second).process_event(event, **kwargs)
     assert duplicate.event_status is policy.EventStatus.DUPLICATE
-    assert second.get_incident(lab.TENANT, created.incident_id).occurrence_count == 2
+    incident = second.get_incident(lab.TENANT, created.incident_id)
+    assert incident.occurrence_count == 1
+    assert incident.duplicate_delivery_count == 1
 
 
 def test_restart_preserves_scheduled_delivery(tmp_path):
@@ -389,8 +472,12 @@ def test_rate_limit_controls_low_priority_storm():
     store, _, state, pref, oncall = _activate()
     at = lab.FIXED_TIME + timedelta(seconds=130)
     store.record_delivery_rate(lab.TENANT, pref.recipient_id, "slack", at)
-    with pytest.raises(policy.ProactivePolicyError, match="RATE_LIMIT"):
-        lab.deliver_notification(store, tenant_id=lab.TENANT, logical_notification_id=state.notification_id, preference=pref, current_on_call=oncall, provider_outcomes={"slack": policy.DeliveryStatus.DELIVERED}, now=at, low_priority_hourly_limit=1)
+    receipt = lab.deliver_notification(store, tenant_id=lab.TENANT, logical_notification_id=state.notification_id, preference=pref, current_on_call=oncall, provider_outcomes={"slack": policy.DeliveryStatus.DELIVERED}, now=at, low_priority_hourly_limit=1)
+    assert receipt.status is policy.DeliveryStatus.DEFERRED
+    assert receipt.reason_codes == (policy.SuppressionReason.RATE_LIMIT.value,)
+    assert receipt.attempt_id is None
+    assert store.delivery_attempts(lab.TENANT, state.notification_id) == ()
+    assert store.audit_events(lab.TENANT)[-1]["reason_code"] == "RATE_LIMIT"
 
 
 def test_rate_limit_does_not_suppress_mandatory_p1():
@@ -444,11 +531,28 @@ def test_correlation_window_starts_new_incident():
 
 
 def test_backpressure_sheds_low_priority_but_preserves_p1():
+    store, engine = _engine()
     bp = policy.BackpressurePolicy(tenant_id=lab.TENANT, batch_depth=10, shed_depth=20, maximum_consumer_lag_seconds=60)
     low = lab.metric_event("low-load", value=0.05, affected_customer_pct=0, event_time=lab.FIXED_TIME, sequence=1)
     critical = lab.metric_event("critical-load", value=0.7, affected_customer_pct=70, event_time=lab.FIXED_TIME, sequence=2)
-    assert policy.evaluate_backpressure(low, queue_depth=30, consumer_lag_seconds=90, policy=bp).action is policy.BackpressureAction.SHED
-    assert policy.evaluate_backpressure(critical, queue_depth=30, consumer_lag_seconds=90, policy=bp).action is policy.BackpressureAction.PROCESS_NOW
+    assert engine.apply_backpressure(low, queue_depth=30, consumer_lag_seconds=90, policy=bp, now=lab.FIXED_TIME).action is policy.BackpressureAction.SHED
+    assert engine.apply_backpressure(critical, queue_depth=30, consumer_lag_seconds=90, policy=bp, now=lab.FIXED_TIME).action is policy.BackpressureAction.PROCESS_NOW
+    shed = [row for row in store.audit_events(lab.TENANT) if row["event_type"] == policy.AuditEventType.EVENT_SHED.value]
+    assert len(shed) == 1
+    assert shed[0]["reason_code"] == "LOW_PRIORITY_LOAD_SHEDDING"
+    assert shed[0]["metadata_digest"] == policy.canonical_digest(
+        {
+            "severity": policy.Severity.P4.value,
+            "queue_depth": 30,
+            "consumer_lag_seconds": 90,
+            "policy_version": bp.policy_version,
+            "event_count": 1,
+        }
+    )
+    measured = lab.evaluation_fixture()["governed"].model_copy(
+        update={"events_shed": 1}
+    )
+    assert measured.shed_event_rate == 0.1
 
 
 def test_model_call_budget_is_bounded_per_incident():
@@ -458,6 +562,19 @@ def test_model_call_budget_is_bounded_per_incident():
     engine.enrich_incident(incident, model_available=True)
     with pytest.raises(policy.ProactivePolicyError, match="MODEL_CALL_BUDGET_EXHAUSTED"):
         engine.enrich_incident(incident, model_available=True)
+
+
+def test_model_call_budget_survives_engine_restart(tmp_path):
+    path = tmp_path / "model-budget.sqlite"
+    store, engine, state, _, _ = _activate(store=lab.DurableProactiveStore(path))
+    incident = store.get_incident(lab.TENANT, state.incident_id)
+    engine.enrich_incident(incident, model_available=True)
+    engine.enrich_incident(incident, model_available=True)
+    store.close()
+    reopened = lab.DurableProactiveStore(path)
+    restarted = lab.ProactiveEngine(reopened, model_call_budget_per_incident=2)
+    with pytest.raises(policy.ProactivePolicyError, match="MODEL_CALL_BUDGET_EXHAUSTED"):
+        restarted.enrich_incident(incident, model_available=True)
 
 
 def test_temporal_prediction_only_proposes_approval():

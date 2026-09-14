@@ -37,15 +37,17 @@ Before dispatch:
 
 Digest queries are tenant- and recipient-scoped.
 
+`dispatch_digest()` stops at deterministic aggregation in this credential-free fixture. Its returned strings are current summaries, not delivery artifacts or proof of a provider send. A production implementation should turn the aggregate into a typed notification and use the same delivery control plane.
+
 ## Idempotent delivery and unknown outcomes
 
-Retries reuse the logical notification ID but receive unique attempt IDs. A confirmed receipt makes repeat delivery a no-op. A timeout is `UNKNOWN`: the system blocks another send until it reconciles provider state. Treating unknown as failure can duplicate a page.
+Retries reuse the logical notification ID but receive unique attempt IDs. Each external provider call is a separate persisted `DeliveryAttempt`; a failed PagerDuty call and successful SMS fallback therefore have distinct attempt numbers, costs, and audit records. A confirmed receipt makes repeat delivery a no-op. A timeout is `UNKNOWN`: the system blocks another send until it reconciles provider state. Treating unknown as failure can duplicate a page.
 
-Transient P1 failure can use an authorized fallback channel. Lower-priority retries remain bounded. Exhausted work moves to a dead-letter table with an auditable reason.
+Transient P1 failure can use an authorized fallback channel. Lower-priority retries remain bounded. Exhausted work moves to a dead-letter table with an auditable reason. The executable fixture models bounded retry, not a persisted backoff or jitter schedule.
 
 ## Acknowledgment and escalation
 
-P1 policy schedules durable escalation roles. An authorized acknowledgment transitions incident state and cancels pending timers. Without acknowledgment, each due role escalates in order. Resolution also cancels escalation and updates deferred digest state.
+P1 policy schedules durable escalation roles. An authorized acknowledgment transitions incident state and cancels pending timers. Without acknowledgment, each due role becomes a typed P1 proposal and passes through current-role resolution, routing, idempotent provider attempts, fallback, receipts, and audit before the escalation is marked sent. Resolution also cancels escalation and updates deferred digest state.
 
 The notification provider cannot authorize remediation. A delivered page may prompt a human decision or an independently authorized workflow, but text such as `APPROVED` or `restart now` carries no capability.
 

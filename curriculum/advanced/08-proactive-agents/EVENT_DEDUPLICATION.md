@@ -13,7 +13,9 @@ At-least-once event systems may deliver the same producer event more than once. 
 | `incident_id` | one durable aggregate/state-machine occurrence |
 | logical notification / attempt IDs | stable delivery intent / unique provider call |
 
-The fingerprint includes only application-approved fields such as service, metric, region, environment, and certificate or backup identifiers. It excludes arbitrary message text, recipient instructions, and model summaries. Changing fingerprint fields changes semantics, so `fingerprint_version` is part of the hash input and audit trail.
+The fingerprint is a stable semantic noise class, not an almost-event-identity digest. It includes tenant, event type, correlation key, and application-approved fields such as service, metric, region, environment, and certificate or backup identifiers. It excludes exact event time, raw numeric values such as `value` and `affected_customer_pct`, arbitrary message text, recipient instructions, and model summaries. Changing fingerprint fields changes semantics, so `fingerprint_version` is part of the hash input and audit trail.
+
+Severity is derived independently from the event. The same fingerprint can therefore remain suppressed at equal severity while a material P3→P1 change takes the explicit `SEVERITY_ESCALATION_BYPASS` path. The fixture does not use a time bucket; expiry of the atomic claim defines the dedupe window.
 
 ## Why `EXISTS` then `SET` is wrong
 
@@ -43,7 +45,9 @@ Course 08 combines:
 
 ## Duplicate does not mean discard all information
 
-A source redelivery creates no new notification, but it increments duplicate-delivery and occurrence telemetry. Distinct events sharing a correlation key update the incident occurrence count and may add affected services. A materially higher severity bypasses prior cooldown/digest suppression. This preserves critical recall.
+An exact source redelivery—the same `event_id`—creates no new notification and increments only duplicate-delivery telemetry. It is not a new operational occurrence. A distinct source event with an equivalent fingerprint is attached to incident history and increments the occurrence count even when another notification is suppressed. Distinct events sharing a correlation key may also add affected services. A materially higher severity bypasses prior dedupe/cooldown suppression. This preserves critical recall.
+
+The order is deliberate: after source admission, the fixture creates or updates the canonical incident and binds the event before a failed fingerprint claim may return a duplicate result. `INSERT OR IGNORE` plus a canonical read handles a competing incident creator. Thus every admitted event has an incident/history link or an explicit rejection; an interleaving cannot leave a duplicate with `incident_id=None`.
 
 ## Correlation window and incident lifecycle
 

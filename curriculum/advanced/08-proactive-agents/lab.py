@@ -14,7 +14,11 @@ from pathlib import Path
 from typing import Any
 
 from policy import (
+    ACTION_CAPABILITIES,
     AuditEventType,
+    BackpressureAction,
+    BackpressureDecision,
+    BackpressurePolicy,
     DeliveryAttempt,
     DeliveryReceipt,
     DeliveryStatus,
@@ -47,6 +51,7 @@ from policy import (
     build_event,
     canonical_digest,
     derive_severity,
+    evaluate_backpressure,
     evaluate_metric_trigger,
     fingerprint_event,
     is_at_least,
@@ -62,6 +67,13 @@ TRUSTED_SOURCES = {
     "northstar-scheduler": ("scheduler-v3",),
     "northstar-certificate-inventory": ("inventory-v2",),
 }
+
+DEFAULT_ACTOR_CAPABILITIES = (
+    "notify.oncall",
+    "task.create",
+    "approval.request",
+    "incident.read",
+)
 
 
 class DurableProactiveStore:
@@ -130,6 +142,15 @@ class DurableProactiveStore:
                 state_version INTEGER NOT NULL DEFAULT 1,
                 PRIMARY KEY (tenant_id, logical_notification_id)
             );
+            CREATE TABLE IF NOT EXISTS delivery_attempts (
+                tenant_id TEXT NOT NULL,
+                attempt_id TEXT NOT NULL,
+                logical_notification_id TEXT NOT NULL,
+                attempt_number INTEGER NOT NULL,
+                attempt_json TEXT NOT NULL,
+                PRIMARY KEY (tenant_id, attempt_id),
+                UNIQUE (tenant_id, logical_notification_id, attempt_number)
+            );
             CREATE TABLE IF NOT EXISTS digest_items (
                 tenant_id TEXT NOT NULL,
                 digest_item_id TEXT NOT NULL,
@@ -151,6 +172,12 @@ class DurableProactiveStore:
                 recipient_id TEXT NOT NULL,
                 channel TEXT NOT NULL,
                 delivered_at TEXT NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS incident_usage (
+                tenant_id TEXT NOT NULL,
+                incident_id TEXT NOT NULL,
+                model_calls INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY (tenant_id, incident_id)
             );
             CREATE TABLE IF NOT EXISTS dead_letters (
                 tenant_id TEXT NOT NULL,
@@ -283,9 +310,9 @@ class DurableProactiveStore:
         ).fetchone()
         return IncidentAggregate.model_validate_json(row[0]) if row else None
 
-    def create_incident(self, incident: IncidentAggregate) -> None:
-        self.connection.execute(
-            """INSERT INTO incidents
+    def create_incident(self, incident: IncidentAggregate) -> bool:
+        cursor = self.connection.execute(
+            """INSERT OR IGNORE INTO incidents
                (tenant_id, incident_id, correlation_key, incident_json)
                VALUES (?, ?, ?, ?)""",
             (
@@ -295,6 +322,7 @@ class DurableProactiveStore:
                 incident.model_dump_json(),
             ),
         )
+        return cursor.rowcount == 1
 
     def update_incident(
         self, incident: IncidentAggregate, *, expected_version: int
@@ -440,6 +468,32 @@ class DurableProactiveStore:
                     ),
                 )
 
+    def save_delivery_attempt(self, attempt: DeliveryAttempt) -> None:
+        self.connection.execute(
+            """INSERT INTO delivery_attempts
+               (tenant_id, attempt_id, logical_notification_id,
+                attempt_number, attempt_json)
+               VALUES (?, ?, ?, ?, ?)""",
+            (
+                attempt.tenant_id,
+                attempt.attempt_id,
+                attempt.logical_notification_id,
+                attempt.attempt_number,
+                attempt.model_dump_json(),
+            ),
+        )
+
+    def delivery_attempts(
+        self, tenant_id: str, logical_notification_id: str
+    ) -> tuple[DeliveryAttempt, ...]:
+        rows = self.connection.execute(
+            """SELECT attempt_json FROM delivery_attempts
+               WHERE tenant_id = ? AND logical_notification_id = ?
+               ORDER BY attempt_number""",
+            (tenant_id, logical_notification_id),
+        ).fetchall()
+        return tuple(DeliveryAttempt.model_validate_json(row[0]) for row in rows)
+
     def save_digest_item(self, item: DigestItem) -> None:
         self.connection.execute(
             """INSERT OR REPLACE INTO digest_items
@@ -546,6 +600,39 @@ class DurableProactiveStore:
                VALUES (?, ?, ?, ?)""",
             (tenant_id, recipient_id, channel, now.isoformat()),
         )
+
+    def model_call_count(self, tenant_id: str, incident_id: str) -> int:
+        row = self.connection.execute(
+            """SELECT model_calls FROM incident_usage
+               WHERE tenant_id = ? AND incident_id = ?""",
+            (tenant_id, incident_id),
+        ).fetchone()
+        return int(row["model_calls"]) if row else 0
+
+    def consume_model_call(
+        self, *, tenant_id: str, incident_id: str, maximum_calls: int
+    ) -> int:
+        """Atomically consume a durable per-incident model-call budget."""
+
+        with self.connection:
+            self.connection.execute(
+                """INSERT OR IGNORE INTO incident_usage
+                   (tenant_id, incident_id, model_calls) VALUES (?, ?, 0)""",
+                (tenant_id, incident_id),
+            )
+            cursor = self.connection.execute(
+                """UPDATE incident_usage SET model_calls = model_calls + 1
+                   WHERE tenant_id = ? AND incident_id = ? AND model_calls < ?""",
+                (tenant_id, incident_id, maximum_calls),
+            )
+            row = self.connection.execute(
+                """SELECT model_calls FROM incident_usage
+                   WHERE tenant_id = ? AND incident_id = ?""",
+                (tenant_id, incident_id),
+            ).fetchone()
+        if cursor.rowcount != 1:
+            raise ProactivePolicyError("MODEL_CALL_BUDGET_EXHAUSTED")
+        return int(row["model_calls"])
 
 
 def metric_event(
@@ -667,13 +754,46 @@ class ProactiveEngine:
         *,
         authenticated_tenant: str = TENANT,
         trusted_sources: Mapping[str, Sequence[str]] = TRUSTED_SOURCES,
+        actor_capabilities: Sequence[str] = DEFAULT_ACTOR_CAPABILITIES,
         model_call_budget_per_incident: int = 2,
     ) -> None:
         self.store = store
         self.authenticated_tenant = authenticated_tenant
         self.trusted_sources = trusted_sources
+        self.actor_capabilities = tuple(actor_capabilities)
         self.model_call_budget_per_incident = model_call_budget_per_incident
-        self.model_calls: dict[str, int] = {}
+
+    def apply_backpressure(
+        self,
+        event: EventEnvelope,
+        *,
+        queue_depth: int,
+        consumer_lag_seconds: int,
+        policy: BackpressurePolicy,
+        now: datetime,
+    ) -> BackpressureDecision:
+        decision = evaluate_backpressure(
+            event,
+            queue_depth=queue_depth,
+            consumer_lag_seconds=consumer_lag_seconds,
+            policy=policy,
+        )
+        if decision.action is BackpressureAction.SHED:
+            self.store.audit(
+                AuditEventType.EVENT_SHED,
+                tenant_id=event.tenant_id,
+                subject_id=event.event_id,
+                reason_code=decision.reason_codes[0],
+                safe_metadata={
+                    "severity": derive_severity(event).value,
+                    "queue_depth": queue_depth,
+                    "consumer_lag_seconds": consumer_lag_seconds,
+                    "policy_version": policy.policy_version,
+                    "event_count": 1,
+                },
+                now=now,
+            )
+        return decision
 
     def _new_incident(
         self,
@@ -706,7 +826,7 @@ class ProactiveEngine:
         event: EventEnvelope,
         severity: Severity,
         *,
-        duplicate: bool,
+        transport_duplicate: bool,
     ) -> IncidentAggregate:
         service = str(event.safe_facts.get("service", "unknown"))
         updated = incident.model_copy(
@@ -714,9 +834,10 @@ class ProactiveEngine:
                 "last_seen": max(incident.last_seen, event.event_time),
                 "last_event_time": max(incident.last_event_time, event.event_time),
                 "last_sequence": max(incident.last_sequence, event.sequence),
-                "occurrence_count": incident.occurrence_count + 1,
+                "occurrence_count": incident.occurrence_count
+                + int(not transport_duplicate),
                 "duplicate_delivery_count": incident.duplicate_delivery_count
-                + int(duplicate),
+                + int(transport_duplicate),
                 "severity": (
                     severity if is_more_severe(severity, incident.severity) else incident.severity
                 ),
@@ -792,7 +913,10 @@ class ProactiveEngine:
             )
             if incident is not None:
                 incident = self._update_occurrence(
-                    incident, event, derive_severity(event), duplicate=True
+                    incident,
+                    event,
+                    derive_severity(event),
+                    transport_duplicate=True,
                 )
             self.store.audit(
                 AuditEventType.EVENT_DUPLICATED,
@@ -814,47 +938,23 @@ class ProactiveEngine:
             )
 
         fingerprint = fingerprint_event(event)
-        fingerprint_claimed = self.store.claim_dedupe(
-            tenant_id=event.tenant_id,
-            dedupe_key=fingerprint.dedupe_key,
-            owner_id=event.event_id,
-            expires_at=now + timedelta(minutes=5),
-            now=now,
-        )
-        if not fingerprint_claimed:
-            incident = self.store.get_incident_by_correlation(
-                event.tenant_id, event.correlation_key
-            )
-            if incident is not None:
-                incident = self._update_occurrence(
-                    incident, event, derive_severity(event), duplicate=True
-                )
-                self.store.bind_event_to_incident(event, incident.incident_id)
-            self.store.audit(
-                AuditEventType.EVENT_DUPLICATED,
-                tenant_id=event.tenant_id,
-                subject_id=event.event_id,
-                reason_code="FINGERPRINT_ALREADY_CLAIMED",
-                safe_metadata={"fingerprint_version": fingerprint.fingerprint_version},
-                now=now,
-            )
-            return ProactiveRunState(
-                run_id=f"run-{event.event_id}-fingerprint-duplicate",
-                event_status=EventStatus.DUPLICATE,
-                incident_id=incident.incident_id if incident else None,
-                trigger_status=TriggerStatus.SUPPRESSED,
-                notification_id=None,
-                suppression_reason=SuppressionReason.DUPLICATE,
-                model_calls=0,
-                terminal_reason="FINGERPRINT_ALREADY_CLAIMED",
-            )
         severity = derive_severity(event)
         incident = self.store.get_incident_by_correlation(
             event.tenant_id, event.correlation_key
         )
         if incident is None:
-            incident = self._new_incident(event, severity)
-            self.store.create_incident(incident)
+            candidate = self._new_incident(event, severity)
+            if self.store.create_incident(candidate):
+                incident = candidate
+            else:
+                incident = self.store.get_incident_by_correlation(
+                    event.tenant_id, event.correlation_key
+                )
+                if incident is None:
+                    raise ProactivePolicyError("INCIDENT_CORRELATION_RACE")
+                incident = self._update_occurrence(
+                    incident, event, severity, transport_duplicate=False
+                )
         else:
             if event.sequence <= incident.last_sequence:
                 self.store.bind_event_to_incident(event, incident.incident_id)
@@ -898,10 +998,18 @@ class ProactiveEngine:
                     severity,
                     correlation_key=f"{event.correlation_key}#{event.event_id}",
                 )
-                self.store.create_incident(incident)
+                if not self.store.create_incident(incident):
+                    canonical = self.store.get_incident_by_correlation(
+                        event.tenant_id, event.correlation_key
+                    )
+                    if canonical is None:
+                        raise ProactivePolicyError("INCIDENT_CORRELATION_RACE")
+                    incident = self._update_occurrence(
+                        canonical, event, severity, transport_duplicate=False
+                    )
             else:
                 incident = self._update_occurrence(
-                    incident, event, severity, duplicate=False
+                    incident, event, severity, transport_duplicate=False
                 )
         self.store.bind_event_to_incident(event, incident.incident_id)
         self.store.audit(
@@ -995,6 +1103,82 @@ class ProactiveEngine:
             and now
             < incident.last_notification_at + timedelta(seconds=policy.cooldown_seconds)
         )
+        required_action_capability = ACTION_CAPABILITIES[decision.proposed_action]
+        if required_action_capability not in policy.required_capabilities:
+            self.store.audit(
+                AuditEventType.ACTION_DENIED,
+                tenant_id=event.tenant_id,
+                subject_id=event.event_id,
+                reason_code="TRIGGER_POLICY_ACTION_REQUIREMENT_MISSING",
+                safe_metadata={
+                    "incident_id": incident.incident_id,
+                    "proposed_action": decision.proposed_action.value,
+                },
+                now=now,
+            )
+            raise ProactivePolicyError("TRIGGER_POLICY_ACTION_REQUIREMENT_MISSING")
+        missing_grants = tuple(
+            capability
+            for capability in policy.required_capabilities
+            if capability not in self.actor_capabilities
+        )
+        if missing_grants:
+            self.store.audit(
+                AuditEventType.ACTION_DENIED,
+                tenant_id=event.tenant_id,
+                subject_id=event.event_id,
+                reason_code="PROACTIVE_ACTION_CAPABILITY_DENIED",
+                safe_metadata={
+                    "incident_id": incident.incident_id,
+                    "proposed_action": decision.proposed_action.value,
+                    "missing_capabilities": missing_grants,
+                },
+                now=now,
+            )
+            raise ProactivePolicyError("PROACTIVE_ACTION_CAPABILITY_DENIED")
+        authorize_proactive_action(
+            decision.proposed_action,
+            actor_capabilities=self.actor_capabilities,
+        )
+        fingerprint_claimed = self.store.claim_dedupe(
+            tenant_id=event.tenant_id,
+            dedupe_key=fingerprint.dedupe_key,
+            owner_id=event.event_id,
+            expires_at=now + timedelta(minutes=5),
+            now=now,
+        )
+        if not fingerprint_claimed:
+            reason = (
+                "SEVERITY_ESCALATION_BYPASS"
+                if escalation
+                else "FINGERPRINT_ALREADY_CLAIMED"
+            )
+            self.store.audit(
+                (
+                    AuditEventType.TRIGGER_ACTIVATED
+                    if escalation
+                    else AuditEventType.EVENT_DUPLICATED
+                ),
+                tenant_id=event.tenant_id,
+                subject_id=event.event_id,
+                reason_code=reason,
+                safe_metadata={
+                    "incident_id": incident.incident_id,
+                    "fingerprint_version": fingerprint.fingerprint_version,
+                },
+                now=now,
+            )
+            if not escalation:
+                return ProactiveRunState(
+                    run_id=f"run-{event.event_id}-fingerprint-duplicate",
+                    event_status=EventStatus.DUPLICATE,
+                    incident_id=incident.incident_id,
+                    trigger_status=TriggerStatus.SUPPRESSED,
+                    notification_id=None,
+                    suppression_reason=SuppressionReason.DUPLICATE,
+                    model_calls=0,
+                    terminal_reason="FINGERPRINT_ALREADY_CLAIMED",
+                )
         if in_cooldown and not escalation and decision.severity is not Severity.P1:
             return ProactiveRunState(
                 run_id=f"run-{event.event_id}-cooldown",
@@ -1006,11 +1190,6 @@ class ProactiveEngine:
                 model_calls=0,
                 terminal_reason="COOLDOWN",
             )
-
-        authorize_proactive_action(
-            decision.proposed_action,
-            actor_capabilities=policy.required_capabilities,
-        )
         incident = self.store.update_incident(
             incident.model_copy(
                 update={
@@ -1169,17 +1348,20 @@ class ProactiveEngine:
         *,
         model_available: bool,
     ) -> dict[str, Any]:
-        calls = self.model_calls.get(incident.incident_id, 0)
+        calls = self.store.model_call_count(
+            incident.tenant_id, incident.incident_id
+        )
         if not model_available:
             return {
                 "summary": "Deterministic incident template; enrichment unavailable.",
                 "model_calls": calls,
                 "proactive_action": "NONE",
             }
-        if calls >= self.model_call_budget_per_incident:
-            raise ProactivePolicyError("MODEL_CALL_BUDGET_EXHAUSTED")
-        calls += 1
-        self.model_calls[incident.incident_id] = calls
+        calls = self.store.consume_model_call(
+            tenant_id=incident.tenant_id,
+            incident_id=incident.incident_id,
+            maximum_calls=self.model_call_budget_per_incident,
+        )
         return {
             "summary": (
                 f"{incident.severity.value} incident affecting "
@@ -1231,6 +1413,58 @@ class ProactiveEngine:
         )
 
 
+PROVIDER_ATTEMPT_COST_USD = {
+    "pagerduty": 0.002,
+    "sms": 0.01,
+    "slack": 0.001,
+    "email": 0.0005,
+}
+
+
+def _record_provider_attempt(
+    store: DurableProactiveStore,
+    *,
+    tenant_id: str,
+    logical_notification_id: str,
+    recipient_id: str,
+    channel: str,
+    attempt_number: int,
+    outcome: DeliveryStatus,
+    now: datetime,
+) -> DeliveryAttempt:
+    provider_message_id = (
+        f"provider-{canonical_digest((logical_notification_id, channel, attempt_number))[:16]}"
+        if outcome is DeliveryStatus.DELIVERED
+        else None
+    )
+    attempt = DeliveryAttempt(
+        attempt_id=f"attempt-{logical_notification_id}-{attempt_number}",
+        logical_notification_id=logical_notification_id,
+        tenant_id=tenant_id,
+        recipient_id=recipient_id,
+        channel=channel,
+        attempt_number=attempt_number,
+        created_at=now,
+        status=outcome,
+        provider_message_id=provider_message_id,
+        estimated_cost_usd=PROVIDER_ATTEMPT_COST_USD.get(channel, 0.001),
+    )
+    store.save_delivery_attempt(attempt)
+    store.audit(
+        AuditEventType.DELIVERY_ATTEMPTED,
+        tenant_id=tenant_id,
+        subject_id=attempt.attempt_id,
+        reason_code=outcome.value,
+        safe_metadata={
+            "logical_notification_id": logical_notification_id,
+            "channel": channel,
+            "estimated_cost_usd": attempt.estimated_cost_usd,
+        },
+        now=now,
+    )
+    return attempt
+
+
 def deliver_notification(
     store: DurableProactiveStore,
     *,
@@ -1243,7 +1477,7 @@ def deliver_notification(
     max_attempts: int = 3,
     low_priority_hourly_limit: int = 3,
 ) -> DeliveryReceipt:
-    """Idempotent fixture delivery with current-recipient re-resolution."""
+    """Idempotent delivery with typed policy deferral and provider attempts."""
 
     proposal, _, row = store.load_notification(tenant_id, logical_notification_id)
     if row["status"] in {
@@ -1274,56 +1508,93 @@ def deliver_notification(
             now - timedelta(hours=1),
         )
         if recent >= low_priority_hourly_limit:
-            raise ProactivePolicyError("RATE_LIMIT")
+            receipt = DeliveryReceipt(
+                logical_notification_id=logical_notification_id,
+                tenant_id=tenant_id,
+                recipient_id=routing.recipient_id,
+                channel=routing.channel,
+                status=DeliveryStatus.DEFERRED,
+                reason_codes=(SuppressionReason.RATE_LIMIT.value,),
+            )
+            store.update_notification(
+                tenant_id=tenant_id,
+                logical_notification_id=logical_notification_id,
+                status=NotificationStatus.DEFERRED,
+                attempt_count=int(row["attempt_count"]),
+                receipt=receipt,
+            )
+            store.audit(
+                AuditEventType.NOTIFICATION_DEFERRED,
+                tenant_id=tenant_id,
+                subject_id=logical_notification_id,
+                reason_code=SuppressionReason.RATE_LIMIT.value,
+                safe_metadata={"recipient_id": routing.recipient_id},
+                now=now,
+            )
+            return receipt
 
-    attempt_number = int(row["attempt_count"]) + 1
-    attempt = DeliveryAttempt(
-        attempt_id=f"attempt-{logical_notification_id}-{attempt_number}",
-        logical_notification_id=logical_notification_id,
+    previous_attempts = int(row["attempt_count"])
+    if previous_attempts >= max_attempts:
+        raise ProactivePolicyError("DELIVERY_RETRIES_EXHAUSTED")
+    primary_number = previous_attempts + 1
+    primary_outcome = provider_outcomes.get(
+        routing.channel, DeliveryStatus.TRANSIENT_FAILURE
+    )
+    final_attempt = _record_provider_attempt(
+        store,
         tenant_id=tenant_id,
+        logical_notification_id=logical_notification_id,
         recipient_id=routing.recipient_id,
         channel=routing.channel,
-        attempt_number=attempt_number,
-        created_at=now,
+        attempt_number=primary_number,
+        outcome=primary_outcome,
+        now=now,
     )
-    outcome = provider_outcomes.get(routing.channel, DeliveryStatus.TRANSIENT_FAILURE)
-    channel = routing.channel
     reason_codes: tuple[str, ...] = ()
-    if outcome is DeliveryStatus.TRANSIENT_FAILURE and proposal.severity is Severity.P1:
-        fallback = "pagerduty" if channel != "pagerduty" else "sms"
+    if (
+        primary_outcome is DeliveryStatus.TRANSIENT_FAILURE
+        and proposal.severity is Severity.P1
+        and primary_number < max_attempts
+    ):
+        fallback = "pagerduty" if routing.channel != "pagerduty" else "sms"
         fallback_outcome = provider_outcomes.get(
             fallback, DeliveryStatus.TRANSIENT_FAILURE
         )
-        if fallback_outcome is DeliveryStatus.DELIVERED:
-            channel = fallback
-            outcome = fallback_outcome
-            reason_codes = ("P1_FALLBACK_CHANNEL",)
+        final_attempt = _record_provider_attempt(
+            store,
+            tenant_id=tenant_id,
+            logical_notification_id=logical_notification_id,
+            recipient_id=routing.recipient_id,
+            channel=fallback,
+            attempt_number=primary_number + 1,
+            outcome=fallback_outcome,
+            now=now,
+        )
+        reason_codes = ("P1_FALLBACK_CHANNEL",)
 
-    provider_message_id = (
-        f"provider-{canonical_digest((logical_notification_id, channel))[:16]}"
-        if outcome is DeliveryStatus.DELIVERED
-        else None
-    )
+    outcome = final_attempt.status
     receipt = DeliveryReceipt(
         logical_notification_id=logical_notification_id,
         tenant_id=tenant_id,
         recipient_id=routing.recipient_id,
-        channel=channel,
-        attempt_id=attempt.attempt_id,
-        provider_message_id=provider_message_id,
+        channel=final_attempt.channel,
+        attempt_id=final_attempt.attempt_id,
+        provider_message_id=final_attempt.provider_message_id,
         status=outcome,
         sent_at=now if outcome is DeliveryStatus.DELIVERED else None,
         reason_codes=reason_codes,
     )
     if outcome is DeliveryStatus.DELIVERED:
         notification_status = NotificationStatus.DELIVERED
-        store.record_delivery_rate(tenant_id, routing.recipient_id, channel, now)
+        store.record_delivery_rate(
+            tenant_id, routing.recipient_id, final_attempt.channel, now
+        )
         store.audit(
             AuditEventType.NOTIFICATION_DELIVERED,
             tenant_id=tenant_id,
             subject_id=logical_notification_id,
             reason_code=reason_codes[0] if reason_codes else "PROVIDER_CONFIRMED",
-            safe_metadata={"attempt_id": attempt.attempt_id},
+            safe_metadata={"attempt_id": final_attempt.attempt_id},
             now=now,
         )
     elif outcome is DeliveryStatus.UNKNOWN:
@@ -1336,7 +1607,7 @@ def deliver_notification(
                VALUES (?, ?, ?, ?)""",
             (tenant_id, logical_notification_id, "PERMANENT_FAILURE", now.isoformat()),
         )
-    elif attempt_number >= max_attempts:
+    elif final_attempt.attempt_number >= max_attempts:
         receipt = receipt.model_copy(update={"status": DeliveryStatus.DEAD_LETTERED})
         notification_status = NotificationStatus.FAILED
         store.connection.execute(
@@ -1352,7 +1623,7 @@ def deliver_notification(
         tenant_id=tenant_id,
         logical_notification_id=logical_notification_id,
         status=notification_status,
-        attempt_count=attempt_number,
+        attempt_count=final_attempt.attempt_number,
         receipt=receipt,
     )
     if receipt.status in {
@@ -1432,9 +1703,19 @@ def acknowledge_incident(
 
 
 def execute_due_escalations(
-    store: DurableProactiveStore, *, tenant_id: str, now: datetime
-) -> tuple[str, ...]:
-    sent: list[str] = []
+    store: DurableProactiveStore,
+    *,
+    tenant_id: str,
+    now: datetime,
+    role_routes: Mapping[
+        str, tuple[RecipientPreference, OnCallAssignment]
+    ],
+    provider_outcomes: Mapping[str, DeliveryStatus],
+    actor_capabilities: Sequence[str] = DEFAULT_ACTOR_CAPABILITIES,
+) -> tuple[DeliveryReceipt, ...]:
+    """Turn due escalation state into the same typed delivery lifecycle."""
+
+    receipts: list[DeliveryReceipt] = []
     for row in store.due_escalations(tenant_id, now):
         incident = store.get_incident(tenant_id, row["incident_id"])
         if incident is None or incident.status in {
@@ -1443,17 +1724,56 @@ def execute_due_escalations(
         }:
             store.cancel_escalations(tenant_id, row["incident_id"])
             continue
-        store.mark_escalation_sent(tenant_id, row["escalation_id"])
-        store.audit(
-            AuditEventType.ESCALATED,
+        if row["role"] not in role_routes:
+            raise ProactivePolicyError("ESCALATION_ROUTE_MISSING")
+        authorize_proactive_action(
+            ProactiveActionType.NOTIFY,
+            actor_capabilities=actor_capabilities,
+        )
+        preference, on_call = role_routes[row["role"]]
+        logical_id = f"notification-{row['escalation_id']}"
+        proposal = NotificationProposal(
+            proposal_id=f"proposal-{row['escalation_id']}",
+            logical_notification_id=logical_id,
             tenant_id=tenant_id,
-            subject_id=row["escalation_id"],
-            reason_code="ACKNOWLEDGMENT_TIMEOUT",
-            safe_metadata={"role": row["role"]},
+            incident_id=incident.incident_id,
+            recipient_scope=row["role"],
+            severity=Severity.P1,
+            category="production_incident_escalation",
+            title=f"P1 escalation for {incident.incident_id}",
+            evidence_ids=(row["logical_notification_id"],),
+            interruptible=False,
+            delivery_deadline=now + timedelta(minutes=1),
+            created_at=now,
+        )
+        routing = route_notification(
+            proposal, preference=preference, on_call=on_call, now=now
+        )
+        store.save_notification(proposal, routing)
+        receipt = deliver_notification(
+            store,
+            tenant_id=tenant_id,
+            logical_notification_id=logical_id,
+            preference=preference,
+            current_on_call=on_call,
+            provider_outcomes=provider_outcomes,
             now=now,
         )
-        sent.append(row["role"])
-    return tuple(sent)
+        receipts.append(receipt)
+        if receipt.status in {DeliveryStatus.DELIVERED, DeliveryStatus.RECONCILED}:
+            store.mark_escalation_sent(tenant_id, row["escalation_id"])
+            store.audit(
+                AuditEventType.ESCALATED,
+                tenant_id=tenant_id,
+                subject_id=row["escalation_id"],
+                reason_code="ACKNOWLEDGMENT_TIMEOUT_DELIVERED",
+                safe_metadata={
+                    "role": row["role"],
+                    "attempt_id": receipt.attempt_id,
+                },
+                now=now,
+            )
+    return tuple(receipts)
 
 
 def dispatch_digest(
@@ -1463,6 +1783,7 @@ def dispatch_digest(
     recipient_id: str,
     now: datetime,
 ) -> tuple[str, ...]:
+    """Aggregate due digest text only; this fixture does not call a provider."""
     summaries: list[str] = []
     for item in store.digest_items(tenant_id, recipient_id):
         if item.deliver_at > now or item.status in {
@@ -1517,6 +1838,8 @@ def evaluation_fixture() -> dict[str, ProactiveMetrics]:
         mean_notification_latency_seconds=sum(case[4] for case in cases if case[0])
         / useful,
         estimated_model_cost_usd=0.012,
+        events_observed=len(cases),
+        events_shed=0,
     )
     naive = ProactiveMetrics(
         labelled_events=len(cases),
@@ -1533,6 +1856,8 @@ def evaluation_fixture() -> dict[str, ProactiveMetrics]:
         mean_notification_latency_seconds=sum(case[4] for case in cases)
         / len(cases),
         estimated_model_cost_usd=0.12,
+        events_observed=len(cases),
+        events_shed=0,
     )
     return {"naive": naive, "governed": governed}
 

@@ -18,10 +18,11 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 EVENT_POLICY_VERSION = "northstar-event-admission-v1"
-FINGERPRINT_VERSION = "northstar-event-fingerprint-v1"
+FINGERPRINT_VERSION = "northstar-event-fingerprint-v2"
 TRIGGER_POLICY_VERSION = "northstar-proactive-trigger-v1"
 SEVERITY_POLICY_VERSION = "northstar-severity-v1"
 ROUTING_POLICY_VERSION = "northstar-notification-routing-v1"
+BACKPRESSURE_POLICY_VERSION = "northstar-backpressure-v1"
 
 
 class ProactivePolicyError(ValueError):
@@ -125,6 +126,7 @@ class NotificationStatus(StrEnum):
 
 class DeliveryStatus(StrEnum):
     DELIVERED = "DELIVERED"
+    DEFERRED = "DEFERRED"
     UNKNOWN = "UNKNOWN"
     TRANSIENT_FAILURE = "TRANSIENT_FAILURE"
     PERMANENT_FAILURE = "PERMANENT_FAILURE"
@@ -160,13 +162,16 @@ class AuditEventType(StrEnum):
     EVENT_DUPLICATED = "EVENT_DUPLICATED"
     INCIDENT_CORRELATED = "INCIDENT_CORRELATED"
     TRIGGER_ACTIVATED = "TRIGGER_ACTIVATED"
+    ACTION_DENIED = "ACTION_DENIED"
     NOTIFICATION_PROPOSED = "NOTIFICATION_PROPOSED"
     NOTIFICATION_DEFERRED = "NOTIFICATION_DEFERRED"
     NOTIFICATION_DELIVERED = "NOTIFICATION_DELIVERED"
+    DELIVERY_ATTEMPTED = "DELIVERY_ATTEMPTED"
     ACKNOWLEDGED = "ACKNOWLEDGED"
     ESCALATED = "ESCALATED"
     INCIDENT_RESOLVED = "INCIDENT_RESOLVED"
     DELIVERY_FAILED = "DELIVERY_FAILED"
+    EVENT_SHED = "EVENT_SHED"
 
 
 SafeFact = str | int | float | bool | None
@@ -208,6 +213,7 @@ class EventFingerprint(FrozenModel):
     dedupe_key: str = Field(min_length=64, max_length=64)
     fingerprint_version: str = Field(min_length=1)
     normalized_fields: Mapping[str, SafeFact]
+    derived_severity: Severity
 
 
 class IncidentAggregate(FrozenModel):
@@ -355,6 +361,9 @@ class DeliveryAttempt(FrozenModel):
     channel: str = Field(min_length=1)
     attempt_number: int = Field(ge=1)
     created_at: datetime
+    status: DeliveryStatus
+    provider_message_id: str | None = None
+    estimated_cost_usd: float = Field(ge=0)
 
 
 class DeliveryReceipt(FrozenModel):
@@ -362,7 +371,7 @@ class DeliveryReceipt(FrozenModel):
     tenant_id: str = Field(min_length=1)
     recipient_id: str = Field(min_length=1)
     channel: str = Field(min_length=1)
-    attempt_id: str = Field(min_length=1)
+    attempt_id: str | None = Field(default=None, min_length=1)
     provider_message_id: str | None = None
     status: DeliveryStatus
     sent_at: datetime | None = None
@@ -416,6 +425,8 @@ class ProactiveMetrics(FrozenModel):
     mean_detection_latency_seconds: float = Field(ge=0)
     mean_notification_latency_seconds: float = Field(ge=0)
     estimated_model_cost_usd: float = Field(ge=0)
+    events_observed: int = Field(default=0, ge=0)
+    events_shed: int = Field(default=0, ge=0)
 
     @property
     def trigger_precision(self) -> float:
@@ -439,6 +450,10 @@ class ProactiveMetrics(FrozenModel):
             else 0.0
         )
 
+    @property
+    def shed_event_rate(self) -> float:
+        return self.events_shed / self.events_observed if self.events_observed else 0.0
+
 
 class BackpressureAction(StrEnum):
     PROCESS_NOW = "PROCESS_NOW"
@@ -451,6 +466,7 @@ class BackpressurePolicy(FrozenModel):
     batch_depth: int = Field(default=100, ge=1)
     shed_depth: int = Field(default=1000, ge=1)
     maximum_consumer_lag_seconds: int = Field(default=60, ge=1)
+    policy_version: str = BACKPRESSURE_POLICY_VERSION
 
     @model_validator(mode="after")
     def ordered_depths(self) -> "BackpressurePolicy":
@@ -552,11 +568,7 @@ APPROVED_FINGERPRINT_FIELDS = (
     "environment",
     "certificate_id",
     "backup_job",
-    "value",
     "quality",
-    "affected_customer_pct",
-    "days_remaining",
-    "hours_to_full",
 )
 
 
@@ -567,7 +579,6 @@ def fingerprint_event(event: EventEnvelope) -> EventFingerprint:
         "tenant_id": event.tenant_id.strip().lower(),
         "event_type": event.event_type.value,
         "correlation_key": event.correlation_key.strip().lower(),
-        "event_time": event.event_time.astimezone(UTC).isoformat(),
     }
     for field_name in APPROVED_FINGERPRINT_FIELDS:
         value = event.safe_facts.get(field_name)
@@ -581,6 +592,7 @@ def fingerprint_event(event: EventEnvelope) -> EventFingerprint:
         ),
         fingerprint_version=FINGERPRINT_VERSION,
         normalized_fields=normalized,
+        derived_severity=derive_severity(event),
     )
 
 

@@ -30,7 +30,7 @@ By the end, you can:
 The lab uses SQLite as a small durable transactional fixture. SQLite is not a claim about the best production store, and the deterministic event labels are not a production benchmark. The lesson succeeds when:
 
 - untrusted or cross-tenant events fail before incident state changes;
-- a duplicate delivery updates occurrence metadata but creates no new notification;
+- an exact transport redelivery increments duplicate-delivery telemetry, not operational occurrence count, and creates no new notification;
 - a new P1 severity bypasses old cooldown or digest suppression;
 - sensor gaps break breach streaks and recovery requires sustained healthy evidence;
 - P4 work can enter a durable digest while P1 organizational policy pages the current on-call recipient;
@@ -45,10 +45,10 @@ The lab uses SQLite as a small durable transactional fixture. SQLite is not a cl
 flowchart LR
     E[Event, deadline, trend, prediction] --> A{Admission}
     A -->|reject| X[Audit reason code]
-    A --> D[Atomic dedupe]
-    D --> C[Correlation and incident state]
+    A --> C[Correlation and incident history]
     C --> T[Trigger and severity policy]
-    T --> P[Typed action or notification proposal]
+    T --> D[Atomic action-boundary dedupe]
+    D --> P[Typed action or notification proposal]
     P --> R{Authorization and routing}
     R --> Q[Durable schedule, digest, or escalation]
     Q --> S[Idempotent provider attempt]
@@ -71,9 +71,11 @@ The raw message and any model-produced summary are untrusted inputs. Determinist
 | logical notification ID | idempotent delivery intent | all retries/reconciliation |
 | attempt ID | traceable provider call | exactly one attempt |
 
-`record_event()` uses a database uniqueness constraint and `claim_dedupe()` uses one conditional insert. An `EXISTS` followed by `SET` is racy because two workers can both observe absence. Redis `SET key value NX EX seconds`, SQL uniqueness/UPSERT, DynamoDB conditional writes, and stream-processor state stores are possible production mechanisms; the invariant is an atomic claim, not a particular vendor.
+`record_event()` uses a database uniqueness constraint and `claim_dedupe()` uses one conditional insert. The fingerprint represents a stable semantic noise class: tenant, event type, correlation key, and application-approved service/metric/region/environment or asset identifiers. It deliberately excludes exact event time, raw numeric severity inputs, free text, and model output. Derived severity is evaluated separately, so a P3→P1 change can explicitly bypass an existing same-class claim.
 
-At-least-once transports can redeliver, consumers can crash after a provider accepts a request, and dedupe records can expire. Therefore dedupe does **not** guarantee exactly-once action or notification. The fixture preserves duplicate and occurrence counts, uses stable logical notification identity across retries, assigns unique attempt IDs, and reconciles unknown outcomes.
+An `EXISTS` followed by `SET` is racy because two workers can both observe absence. Redis `SET key value NX EX seconds`, SQL uniqueness/UPSERT, DynamoDB conditional writes, and stream-processor state stores are possible production mechanisms; the invariant is an atomic claim, not a particular vendor. The fixture establishes and binds incident history before returning a fingerprint duplicate, so a competing claimant cannot strand an admitted event without an incident ID.
+
+At-least-once transports can redeliver, consumers can crash after a provider accepts a request, and dedupe records can expire. Therefore dedupe does **not** guarantee exactly-once action or notification. An exact `event_id` redelivery increments `duplicate_delivery_count` without incrementing `occurrence_count`; a distinct source event in the same semantic class is a new operational observation and can increment the occurrence count even when another notification is suppressed. The fixture uses stable logical notification identity across retries, assigns unique attempt IDs, and reconciles unknown outcomes.
 
 The correlation window is separate from dedupe. Multiple source events can be useful evidence for one incident. Events beyond the window start a new incident occurrence. A delayed event cannot reopen an already-resolved incident or regress a higher sequence.
 
@@ -110,7 +112,7 @@ Read [Hysteresis, debounce, cooldown, and rate limits](HYSTERESIS_AND_COOLDOWNS.
 notify.oncall != workflow.execute.preapproved != production.restart
 ```
 
-`authorize_proactive_action()` checks the capability for the exact action. `NOTIFY` succeeds with `notify.oncall`; the same actor cannot run a workflow. Production remediation also needs the authorization and approval controls taught in Courses 01 and 03.
+`TriggerPolicy.required_capabilities` declares requirements; it never grants them. `ProactiveEngine.actor_capabilities` is the independent, application-owned grant set. The engine checks that the policy declares the capability required by the proposed action, that every declared requirement is present in the actor grants, and then calls `authorize_proactive_action()` with those actor grants. `NOTIFY` can succeed with `notify.oncall`; editing a trigger policy cannot give that actor `workflow.execute.preapproved`. Production remediation also needs the authorization and approval controls taught in Courses 01 and 03.
 
 The prompt-injection fixture contains `severity=P1; recipient=attacker`. It remains P4 and routes to the application-resolved on-call identity because arbitrary message text is excluded from the authoritative fingerprint, severity, and recipient policy.
 
@@ -139,13 +141,13 @@ PROPOSED → ROUTED / DEFERRED → SCHEDULED → DELIVERING
          → FAILED / CANCELLED / SUPERSEDED
 ```
 
-`deliver_notification()` keeps one logical ID across retries and creates a new attempt ID for each provider call. Confirmed delivery is idempotent. A timeout after sending is `UNKNOWN`, not failure; a second send is blocked until `reconcile_unknown_delivery()` checks provider state. Transient P1 failure can use an authorized fallback channel. Attempts are bounded, then dead-lettered.
+`deliver_notification()` keeps one logical ID across retries and creates a new persisted attempt ID for **each** provider call. A PagerDuty failure followed by SMS fallback is therefore two attempts with separate status, cost, and audit records. Confirmed delivery is idempotent. A timeout after sending is `UNKNOWN`, not failure; a second send is blocked until `reconcile_unknown_delivery()` checks provider state. Attempts are bounded, then dead-lettered; this fixture does not model a backoff schedule or jitter.
 
-Acknowledgment cancels pending escalation. An unacknowledged P1 advances through durable roles after its timeout. Resolution cancels escalation and changes a deferred digest item to “occurred and resolved,” preventing a stale active alert the next morning.
+Low-priority rate limiting produces a typed `DEFERRED` receipt with `RATE_LIMIT`, persists the notification state, and writes an audit event without calling a provider. Acknowledgment cancels pending escalation. An unacknowledged P1 becomes a typed escalation proposal and passes through the same current-recipient routing, idempotent provider-attempt, receipt, fallback, and audit controls as an ordinary P1 notification. Resolution cancels escalation and changes a deferred digest item to “occurred and resolved,” preventing a stale active alert the next morning. `dispatch_digest()` is intentionally only an aggregation fixture: it returns current summaries and does not represent provider delivery.
 
 ## 7. Durability, concurrency, and audit
 
-The SQLite store persists processed events, dedupe claims, incidents, samples, notification schedules, digest items, escalation timers, rate counters, dead letters, and safe audit records. Incident writes use `state_version` plus `expected_version`; stale writers get `VERSION_CONFLICT`. Unique keys prevent two workers from owning the same source event or logical notification.
+The SQLite store persists processed events, dedupe claims, incidents, samples, notification schedules, provider attempts, digest items, escalation timers, rate counters, per-incident model usage, dead letters, and safe audit records. Incident writes use `state_version` plus `expected_version`; stale writers get `VERSION_CONFLICT`. Unique keys prevent two workers from owning the same source event or logical notification.
 
 The audit stores reason codes and metadata digests rather than arbitrary event text. Production retention, encryption, access control, and deletion policy remain deployment responsibilities.
 
@@ -156,10 +158,10 @@ When volume grows faster than consumers:
 - preserve P1 priority;
 - aggregate related lower-priority events before invoking a model;
 - batch low-priority work when capacity is constrained;
-- shed only according to explicit, observable policy; and
+- shed only according to explicit, observable policy, with tenant, severity, reason, event count, and policy version in audit; and
 - measure critical-event recall so noise reduction cannot hide safety failures.
 
-The fixture allows at most two optional model enrichments per incident. A model outage returns a deterministic template and never blocks P1 policy. Production should also bound model calls per minute, queued work, interruptions per recipient, retry time, and provider spend.
+`ProactiveMetrics.shed_event_rate` exposes the share of observed events shed, and the regression suite proves P1 is never shed by this policy. The fixture allows at most two optional model enrichments per incident and consumes that budget atomically in SQLite, so recreating a worker does not reset it. A model outage returns a deterministic template and never blocks P1 policy. Production should also bound model calls per minute, queued work, interruptions per recipient, retry time, and provider spend.
 
 ## 9. Evaluation
 
