@@ -1508,20 +1508,20 @@ export const questions = [
   {
     "id": "chkpt-proactive_agents",
     "category": "Advanced",
-    "prompt": "What differentiates a Proactive Agent from a standard ReAct Agent?",
+    "prompt": "Why does atomic event deduplication not guarantee exactly-once notification delivery?",
     "options": [
-      "It uses a more powerful LLM.",
-      "It is triggered by schedules or environment events (like metrics thresholds) rather than waiting for a direct user prompt.",
-      "It can speak multiple languages.",
-      "It does not use tools."
+      "Hashes cannot be stable.",
+      "Crash, expiry, redelivery, and unknown provider-outcome windows still require stable logical idempotency and reconciliation.",
+      "Only model calls can be deduplicated.",
+      "A correlation key is always unique."
     ],
     "correct": [
       1
     ],
-    "explanation": "Refer to the notebook for the detailed explanation.",
+    "explanation": "An atomic claim closes one race; later failure windows still require stable delivery identity and reconciliation before retry.",
     "source": {
       "label": "Notebook Checkpoint",
-      "url": "curriculum/advanced/08-proactive-agents/proactive_agents.ipynb"
+      "url": "curriculum/advanced/08-proactive-agents/08_proactive_agents.ipynb"
     }
   },
   {
