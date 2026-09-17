@@ -307,13 +307,15 @@ export const learningPath = [
   {
     "id": "a9",
     "title": "Model routing",
-    "description": "Advanced exploration of Model routing.",
+    "description": "Application-owned eligibility, workload-specific routing, measured quality cascades, compatible fallbacks, and bounded recovery.",
     "material": "../curriculum/advanced/09-model-routing/README.md",
-    "notebook": null,
+    "notebook": "../curriculum/advanced/09-model-routing/09_model_routing.ipynb",
     "category": "Advanced - Model routing",
-    "minutes": 60,
+    "minutes": 150,
     "technologies": [
-      "Python"
+      "Python",
+      "Pydantic",
+      "Deterministic evaluation"
     ]
   },
   {

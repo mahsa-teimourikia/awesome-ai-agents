@@ -1395,20 +1395,59 @@ export const curriculumData:Subject[] = [
     "level": "Advanced",
     "step": "09",
     "title": "Model routing",
-    "description": "Advanced exploration of Model routing.",
-    "time": "45-60 min",
-    "outcome": "Master advanced patterns.",
-    "lesson": "Deep dive into SOTA literature.",
-    "exercise": "Implement complex agentic systems.",
-    "failures": [],
-    "notebook": "curriculum/advanced/09-model-routing/model_routing.ipynb",
+    "description": "Constrained model routing with typed eligibility, workload evidence, bounded quality cascades, compatible fallbacks, and auditable attempts.",
+    "time": "150 min",
+    "outcome": "Build and evaluate a routing policy that proves technical and organizational eligibility before optimizing cost, latency, or measured workload quality.",
+    "lesson": "Separate trusted requirements and tenant policy from untrusted content, then distinguish cascade promotion, provider fallback, and policy rerouting.",
+    "exercise": "Run the deterministic support-ticket workload, inspect rejection reasons, calibrate the quality gate, and compare governed routing with the same-task schema-only baseline.",
+    "failures": [
+      "Optimizing price before checking residency, retention, capability, and tenant policy",
+      "Treating schema-valid output as semantically correct and grounded",
+      "Using provider fallback as a response to terminal policy or authentication errors",
+      "Making another model call after cancellation, cost exhaustion, or deadline infeasibility"
+    ],
+    "notebook": "curriculum/advanced/09-model-routing/09_model_routing.ipynb",
     "refs": [
       "curriculum/advanced/09-model-routing/README.md",
-      "curriculum/advanced/09-model-routing/model_routing.ipynb"
+      "curriculum/advanced/09-model-routing/CAPABILITY_FILTERING.md",
+      "curriculum/advanced/09-model-routing/MODEL_CASCADES.md",
+      "curriculum/advanced/09-model-routing/FALLBACKS_AND_RELIABILITY.md",
+      "curriculum/advanced/09-model-routing/09_model_routing.ipynb"
     ],
-    "code": "",
-    "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
-    "quiz": []
+    "code": "pytest -q tests/test_model_routing.py",
+    "goals": [
+      "Compute eligibility from trusted technical and organizational constraints before optimization.",
+      "Use workload-specific quality, latency, reliability, and versioned input/output pricing evidence.",
+      "Validate common typed artifacts and measure false accepts and false promotions.",
+      "Bound retries, promotions, and compatible fallbacks by cancellation, deadline, cost, attempts, and provider count.",
+      "Compare the governed policy with a same-task baseline using task and operational metrics."
+    ],
+    "quiz": [
+      {
+        "q": "When may a route enter cost or latency optimization?",
+        "options": ["As soon as its provider advertises the needed modality", "Only after application-owned technical and organizational eligibility passes", "After the model agrees to the tenant policy", "Whenever it is the cheapest route"],
+        "answer": 1,
+        "explanation": "Provider metadata and prompt text cannot grant authorization; optimization only ranks the eligible set."
+      },
+      {
+        "q": "What distinguishes cascade promotion from provider fallback?",
+        "options": ["Promotion responds to a quality-gate rejection; fallback responds to a recoverable route failure", "Promotion changes providers; fallback changes model quality", "They are equivalent", "Fallback ignores eligibility"],
+        "answer": 0,
+        "explanation": "The triggers and constraints differ, and each attempt records its reason."
+      },
+      {
+        "q": "Why can schema-valid JSON still be rejected?",
+        "options": ["JSON is never useful", "Schema proves shape but not semantics, grounding, or task correctness", "Only text output can be correct", "The cheapest route must always promote"],
+        "answer": 1,
+        "explanation": "The course evaluates schema, semantic constraints, evidence grounding, and labelled task correctness separately."
+      },
+      {
+        "q": "What must happen when cancellation arrives after one rejected attempt?",
+        "options": ["Make the promotion call and discard it", "Fallback to another provider", "Stop before the next model invocation", "Ignore cancellation until the cascade completes"],
+        "answer": 2,
+        "explanation": "Cancellation is checked before every next model call."
+      }
+    ]
   },
   {
     "id": "a10",
