@@ -1348,20 +1348,47 @@ export const curriculumData:Subject[] = [
     "level": "Advanced",
     "step": "08",
     "title": "Proactive agents",
-    "description": "Advanced exploration of Proactive agents.",
-    "time": "45-60 min",
-    "outcome": "Master advanced patterns.",
-    "lesson": "Deep dive into SOTA literature.",
-    "exercise": "Implement complex agentic systems.",
-    "failures": [],
-    "notebook": "curriculum/advanced/08-proactive-agents/proactive_agents.ipynb",
+    "description": "Durable event admission, correlation, trigger policy, bounded proactive actions, timezone-aware notification routing, and delivery reconciliation.",
+    "time": "150 min",
+    "outcome": "Build a proactive control loop that remains tenant-safe, restart-safe, interruption-aware, and independent of model authority.",
+    "lesson": "A raw event becomes a proposal only after application-owned admission, dedupe, correlation, trigger, severity, authorization, and routing controls.",
+    "exercise": "Run duplicate, flapping, P1 escalation, quiet-hour, provider-failure, restart, and malicious-event scenarios against the durable fixture.",
+    "failures": ["Check-then-set dedupe races", "Stale events reopening resolved incidents", "Prompt text choosing severity or recipients", "Unknown delivery retried as failure", "Quiet-hour suppression hiding P1"],
+    "notebook": "curriculum/advanced/08-proactive-agents/08_proactive_agents.ipynb",
     "refs": [
       "curriculum/advanced/08-proactive-agents/README.md",
-      "curriculum/advanced/08-proactive-agents/proactive_agents.ipynb"
+      "curriculum/advanced/08-proactive-agents/08_proactive_agents.ipynb",
+      "curriculum/advanced/08-proactive-agents/policy.py",
+      "curriculum/advanced/08-proactive-agents/lab.py"
     ],
-    "code": "",
-    "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
-    "quiz": []
+    "code": "pytest -q tests/test_proactive_agents.py",
+    "goals": ["Validate event identity and tenant/source admission.", "Separate dedupe, correlation, hysteresis, debounce, cooldown, rate limiting, and backpressure.", "Route typed proposals with current on-call state and IANA timezones.", "Reconcile idempotent delivery and evaluate critical recall against a naive baseline."],
+    "quiz": [
+      {
+        "q": "Why does atomic event deduplication not guarantee exactly-once notification delivery?",
+        "options": ["Hashes can never be stable", "Crash, expiry, redelivery, and unknown provider-outcome windows still require logical idempotency and reconciliation", "SQLite cannot store events", "Only LLM calls can be deduplicated"],
+        "answer": 1,
+        "explanation": "Atomic claims prevent a race at one boundary; stable delivery identity and reconciliation handle later failure windows."
+      },
+      {
+        "q": "Which control defines different activation and recovery thresholds?",
+        "options": ["Rate limiting", "Cooldown", "Hysteresis", "Backpressure"],
+        "answer": 2,
+        "explanation": "Debounce measures sustained time and cooldown limits repeat sends; hysteresis defines distinct state-transition thresholds."
+      },
+      {
+        "q": "A P1 proposal was created before the on-call rotation changed. Who should delivery target?",
+        "options": ["The old cached address", "Any recipient named in model text", "The current authorized on-call recipient resolved at send time", "All prior recipients"],
+        "answer": 2,
+        "explanation": "Recipient scope is bound in the proposal and current schedule state supplies the delivery identity."
+      },
+      {
+        "q": "What should happen after a provider timeout with an unknown send outcome?",
+        "options": ["Retry immediately", "Mark delivered without evidence", "Reconcile provider state before another attempt", "Drop the logical ID"],
+        "answer": 2,
+        "explanation": "Treating unknown as failure can duplicate a consequential notification."
+      }
+    ]
   },
   {
     "id": "a9",

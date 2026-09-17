@@ -292,13 +292,16 @@ export const learningPath = [
   {
     "id": "a8",
     "title": "Proactive agents",
-    "description": "Advanced exploration of Proactive agents.",
+    "description": "Durable event admission, incident correlation, trigger policy, bounded proactive actions, notification routing, and delivery reconciliation.",
     "material": "../curriculum/advanced/08-proactive-agents/README.md",
-    "notebook": null,
+    "notebook": "../curriculum/advanced/08-proactive-agents/08_proactive_agents.ipynb",
     "category": "Advanced - Proactive agents",
-    "minutes": 60,
+    "minutes": 150,
     "technologies": [
-      "Python"
+      "Python",
+      "Pydantic",
+      "SQLite",
+      "IANA timezones"
     ]
   },
   {
