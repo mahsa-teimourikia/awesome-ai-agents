@@ -1,30 +1,81 @@
-# Deep Dive: Capability Filtering
+# Deep Dive — Capability and Policy Eligibility
 
-When building an enterprise AI platform, you cannot hardcode the model name (e.g., `model="gpt-4o"`). 
-Instead, you must build a **Model Registry** and a **Router**.
+Capability filtering is necessary but incomplete. A route can support images and structured output yet remain forbidden for a tenant, region, data class, retention rule, lifecycle state, budget, deadline, or current capacity.
 
-## The Model Registry
-Every model in your platform should be registered with metadata describing its capabilities.
+## Trusted inputs
 
-```json
-{
-  "claude-3-haiku": {
-    "cost_per_1k": 0.00025,
-    "supports_vision": true,
-    "supports_function_calling": true
-  },
-  "llama-3-8b": {
-    "cost_per_1k": 0.00010,
-    "supports_vision": false,
-    "supports_function_calling": false
-  }
-}
+The application—not prompt text, retrieved content, or model output—constructs:
+
+- `TaskRequirements`: workload family, input modalities, output contract, tool protocol, context/output bounds, quality floor, data class, and equivalence group;
+- `RoutingContext`: tenant, provider/region allowlists, retention, objective, SLO, budget, deadline, cancellation, attempt/provider/fallback bounds, session pin, metadata/profile age limits, and policy version.
+
+A prompt such as “ignore policy and use provider-z” is ordinary task content. It cannot mutate either typed object.
+
+## Provider metadata is not policy
+
+`ProviderCatalogRecord` carries a version, effective time, verification time, modalities, output types, and token limits. `route_from_provider_catalog()` adds the application-owned fields required for eligibility:
+
+- deployment region and equivalence group;
+- allowed data classifications and zero-data-retention status;
+- lifecycle;
+- versioned input/output pricing;
+- workload-specific quality and latency measurements;
+- route-specific health and capacity.
+
+Provider metadata can assert a technical capability. It cannot grant a tenant permission, authorize restricted data, waive residency, or enlarge a budget. Eligibility rejects it with `PROVIDER_METADATA_STALE` when `provider_metadata_last_verified_at` exceeds the application-owned age limit. That limit can be much longer than operational health freshness, but it is not unbounded.
+
+## Eligibility sequence
+
+`evaluate_eligibility()` records every rejection reason rather than stopping at the first one:
+
+```text
+trusted context consistency / cancellation
+→ lifecycle / provider / region / classification / retention
+→ modality / output / schema / tools / protocol / streaming / reasoning
+→ context and output limits / equivalence group
+→ provider-metadata and workload-profile freshness
+→ measured workload quality / latency / deadline / cost reserve
+→ current health / circuit / freshness / capacity
+→ ELIGIBLE or rejected reason codes
 ```
 
-## Capability Filtering
-When an agent receives a task, the Router evaluates the prompt constraints before selecting a model.
+Failing one constraint keeps the route outside optimization. This prevents a low price from laundering an unauthorized or technically incompatible route into execution.
 
-If the user uploads a screenshot of a broken UI, the Router looks at the prompt constraints: `requires_vision = True`.
-It iterates through the Model Registry and dynamically drops `llama-3-8b` from the pool of eligible models because it cannot fulfill the task constraints. 
+## Workload-specific evidence
 
-Filtering models based on strict capabilities *before* evaluating cost or latency prevents catastrophic failures where a text-only model receives an image and crashes the application.
+There is no universal `quality=0.95` in the registry. Each `WorkloadProfile` names a task family, evaluator version, sample size, measurement time, quality, p50/p95 latency, success, timeouts, rate limits, and provider errors.
+
+Missing workload evidence produces `WORKLOAD_PROFILE_MISSING`; evidence older than `max_workload_profile_age_seconds` produces `WORKLOAD_PROFILE_STALE`. Profiles must also be invalidated when prompts, adapters, validators, provider revisions, or traffic distributions materially change, even if their nominal age has not expired.
+
+## Cost and latency admission
+
+Expected cost includes both input and expected output tokens. Admission uses the upper output-token bound as a conservative reserve:
+
+```text
+reserve = input_tokens × input_price + upper_output_tokens × output_price
+```
+
+Actual result tokens are used for accounting. The reserve is not a claim that estimates are exact. Production systems need a policy for estimate overrun, cached input, tool-call growth, reasoning tokens, and price changes.
+
+Deadline feasibility uses the workload p95, not a global latency claim. The runtime repeats the complete admission check before every initial call, retry, promotion, or fallback. The original `RoutingDecision` remains an audit snapshot; current lifecycle, health, breaker, capacity, policy, task compatibility, remaining budget, and deadline decide whether a call may begin.
+
+Actual usage is accounted after the call. When it exceeds the reservation and request ceiling, `BUDGET_OVERRUN` records the irreversible spend and prevents further calls.
+
+## Optimization and pinning
+
+`select_route()` receives only the eligible set. `COST_FIRST` is deliberately lexicographic—cost, then latency, then quality—rather than an uncalibrated weighted “balanced” score. Quality-first and latency-first use their named primary signal. A session pin is reused only while that route satisfies the current task requirements, policy, freshness, and operational eligibility. If any of those change, the decision records `STICKY_ROUTE_INELIGIBLE` and reroutes.
+
+`DRAINING` accepts an already pinned eligible session but no new work. `DEPRECATED` and `DISABLED` do not accept work.
+
+## Audit evidence
+
+Every `RoutingDecision` retains:
+
+- request and tenant IDs;
+- selected route and complete eligible set;
+- rejected routes with reason codes;
+- expected quality, cost reserve, and p95 latency;
+- registry, pricing, and routing-policy versions;
+- decision time.
+
+This makes “why did this request use this route?” answerable without reconstructing mutable provider state later.

@@ -1,53 +1,239 @@
-# Model Routing
+# Advanced 09 — Model Routing
 
-**Level:** Advanced · **Time:** 60 min · **Prerequisites:** None
+**Level:** Advanced · **Time:** 150 min · **Prerequisites:** Intermediate 05 Evaluation, Intermediate 06 Tool Engineering, Advanced 08 Proactive Agents
 
-**Advanced · 09** · **Notebook:** [`model_routing.ipynb`](model_routing.ipynb)
+**Canonical notebook:** [`09_model_routing.ipynb`](09_model_routing.ipynb)
 
-A hardcoded `gpt-4o` agent is too expensive for simple text formatting, and a hardcoded `gpt-4o-mini` agent will crash when asked to analyze a complex screenshot. 
+> Routing is a constrained decision, not a model leaderboard. First prove that a route is technically and organizationally eligible; only then optimize among the eligible routes.
 
-Enterprise agent platforms require **Model Routing**. Routing is a runtime policy engine that selects the cheapest, fastest model that is capable of fulfilling the user's specific request, while maintaining high availability (HA).
+This course builds a credential-free routing control plane for Northstar Commerce. The fixture names (`model-fast-v1`, `provider-a`) are deliberately fictional. They keep the lesson stable as commercial catalogs, prices, regions, and product names change.
 
-We have broken this module down into three core deep-dives:
+## Learning outcomes
 
-1. **[Deep Dive: Capability Filtering](CAPABILITY_FILTERING.md)** (Building a Model Registry and dynamically dropping models that don't support the required modalities, e.g., Vision).
-2. **[Deep Dive: Model Cascades](MODEL_CASCADES.md)** (Cost optimization: Try a cheap model, run a programmatic assertion, and only promote to an expensive model if the assertion fails).
-3. **[Deep Dive: Fallbacks and Reliability](FALLBACKS_AND_RELIABILITY.md)** (Gracefully handling `429 Rate Limit` and `503 Service Unavailable` errors by failing over to a secondary provider).
+By the end, you can:
 
-![Model Cascade Architecture](../../../assets/model_cascade_architecture.svg)
+- turn a task into typed requirements without trusting prompt text as policy;
+- separate provider-supplied capability metadata from application-owned eligibility;
+- filter on modality, output, tools, context, quality, policy, residency, retention, health, capacity, cost, latency, and deadline;
+- optimize cost, latency, or measured workload quality only inside the eligible set;
+- build a bounded quality cascade and measure its promotion signal;
+- distinguish cascade promotion, provider fallback, and policy rerouting;
+- classify provider failures into retry, compatible fallback, or terminal outcomes;
+- preserve a typed route-attempt history with registry, pricing, policy, and validator versions; and
+- compare a governed policy with a same-task baseline using task success, false accepts, false promotions, cost, latency, and call count.
 
----
+## Scenario and threat model
 
-## State of the Art: Technology & Tools
+Northstar extracts structured support tickets containing sensitive EU customer data. An attacker can place instructions in ticket text, retrieved documents, or model output. None of those channels may alter the tenant, data classification, allowed provider or region, retention requirement, budget, deadline, or authorization context.
 
-The industry standard for routing involves decoupling the LLM application from the specific provider APIs.
+The application constructs two trusted objects:
 
-- **[LiteLLM](https://litellm.vercel.app/):** The industry standard for routing and fallbacks. It translates Anthropic, Google, and OpenAI calls into a single unified API, making cross-provider fallbacks a 1-line config change.
-- **[RouteLLM](https://github.com/lm-sys/RouteLLM):** A framework by LMSYS for training and deploying routing models that predict whether a cheap model can handle a prompt.
-- **[Semantic Router](https://github.com/aurelio-labs/semantic-router):** A super-fast decision layer using vector embeddings to route requests based on semantic intent rather than LLM generation.
+- `TaskRequirements`: workload family and technical needs;
+- `RoutingContext`: tenant and organizational constraints.
 
----
+It also resolves model-cited evidence through an application-owned `AcceptedEvidence` registry. A returned string such as `ticket-42` is not grounding by itself.
+
+Provider catalogs are also untrusted inputs. They may report technical capabilities, but the application must overlay classification, residency, retention, lifecycle, pricing, health, capacity, and tenant policy before a route can become eligible.
+
+```text
+untrusted request content                 provider catalog metadata
+            │                                      │
+            └──────► application-owned typed requirements/context
+                                      │
+                        eligibility (fail closed)
+                                      │
+                       eligible route set only
+                                      │
+                    objective-specific optimization
+                                      │
+                bounded call → typed artifact → validator
+                         │ pass                 │ fail
+                         ▼                      ▼
+                     complete        quality promotion / recovery
+```
+
+## The control boundary
+
+The lesson uses four distinct decisions:
+
+| Decision | Question | Owned by |
+| --- | --- | --- |
+| Eligibility | May this route process this task for this tenant now? | Application policy |
+| Optimization | Which eligible route best fits this request's objective? | Application routing policy |
+| Quality promotion | Did an automated gate justify a stronger route? | Versioned validator and cascade policy |
+| Failure recovery | Is this failure retryable, safely equivalent elsewhere, or terminal? | Error taxonomy and bounded recovery policy |
+
+These decisions are not interchangeable. A cheap route is irrelevant if it is ineligible. A provider error is not evidence that output quality was inadequate. A quality-gate rejection is not a provider outage. A session pin that becomes ineligible must be rerouted by policy, not silently reused.
+
+## Course artifacts
+
+| Artifact | Purpose |
+| --- | --- |
+| [`policy.py`](policy.py) | Strict Pydantic contracts and pure policy decisions |
+| [`lab.py`](lab.py) | Deterministic registry, replay client, bounded runtime, circuit breaker, and evaluation |
+| [`09_model_routing.ipynb`](09_model_routing.ipynb) | Canonical executable lesson |
+| [`CAPABILITY_FILTERING.md`](CAPABILITY_FILTERING.md) | Eligibility and trusted routing context |
+| [`MODEL_CASCADES.md`](MODEL_CASCADES.md) | Quality gates, promotion signals, and cascade measurement |
+| [`FALLBACKS_AND_RELIABILITY.md`](FALLBACKS_AND_RELIABILITY.md) | Error taxonomy, compatibility, retries, health, and circuits |
+| [`tests/test_model_routing.py`](../../../tests/test_model_routing.py) | Focused invariants and adversarial cases |
+
+## Registry model
+
+`ModelRoute` represents a deployable route, not a universal model score. A route binds a fixture model ID to a provider, deployment, region, equivalence group, adapter contract, capability set, application policy, pricing snapshot, workload measurements, health, capacity, and lifecycle.
+
+Quality is workload-specific. `model-fast-v1` can have one measured score for support extraction and no measurement at all for architecture reasoning. Missing or stale evidence makes the route ineligible for that workload; it does not inherit a global “good model” label. Provider capability metadata also has a bounded verification age. Its longer freshness window is distinct from the short operational window for health and capacity.
+
+Pricing accounts for both input and output tokens. Admission reserves the upper output bound; runtime accounting records actual tokens. If actual usage unexpectedly exceeds the request ceiling, the spend cannot be undone: the run records `BUDGET_OVERRUN` and blocks every subsequent call. Token usage beyond a route's declared context/output limit is treated as invalid adapter/provider data. A production registry should keep effective dates and conservative reserves because live usage and prices may exceed estimates.
+
+Lifecycle states are explicit:
+
+- `ACTIVE`: accepts new work;
+- `DRAINING`: only an already pinned eligible session may continue;
+- `DEPRECATED`: no new routing;
+- `DISABLED`: unavailable.
+
+## Eligibility before optimization
+
+`evaluate_eligibility()` checks:
+
+1. trusted context consistency and cancellation;
+2. lifecycle, tenant provider allowlist, region, classification, and retention;
+3. modalities, output type, structured output, tools, protocols, parallel tools, streaming, reasoning, context, and output limits;
+4. route-equivalence group, current provider metadata, and fresh measured workload quality;
+5. latency SLO, upper-bound cost, deadline feasibility;
+6. route-specific health, circuit state, freshness, request/token capacity, and concurrency.
+
+Only routes with no rejection reasons enter `select_route()`. The deterministic fixture demonstrates why this order matters: `route-fast-us-cheap` has the lowest nominal price, but sensitive EU/ZDR work cannot use it.
+
+The objective then ranks the eligible set:
+
+- `COST_FIRST`: lowest expected cost, with latency and quality tie-breakers;
+- `QUALITY_FIRST`: highest measured workload quality;
+- `LATENCY_FIRST`: lowest measured p95 latency.
+
+The result is a typed `RoutingDecision` with the complete eligible set, per-route rejection reasons, expected and reserved cost, workload quality, p95 latency, and registry/pricing/policy versions.
+
+## Output contracts and quality gates
+
+Provider adapters normalize output into a common `CandidateArtifact`. A shared API shape does not make models, tool semantics, safety behavior, context handling, or outputs equivalent.
+
+The support-ticket validator reports four separate signals:
+
+- schema validity;
+- semantic constraints;
+- evidence grounding;
+- task correctness against labelled fixture truth.
+
+Grounding is authoritative only when every cited receipt exists, is bound to the same request and tenant, has valid source/version/digest provenance, and its trusted structured facts support the candidate fields. The model cannot create authority by copying an expected evidence ID.
+
+Schema, semantics, grounding, and the fixture confidence threshold are online gates. `task_correct` is different: it uses labelled fixture truth to score false accepts and false promotions during evaluation. Production serving normally does not know ground truth at inference time and must use a measured proxy, independent evaluator, sandbox test, or review workflow. The fixture's model-supplied `confidence` is not a calibrated probability of correctness.
+
+JSON validity alone is intentionally insufficient. The fixture includes valid JSON with the wrong priority. A schema-only baseline accepts it; the governed policy rejects it and promotes.
+
+The automated gate is imperfect and must itself be evaluated:
+
+- **false accept:** the gate accepts a task-incorrect artifact;
+- **false promotion:** the gate rejects a task-correct artifact and spends more work.
+
+The replay client validates routing mechanics against labelled fixture outcomes. It does not prove live-model intelligence or generalization.
+
+## Three different route changes
+
+| Change | Trigger | Next route requirement | Attempt reason |
+| --- | --- | --- | --- |
+| Cascade | Output fails an automated quality gate | Higher measured quality, still eligible | `CASCADE_PROMOTION` |
+| Fallback | Retryable/unavailable provider route | Same equivalence group and adapter contract, still eligible | `PROVIDER_FALLBACK` |
+| Reroute | Policy/context/health changes before work | Recompute eligibility and optimization | `POLICY_REROUTE` |
+
+The initial `RoutingDecision` is an audit snapshot, not durable permission to call every route it once listed. Before every initial call, retry, promotion, or fallback, the runtime recomputes task-aware eligibility from current lifecycle, health, live circuit state, capacity, policy, region, retention, remaining deadline, and remaining cost. An ineligible candidate is replaced by another currently eligible compatible route or the run terminates without calling it. A cancellation must prevent the next call, not merely discard its result.
+
+## Reliability model
+
+The fixture normalizes provider failures into a typed taxonomy:
+
+- retryable: rate limit, timeout, transient provider error;
+- fallback-capable after bounded retry: the retryable set plus model unavailable;
+- always terminal: invalid request, authentication failure, **application policy denial**, and context too large;
+- provider content rejection: terminal by default, with a compatible alternate route permitted only when explicit application policy enables it.
+
+`APPLICATION_POLICY_DENIED` and `PROVIDER_CONTENT_REJECTED` are deliberately separate. A provider-specific rejection never weakens application policy, and enabling its governed fallback cannot turn an application denial into a recoverable error.
+
+Retries use bounded exponential backoff, deterministic fixture jitter, and `retry_after_ms` when supplied. They must fit the remaining deadline. Fallback recomputes current technical and organizational eligibility, then additionally requires a different provider, the same equivalence group, and the same adapter contract. Equivalence metadata is an assertion, not proof that current task requirements still pass.
+
+The actual routing runtime uses the route-specific circuit breaker: it calls `allow_call()` before invocation, records recoverable provider failures, records successful responses, and implements `CLOSED → OPEN → HALF_OPEN`. Only one half-open probe is admitted. Health and capacity snapshots have freshness limits because stale “healthy” state is unsafe.
+
+The credential-free lab also maintains an application capacity ledger initialized from observed provider capacity and consumes request/token headroom after each call. That ledger is useful local admission/accounting state; it is not a globally authoritative provider quota. Production systems still need distributed coordination, provider reconciliation, per-route token buckets, queue limits, and herd control.
+
+## Evaluation
+
+`evaluation_fixture()` compares the same five labelled cases:
+
+1. easy fast-path success;
+2. schema-valid and constraint-valid but task-incorrect output;
+3. schema-invalid output;
+4. correct output rejected by an over-conservative confidence signal;
+5. provider unavailability requiring a compatible fallback.
+
+The baseline always uses the cheapest route, checks schema only, and performs no recovery. The governed policy uses the full online gate and bounded recovery. Labelled `task_correct` remains evaluation-only. Report:
+
+- successful compliant task rate;
+- false-accept and false-promotion rates;
+- promotion and provider-fallback rates;
+- total and average model calls;
+- average cost and cost per successful compliant task;
+- p95 end-to-end latency.
+
+The deterministic fixture makes policy mechanics reproducible. Production claims require representative labelled traffic, held-out evaluation, live latency/cost measurements, calibration by workload and tenant, and monitoring for drift.
+
+## Run locally
+
+From the repository root:
+
+```bash
+uv sync --extra core --extra contributor
+uv run --extra core python curriculum/advanced/09-model-routing/lab.py
+uv run --extra core --extra contributor pytest -q tests/test_model_routing.py
+uv run --extra core --extra contributor python scripts/execute-notebooks.py \
+  curriculum/advanced/09-model-routing/09_model_routing.ipynb
+```
+
+The notebook and lab require no credentials and make zero production provider calls.
+
+## Production adapter boundary
+
+The stable lesson is framework-neutral. In production, an adapter may obtain versioned capability metadata or normalize provider APIs, but application code still owns eligibility, tenant policy, residency, retention, pricing reservations, quality gates, budgets, retries, fallback equivalence, completion, and audit history.
+
+Useful implementation references:
+
+- [LiteLLM documentation](https://docs.litellm.ai/) — unified provider input/output, retry/fallback, and cost-tracking mechanisms; these do not imply semantic equivalence.
+- [RouteLLM](https://github.com/lm-sys/RouteLLM) — serving and evaluating learned routing policies with calibrated thresholds.
+- [Semantic Router](https://github.com/aurelio-labs/semantic-router) and [vLLM Semantic Router overview](https://github.com/vllm-project/semantic-router/blob/main/website/docs/overview/semantic-router-overview.md) — semantic and model-routing implementations.
+- [AWS SDK retry behavior](https://docs.aws.amazon.com/sdkref/latest/guide/feature-retry-behavior.html), [Exponential backoff and jitter](https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/), and [Making retries safe with idempotent APIs](https://aws.amazon.com/builders-library/making-retries-safe-with-idempotent-APIs/) — bounded retry guidance.
+
+## Exercises
+
+1. Add an audio task family and prove that text-only routes never enter its optimization set.
+2. Calibrate two confidence thresholds on separate train and holdout fixtures. Plot task success, false accepts, false promotions, cost, and p95 latency.
+3. Add a tenant whose policy permits public US work but requires sensitive EU work to remain in-region. Prove the eligible sets differ.
+4. Add a `DRAINING` route and demonstrate sticky-session continuation versus new-work denial.
+5. Extend the circuit breaker with a distributed lease for the half-open probe and explain the failure mode without it.
 
 ## Checkpoint
 
-**1. A developer builds a Model Cascade: they route a request to `claude-3-haiku` first, and if it fails, they promote it to `claude-3-5-sonnet`. What is the critical requirement for this to work?**
-- A) They must use LiteLLM.
-- B) They must have a deterministic programmatic assertion (like a JSON schema validator or a Regex match) to definitively prove whether `haiku` failed. You cannot cascade open-ended tasks like "write a poem".
-- C) Both models must cost the same.
-- D) The user must approve the promotion.
+**A sensitive EU task has three routes. The cheapest route is in the US without zero-data-retention support; a second EU route passes the quality gate; a third EU route has higher measured quality. What is the correct order?**
+
+A. Rank all three by price, then check policy after the call.
+B. Ask the model which policy applies.
+C. Exclude the US route through application-owned eligibility, optimize the remaining routes for the request objective, then use the quality gate only to decide bounded promotion.
+D. Always use the highest-quality route.
 
 <details>
 <summary>Answer</summary>
-<b>B</b>. Cascades require automated quality gates. Without a way to definitively prove failure, the system won't know when to promote to the more expensive model.
+
+**C.** Eligibility is a control boundary. Optimization and quality promotion operate only inside the eligible set, and prompt or model text cannot enlarge that set.
+
 </details>
 
-**2. Why is relying on a single LLM provider (e.g., only using OpenAI) an anti-pattern for production agents?**
-- A) OpenAI doesn't support JSON mode.
-- B) Lack of High Availability (HA). If the provider experiences an outage (503) or rate limits your application (429), your agent will crash. You must configure cross-provider Fallbacks.
-- C) Anthropic is cheaper.
-- D) It violates the MCP protocol.
+## Final principle
 
-<details>
-<summary>Answer</summary>
-<b>B</b>. Enterprise systems must be highly available. Fallbacks across providers (e.g., OpenAI -> Anthropic) are mandatory.
-</details>
+**First prove a route may run. Then decide whether it should run. After it runs, validate what it produced. Every additional call remains bounded by policy, deadline, cost, and cancellation.**

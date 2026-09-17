@@ -1,23 +1,83 @@
-# Deep Dive: Fallbacks and Reliability
+# Deep Dive — Fallbacks and Reliability
 
-Agents are entirely dependent on upstream API providers. If OpenAI goes down, and your agent is hardcoded to `gpt-4o`, your entire enterprise application goes down with it.
+Fallback is recovery from a route/provider failure. It is not cascade promotion, and a shared client API does not make providers transparently interchangeable.
 
-This is unacceptable for production systems. You must design for High Availability (HA) using **Cross-Provider Fallbacks**.
+## Normalize the failure first
 
-## Standard Errors to Catch
-Your router must catch the following standard HTTP errors from API providers:
-- `429 Too Many Requests`: You hit a rate limit.
-- `503 Service Unavailable`: The provider is experiencing an outage.
-- `529 Site Overloaded`: The provider's servers are too busy.
+Provider adapters should map provider-specific responses to an application taxonomy:
 
-## The Fallback Pattern
-When the Router catches one of these errors, it should not crash the agent. Instead, it should immediately route the request to a secondary provider.
+| Category | Fixture codes | Default policy |
+| --- | --- | --- |
+| Retryable | `RATE_LIMIT`, `TRANSIENT_PROVIDER`, `TIMEOUT` | Bounded same-route retry, then compatible fallback if allowed |
+| Availability fallback | `MODEL_UNAVAILABLE` | Compatible fallback without a pointless retry |
+| Application-terminal | `INVALID_REQUEST`, `AUTH_FAILURE`, `APPLICATION_POLICY_DENIED`, `CONTEXT_TOO_LARGE` | Stop and surface the typed reason; never recover through provider hopping |
+| Provider content rejection | `PROVIDER_CONTENT_REJECTED` | Terminal by default; compatible fallback only when explicit application policy enables it |
 
-* **Primary Route:** `anthropic/claude-3-5-sonnet`
-* **Trigger:** Returns `503 Service Unavailable`.
-* **Fallback Route:** `openai/gpt-4o`
+Blindly sending authentication, policy, content, context, or invalid-request failures to another provider can leak data, evade policy, multiply cost, or repeat a deterministic error. `allow_provider_content_fallback` governs only provider-specific rejection; it can never override `APPLICATION_POLICY_DENIED`.
 
-### LiteLLM
-Building this manually is tedious because every provider uses a different API schema. The industry standard for handling this is **LiteLLM**. 
+## Retry before fallback
 
-LiteLLM provides a unified API format (it translates Anthropic, Google, and Cohere APIs into the OpenAI format), and allows you to configure Fallbacks with a single line of code. If Provider A fails, LiteLLM automatically translates the prompt and sends it to Provider B, completely transparently to the Agent.
+For transient failures, the fixture retries the same route once with bounded exponential backoff, deterministic test jitter, and provider `retry_after_ms` when present. It retries only if the delay fits the remaining deadline.
+
+Production jitter should be random and distributed. Retry budgets should be scoped to the route and request, respect idempotency for consequential tools, and avoid multiplying retries across application, gateway, SDK, and provider layers.
+
+## Compatibility is explicit
+
+A fallback route must:
+
+1. pass a fresh evaluation of the same trusted `TaskRequirements` and `RoutingContext`;
+2. satisfy current lifecycle, health, breaker, capacity, region, retention, policy, deadline, and cost constraints;
+3. use a different provider;
+4. share the same `equivalence_group`;
+5. implement the same versioned adapter contract;
+6. fit the remaining provider, attempt, cost, and deadline budgets.
+
+The initial eligible set is historical evidence, not ongoing execution authority. An equivalence-group label is an additional registry assertion, not proof that modality, output/schema, tools, context limits, and data policy still pass.
+
+The common `CandidateArtifact` normalizes structured data, evidence IDs, tool calls, confidence, and provenance. This creates a validation surface; it does not claim equal tool behavior, context semantics, safety filters, or model quality.
+
+After fallback, run the same artifact validator and completion policy. Never trust the framework- or provider-selected name directly.
+
+## Circuit breaker state
+
+The routing runtime keeps circuit state per route and consults it before every call:
+
+```text
+CLOSED --threshold failures in window--> OPEN
+OPEN --cooldown elapsed--> HALF_OPEN
+HALF_OPEN --one probe succeeds--> CLOSED
+HALF_OPEN --probe fails--> OPEN
+```
+
+Recoverable provider failures call `record_failure()` and successful provider responses call `record_success()`. Only one half-open probe is admitted. A production distributed system needs shared state or a lease; otherwise every process can stampede the recovering route.
+
+## Health, freshness, and capacity
+
+`RouteHealth` and `CapacityState` are route-specific. Provider capability metadata and workload measurements have separate, longer age limits. Eligibility rejects:
+
+- unavailable routes and open circuits;
+- stale health or capacity snapshots;
+- stale provider metadata or workload profiles;
+- exhausted request/token capacity;
+- unavailable concurrency.
+
+Production routing may add queue depth limits, adaptive concurrency, provider token buckets, regional quotas, hedging policy, and load shedding. Those signals need timestamps and ownership; “healthy” without freshness is not a safe fact.
+
+The lab's mutable capacity ledger is initialized from the provider snapshot and consumes request/token headroom after calls. It demonstrates local reservation and accounting, not a globally synchronized provider quota; production must reconcile shared limits.
+
+## Trace every attempt
+
+`RouteAttempt` records a unique attempt ID, request ID, route, provider, fixture model ID, reason, start time, latency, tokens, reserved cost, actual cost, status, error code, and validation reasons. `RoutingRun` aggregates the final state, explicit budget overrun, and counts promotions separately from provider fallbacks.
+
+This lets operations distinguish:
+
+- more calls caused by gate calibration;
+- more calls caused by provider reliability;
+- deliberate policy reroutes;
+- terminal denials that correctly made no extra calls.
+
+## Framework boundary
+
+Libraries such as [LiteLLM](https://docs.litellm.ai/) can normalize provider calls and expose retry, fallback, and cost mechanisms. The application must still own eligibility, tenant/data policy, route equivalence, retry classification, budgets, cancellation, artifact validation, and completion.
+
+Use [AWS retry behavior](https://docs.aws.amazon.com/sdkref/latest/guide/feature-retry-behavior.html), [backoff and jitter](https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/), and [idempotent API guidance](https://aws.amazon.com/builders-library/making-retries-safe-with-idempotent-APIs/) as production design references.

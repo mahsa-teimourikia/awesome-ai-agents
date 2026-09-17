@@ -1394,20 +1394,24 @@ export const questions = [
   {
     "id": "chkpt-model_routing",
     "category": "Advanced",
-    "prompt": "What is the primary benefit of Model Routing?",
+    "prompt": "Which four controls belong in a safe model-routing policy?",
     "options": [
-      "It combines multiple models to generate one sentence.",
-      "It prevents the system from overpaying for simple tasks by using cheap models as gatekeepers.",
-      "It bypasses API rate limits entirely.",
-      "It trains a new model from scratch on every request."
+      "Rank every known route by price before checking tenant policy.",
+      "Compute technical and organizational eligibility before optimization.",
+      "Revalidate current route state, cancellation, deadline, and cost before every additional call.",
+      "Resolve cited IDs through request- and tenant-bound evidence receipts that support the output.",
+      "Reject provider metadata and workload measurements after their application-owned freshness windows expire."
     ],
     "correct": [
-      1
+      1,
+      2,
+      3,
+      4
     ],
-    "explanation": "Refer to the notebook for the detailed explanation.",
+    "explanation": "Eligibility is recomputed at execution time, additional calls remain bounded, evidence strings gain authority only through trusted receipts, and stale catalog/evaluation data cannot drive selection.",
     "source": {
       "label": "Notebook Checkpoint",
-      "url": "curriculum/advanced/09-model-routing/model_routing.ipynb"
+      "url": "curriculum/advanced/09-model-routing/09_model_routing.ipynb"
     }
   },
   {
