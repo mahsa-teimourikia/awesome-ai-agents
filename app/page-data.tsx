@@ -1469,21 +1469,37 @@ export const curriculumData:Subject[] = [
     "id": "a10",
     "level": "Advanced",
     "step": "10",
-    "title": "Long running asynchronous agents",
-    "description": "Advanced exploration of Long running asynchronous agents.",
-    "time": "45-60 min",
-    "outcome": "Master advanced patterns.",
-    "lesson": "Deep dive into SOTA literature.",
-    "exercise": "Implement complex agentic systems.",
-    "failures": [],
-    "notebook": "curriculum/advanced/10-long-running-asynchronous-agents/long_running_asynchronous_agents.ipynb",
+    "title": "Long-Running & Asynchronous Agents",
+    "description": "Durable state machines, authenticated events, authority-bound approvals, worker leases, stable effect identity, and unknown-outcome reconciliation.",
+    "time": "165 min",
+    "outcome": "Build a restart-safe workflow that resumes without duplicating or authorizing stale work.",
+    "lesson": "Separate durable orchestration, event admission, authorization, side-effect identity, reconciliation, and completion.",
+    "exercise": "Run process-restart, duplicate-event, approval-race, cancellation, concurrency, and timeout-after-commit fixtures.",
+    "failures": ["Duplicate delivery", "Stale or cross-tenant event", "Concurrent worker claim", "Expired authority", "Unknown provider outcome"],
+    "notebook": "curriculum/advanced/10-long-running-asynchronous-agents/10_long_running_agents.ipynb",
     "refs": [
       "curriculum/advanced/10-long-running-asynchronous-agents/README.md",
-      "curriculum/advanced/10-long-running-asynchronous-agents/long_running_asynchronous_agents.ipynb"
+      "curriculum/advanced/10-long-running-asynchronous-agents/10_long_running_agents.ipynb",
+      "curriculum/advanced/10-long-running-asynchronous-agents/DURABLE_EXECUTION_STATE.md",
+      "curriculum/advanced/10-long-running-asynchronous-agents/EVENT_DRIVEN_RESUMPTION.md",
+      "curriculum/advanced/10-long-running-asynchronous-agents/HUMAN_APPROVAL_TIMEOUTS.md"
     ],
-    "code": "",
-    "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
-    "quiz": []
+    "code": "policy.py + lab.py",
+    "goals": ["Persist minimal authoritative state and resume it in another process.","Validate signed events and single-use approval receipts against current policy and preconditions.","Coordinate workers with CAS and expiring leases.","Reconcile uncertain side effects before retry or completion."],
+    "quiz": [
+      {
+        "q": "What does a valid resume event authorize by itself?",
+        "options": ["The proposed write", "Any work in the same tenant", "Nothing; it only wakes validation against current state and authority", "Completion"],
+        "answer": 2,
+        "explanation": "Delivery, authorization, and execution are separate boundaries."
+      },
+      {
+        "q": "What should follow a timeout when the provider may have committed?",
+        "options": ["Blind retry", "Mark success", "Reconcile using the stable logical operation identity", "Discard history"],
+        "answer": 2,
+        "explanation": "A timeout is an unknown outcome, not proof of failure."
+      }
+    ]
   },
   {
     "id": "a11",

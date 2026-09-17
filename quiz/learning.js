@@ -320,14 +320,17 @@ export const learningPath = [
   },
   {
     "id": "a10",
-    "title": "Long running asynchronous agents",
-    "description": "Advanced exploration of Long running asynchronous agents.",
+    "title": "Long-Running & Asynchronous Agents",
+    "description": "Durable state machines, authenticated events, authority-bound approvals, worker leases, and unknown-outcome reconciliation.",
     "material": "../curriculum/advanced/10-long-running-asynchronous-agents/README.md",
-    "notebook": null,
-    "category": "Advanced - Long running asynchronous agents",
-    "minutes": 60,
+    "notebook": "../curriculum/advanced/10-long-running-asynchronous-agents/10_long_running_agents.ipynb",
+    "category": "Advanced - Long-Running & Asynchronous Agents",
+    "minutes": 165,
     "technologies": [
-      "Python"
+      "Python",
+      "Pydantic",
+      "SQLite",
+      "Deterministic failure injection"
     ]
   },
   {
