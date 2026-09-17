@@ -8,8 +8,8 @@ The fixture validator evaluates four different properties:
 
 1. schema validity;
 2. semantic constraints;
-3. grounding in required evidence IDs;
-4. task correctness against labelled truth.
+3. grounding through trusted evidence receipts;
+4. task correctness against labelled truth for evaluation only.
 
 Valid JSON proves only syntax and required fields. It does not prove the right customer, priority, citation, decision, or business outcome.
 
@@ -18,7 +18,11 @@ The gate can be wrong:
 - **false accept:** accepts an artifact that is task-incorrect;
 - **false promotion:** rejects a task-correct artifact and triggers unnecessary work.
 
-The lab includes both. Its schema-only baseline false-accepts a valid but incorrect priority. Its confidence threshold false-promotes a correct artifact. Threshold selection therefore belongs in evaluation, not intuition.
+Grounding resolves every cited ID through application state, then verifies request, tenant, provenance digest, and field-level support. Merely returning the string `ticket-42` cannot pass.
+
+The lab includes both gate error types. Its schema-only baseline false-accepts a valid but incorrect priority. Its confidence threshold false-promotes a correct artifact. That `confidence` is self-reported fixture data, not calibrated correctness probability. Production promotion signals should come from measured independent evaluators when confidence matters.
+
+`task_correct` compares with hidden labelled fixture truth and is used only to calculate evaluation metrics. It is not an online production gate because serving systems normally do not know the answer in advance.
 
 ## Bounded flow
 
@@ -27,7 +31,7 @@ eligible fast route
 → reserve budget and deadline
 → model call
 → common typed artifact
-→ schema + semantics + grounding + task gate
+→ schema + semantics + receipt grounding + online proxy/evaluator gate
    ├─ accept → complete
    └─ reject → choose unused, eligible, higher-measured-quality route
                 ├─ budget/deadline/cancellation permit → promote
@@ -42,8 +46,9 @@ Before every next call, `run_routing_case()` checks:
 - conservative cumulative cost reserve;
 - distinct provider budget;
 - fallback budget when recovery, rather than promotion, is involved.
+- current task/policy eligibility, live circuit state, and capacity.
 
-The fixture never performs a call and then retroactively claims cancellation or budget should have prevented it.
+Promotion selection considers only currently eligible stronger routes that fit remaining deadline, cost, and provider budgets. It can choose an affordable second-best stronger route rather than selecting an infeasible maximum-quality route and terminating. The fixture never performs a call and then retroactively claims cancellation or reservation should have prevented it. If actual cost nevertheless overruns the ceiling, it records the overrun and stops further calls.
 
 ## When to use a cascade
 

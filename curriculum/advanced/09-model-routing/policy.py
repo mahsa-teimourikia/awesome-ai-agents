@@ -114,7 +114,9 @@ class AttemptStatus(StrEnum):
     TERMINAL_FAILURE = "TERMINAL_FAILURE"
     CANCELLED = "CANCELLED"
     BUDGET_EXCEEDED = "BUDGET_EXCEEDED"
+    BUDGET_OVERRUN = "BUDGET_OVERRUN"
     DEADLINE_EXCEEDED = "DEADLINE_EXCEEDED"
+    INVALID_USAGE = "INVALID_USAGE"
 
 
 class RunStatus(StrEnum):
@@ -124,6 +126,7 @@ class RunStatus(StrEnum):
     PROVIDER_FAILURE = "PROVIDER_FAILURE"
     CANCELLED = "CANCELLED"
     BUDGET_EXCEEDED = "BUDGET_EXCEEDED"
+    BUDGET_OVERRUN = "BUDGET_OVERRUN"
     DEADLINE_EXCEEDED = "DEADLINE_EXCEEDED"
 
 
@@ -355,6 +358,39 @@ class CandidateArtifact(FrozenModel):
     adapter_contract_version: str = ADAPTER_CONTRACT_VERSION
 
 
+class AcceptedEvidence(FrozenModel):
+    """Application-owned receipt for evidence admitted to one request."""
+
+    evidence_id: str = Field(min_length=1)
+    request_id: str = Field(min_length=1)
+    tenant_id: str = Field(min_length=1)
+    source_id: str = Field(min_length=1)
+    source_version: str = Field(min_length=1)
+    digest: str = Field(min_length=1)
+    structured_facts: Mapping[str, Any]
+    provenance_valid: bool
+    accepted_at: datetime
+
+    def expected_digest(self) -> str:
+        return canonical_digest(
+            {
+                "source_id": self.source_id,
+                "source_version": self.source_version,
+                "structured_facts": dict(self.structured_facts),
+            }
+        )
+
+
+class EvidenceRegistry(FrozenModel):
+    receipts: Mapping[str, AcceptedEvidence]
+
+    @model_validator(mode="after")
+    def receipt_keys_match(self) -> "EvidenceRegistry":
+        if any(key != receipt.evidence_id for key, receipt in self.receipts.items()):
+            raise ValueError("EVIDENCE_REGISTRY_KEY_MISMATCH")
+        return self
+
+
 class ExpectedArtifact(FrozenModel):
     schema_id: str
     required_keys: tuple[str, ...]
@@ -367,7 +403,6 @@ class GatePolicy(FrozenModel):
     require_schema: bool = True
     require_semantic_constraints: bool = True
     require_grounding: bool = True
-    require_task_correctness: bool = False
     minimum_confidence: float = Field(default=0, ge=0, le=1)
     validator_version: str = VALIDATOR_VERSION
 
@@ -377,11 +412,13 @@ class ValidationResult(FrozenModel):
     schema_valid: bool
     semantic_valid: bool
     grounded: bool
+    online_accepted: bool
     task_correct: bool
     accepted: bool
     false_accept: bool
     false_promotion: bool
     reason_codes: tuple[str, ...]
+    evaluation_reason_codes: tuple[str, ...]
     validator_version: str
 
 
@@ -420,6 +457,7 @@ class RouteAttempt(FrozenModel):
     latency_ms: int = Field(ge=0)
     input_tokens: int = Field(ge=0)
     output_tokens: int = Field(ge=0)
+    reserved_cost_usd: float = Field(ge=0)
     cost_usd: float = Field(ge=0)
     status: AttemptStatus
     error_code: ProviderErrorCode | None = None
@@ -435,6 +473,7 @@ class RoutingRun(FrozenModel):
     artifact: CandidateArtifact | None
     attempts: tuple[RouteAttempt, ...]
     total_cost_usd: float = Field(ge=0)
+    budget_overrun_usd: float = Field(ge=0)
     total_latency_ms: int = Field(ge=0)
     false_accepts: int = Field(ge=0)
     false_promotions: int = Field(ge=0)
@@ -736,6 +775,9 @@ def validate_candidate_output(
     artifact: CandidateArtifact,
     expected: ExpectedArtifact,
     gate: GatePolicy,
+    *,
+    tenant_id: str,
+    evidence_registry: EvidenceRegistry,
 ) -> ValidationResult:
     schema_valid = (
         artifact.schema_id == expected.schema_id
@@ -746,7 +788,29 @@ def validate_candidate_output(
         bool(artifact.structured_data.get("customer"))
         and priority in expected.allowed_priorities
     )
-    grounded = set(expected.required_evidence_ids).issubset(artifact.evidence_ids)
+    evidence_reasons: list[str] = []
+    cited_ids = set(artifact.evidence_ids)
+    if not set(expected.required_evidence_ids).issubset(cited_ids):
+        evidence_reasons.append("REQUIRED_EVIDENCE_NOT_CITED")
+    cited_receipts: list[AcceptedEvidence] = []
+    for evidence_id in artifact.evidence_ids:
+        receipt = evidence_registry.receipts.get(evidence_id)
+        if receipt is None:
+            evidence_reasons.append("EVIDENCE_ID_NOT_ACCEPTED")
+            continue
+        cited_receipts.append(receipt)
+        if receipt.request_id != artifact.request_id:
+            evidence_reasons.append("EVIDENCE_REQUEST_MISMATCH")
+        if receipt.tenant_id != tenant_id:
+            evidence_reasons.append("EVIDENCE_TENANT_MISMATCH")
+        if not receipt.provenance_valid or receipt.digest != receipt.expected_digest():
+            evidence_reasons.append("EVIDENCE_PROVENANCE_INVALID")
+    if not all(
+        any(receipt.structured_facts.get(key) == value for receipt in cited_receipts)
+        for key, value in artifact.structured_data.items()
+    ):
+        evidence_reasons.append("EVIDENCE_FACT_UNSUPPORTED")
+    grounded = not evidence_reasons
     task_correct = (
         schema_valid
         and semantic_valid
@@ -760,18 +824,15 @@ def validate_candidate_output(
         checks.append(semantic_valid)
     if gate.require_grounding:
         checks.append(grounded)
-    if gate.require_task_correctness:
-        checks.append(task_correct)
-    accepted = all(checks)
+    online_accepted = all(checks)
+    accepted = online_accepted
     reasons: list[str] = []
     if not schema_valid:
         reasons.append("SCHEMA_INVALID")
     if not semantic_valid:
         reasons.append("SEMANTIC_CONSTRAINT_FAILED")
     if not grounded:
-        reasons.append("GROUNDING_FAILED")
-    if not task_correct:
-        reasons.append("TASK_CORRECTNESS_FAILED")
+        reasons.extend(evidence_reasons)
     if artifact.confidence < gate.minimum_confidence:
         reasons.append("CONFIDENCE_BELOW_THRESHOLD")
     if accepted:
@@ -781,11 +842,17 @@ def validate_candidate_output(
         schema_valid=schema_valid,
         semantic_valid=semantic_valid,
         grounded=grounded,
+        online_accepted=online_accepted,
         task_correct=task_correct,
         accepted=accepted,
         false_accept=accepted and not task_correct,
         false_promotion=(not accepted) and task_correct,
         reason_codes=tuple(reasons),
+        evaluation_reason_codes=(
+            ("TASK_CORRECT",)
+            if task_correct
+            else ("TASK_CORRECTNESS_FAILED",)
+        ),
         validator_version=gate.validator_version,
     )
 
@@ -845,20 +912,25 @@ def decide_failure_action(
 
 def compatible_fallbacks(
     registry: RegistrySnapshot,
-    decision: RoutingDecision,
+    requirements: TaskRequirements,
+    context: RoutingContext,
     *,
+    primary_route_id: str,
+    now: datetime,
     exclude_route_ids: Sequence[str],
 ) -> tuple[str, ...]:
-    if decision.selected_route_id is None:
-        return ()
-    primary = _route_by_id(registry, decision.selected_route_id)
+    """Recompute current task eligibility, then enforce route equivalence."""
+
+    primary = _route_by_id(registry, primary_route_id)
+    current = evaluate_eligibility(registry, requirements, context, now=now)
+    eligible = set(current.eligible_route_ids)
     excluded = set(exclude_route_ids)
     return tuple(
-        route_id
-        for route_id in decision.eligible_route_ids
-        if route_id not in excluded
-        and _route_by_id(registry, route_id).equivalence_group
-        == primary.equivalence_group
-        and _route_by_id(registry, route_id).adapter_contract_version
-        == primary.adapter_contract_version
+        route.route_id
+        for route in registry.routes
+        if route.route_id in eligible
+        and route.route_id not in excluded
+        and route.provider != primary.provider
+        and route.equivalence_group == primary.equivalence_group
+        and route.adapter_contract_version == primary.adapter_contract_version
     )

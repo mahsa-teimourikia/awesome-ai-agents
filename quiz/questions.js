@@ -1394,18 +1394,19 @@ export const questions = [
   {
     "id": "chkpt-model_routing",
     "category": "Advanced",
-    "prompt": "Which two controls belong in a safe model-routing policy?",
+    "prompt": "Which three controls belong in a safe model-routing policy?",
     "options": [
       "Rank every known route by price before checking tenant policy.",
       "Compute technical and organizational eligibility before optimization.",
-      "Check cancellation, deadline, and cost reserve before every additional call.",
-      "Treat any valid JSON as correct and grounded."
+      "Revalidate current route state, cancellation, deadline, and cost before every additional call.",
+      "Resolve cited IDs through request- and tenant-bound evidence receipts that support the output."
     ],
     "correct": [
       1,
-      2
+      2,
+      3
     ],
-    "explanation": "Eligibility is a control boundary, and retries, promotions, and fallbacks remain bounded before the next model invocation.",
+    "explanation": "Eligibility is recomputed at execution time, additional calls remain bounded, and evidence strings gain authority only through trusted receipts.",
     "source": {
       "label": "Notebook Checkpoint",
       "url": "curriculum/advanced/09-model-routing/09_model_routing.ipynb"

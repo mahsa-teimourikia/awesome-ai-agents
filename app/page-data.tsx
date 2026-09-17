@@ -1402,7 +1402,9 @@ export const curriculumData:Subject[] = [
     "exercise": "Run the deterministic support-ticket workload, inspect rejection reasons, calibrate the quality gate, and compare governed routing with the same-task schema-only baseline.",
     "failures": [
       "Optimizing price before checking residency, retention, capability, and tenant policy",
-      "Treating schema-valid output as semantically correct and grounded",
+      "Treating a model-returned evidence ID as authoritative grounding",
+      "Treating the initial eligible set as permanent permission for later calls",
+      "Returning success after actual usage overruns the request cost ceiling",
       "Using provider fallback as a response to terminal policy or authentication errors",
       "Making another model call after cancellation, cost exhaustion, or deadline infeasibility"
     ],
@@ -1418,8 +1420,9 @@ export const curriculumData:Subject[] = [
     "goals": [
       "Compute eligibility from trusted technical and organizational constraints before optimization.",
       "Use workload-specific quality, latency, reliability, and versioned input/output pricing evidence.",
-      "Validate common typed artifacts and measure false accepts and false promotions.",
-      "Bound retries, promotions, and compatible fallbacks by cancellation, deadline, cost, attempts, and provider count.",
+      "Resolve cited evidence through request- and tenant-bound receipts before accepting grounded artifacts.",
+      "Revalidate live route state and task-aware compatibility before every retry, promotion, and fallback.",
+      "Separate pre-call cost reservation from actual usage and terminal budget-overrun accounting.",
       "Compare the governed policy with a same-task baseline using task and operational metrics."
     ],
     "quiz": [
@@ -1440,6 +1443,12 @@ export const curriculumData:Subject[] = [
         "options": ["JSON is never useful", "Schema proves shape but not semantics, grounding, or task correctness", "Only text output can be correct", "The cheapest route must always promote"],
         "answer": 1,
         "explanation": "The course evaluates schema, semantic constraints, evidence grounding, and labelled task correctness separately."
+      },
+      {
+        "q": "When does a cited evidence ID establish grounding?",
+        "options": ["When the model repeats the expected ID", "When an application-owned receipt binds it to the request and tenant, verifies provenance, and supports the output fields", "Whenever JSON parsing succeeds", "When two models return the same string"],
+        "answer": 1,
+        "explanation": "Evidence strings are untrusted until resolved and validated through authoritative application state."
       },
       {
         "q": "What must happen when cancellation arrives after one rejected attempt?",

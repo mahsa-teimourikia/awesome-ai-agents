@@ -71,6 +71,17 @@ def _run(case, **kwargs):
     )
 
 
+def _validate(artifact, *, gate=None, evidence_registry=None, tenant_id=lab.TENANT):
+    return policy.validate_candidate_output(
+        artifact,
+        lab.expected_support_artifact(),
+        gate or policy.GatePolicy(),
+        tenant_id=tenant_id,
+        evidence_registry=evidence_registry
+        or lab.accepted_support_evidence(artifact.request_id, tenant_id=tenant_id),
+    )
+
+
 def test_structured_task_requires_schema_identifier():
     with pytest.raises(ValidationError, match="STRUCTURED_SCHEMA_REQUIRED"):
         policy.TaskRequirements.model_validate(
@@ -456,14 +467,16 @@ def test_valid_json_can_satisfy_constraints_but_still_be_task_incorrect():
         evidence_ids=("ticket-42",),
         confidence=0.95,
     )
-    result = policy.validate_candidate_output(
+    result = _validate(
         artifact,
-        lab.expected_support_artifact(),
-        policy.GatePolicy(require_task_correctness=True),
+        evidence_registry=lab.accepted_support_evidence(
+            "req", facts={"customer": "Ada", "priority": "low"}
+        ),
     )
     assert result.schema_valid and result.semantic_valid and result.grounded
+    assert result.online_accepted
     assert not result.task_correct
-    assert not result.accepted
+    assert result.accepted and result.false_accept
 
 
 def test_semantic_constraints_are_independent_from_schema():
@@ -476,8 +489,11 @@ def test_semantic_constraints_are_independent_from_schema():
         evidence_ids=("ticket-42",),
         confidence=0.95,
     )
-    result = policy.validate_candidate_output(
-        artifact, lab.expected_support_artifact(), policy.GatePolicy()
+    result = _validate(
+        artifact,
+        evidence_registry=lab.accepted_support_evidence(
+            "req", facts={"customer": "Ada", "priority": "critical"}
+        ),
     )
     assert result.schema_valid
     assert not result.semantic_valid
@@ -494,13 +510,11 @@ def test_schema_only_gate_exposes_false_accept():
         evidence_ids=(),
         confidence=0.95,
     )
-    result = policy.validate_candidate_output(
+    result = _validate(
         artifact,
-        lab.expected_support_artifact(),
-        policy.GatePolicy(
+        gate=policy.GatePolicy(
             require_semantic_constraints=False,
             require_grounding=False,
-            require_task_correctness=False,
         ),
     )
     assert result.accepted and result.false_accept
@@ -516,11 +530,105 @@ def test_grounding_is_independent_from_schema_and_semantics():
         evidence_ids=(),
         confidence=0.95,
     )
-    result = policy.validate_candidate_output(
-        artifact, lab.expected_support_artifact(), policy.GatePolicy()
-    )
+    result = _validate(artifact)
     assert result.schema_valid and result.semantic_valid
     assert not result.grounded and not result.accepted
+
+
+def test_model_returned_evidence_id_without_receipt_is_not_grounded():
+    artifact = policy.CandidateArtifact(
+        artifact_id="missing-receipt",
+        request_id="req",
+        route_id="route-fast-eu-a",
+        schema_id="support-ticket-v1",
+        structured_data={"customer": "Ada", "priority": "urgent"},
+        evidence_ids=("ticket-42",),
+        confidence=0.95,
+    )
+    result = _validate(
+        artifact,
+        evidence_registry=policy.EvidenceRegistry(receipts={}),
+    )
+    assert not result.grounded and not result.accepted
+    assert "EVIDENCE_ID_NOT_ACCEPTED" in result.reason_codes
+
+
+def test_wrong_tenant_evidence_receipt_is_not_grounded():
+    artifact = policy.CandidateArtifact(
+        artifact_id="wrong-tenant-receipt",
+        request_id="req",
+        route_id="route-fast-eu-a",
+        schema_id="support-ticket-v1",
+        structured_data={"customer": "Ada", "priority": "urgent"},
+        evidence_ids=("ticket-42",),
+        confidence=0.95,
+    )
+    result = _validate(
+        artifact,
+        evidence_registry=lab.accepted_support_evidence(
+            "req", tenant_id="another-tenant"
+        ),
+    )
+    assert not result.grounded and not result.accepted
+    assert "EVIDENCE_TENANT_MISMATCH" in result.reason_codes
+
+
+def test_evidence_receipt_must_be_bound_to_the_same_request():
+    artifact = policy.CandidateArtifact(
+        artifact_id="wrong-request-receipt",
+        request_id="req",
+        route_id="route-fast-eu-a",
+        schema_id="support-ticket-v1",
+        structured_data={"customer": "Ada", "priority": "urgent"},
+        evidence_ids=("ticket-42",),
+        confidence=0.95,
+    )
+    result = _validate(
+        artifact,
+        evidence_registry=lab.accepted_support_evidence("different-request"),
+    )
+    assert not result.grounded and not result.accepted
+    assert "EVIDENCE_REQUEST_MISMATCH" in result.reason_codes
+
+
+def test_evidence_must_support_each_candidate_field():
+    artifact = policy.CandidateArtifact(
+        artifact_id="unsupported-fact",
+        request_id="req",
+        route_id="route-fast-eu-a",
+        schema_id="support-ticket-v1",
+        structured_data={"customer": "Ada", "priority": "urgent"},
+        evidence_ids=("ticket-42",),
+        confidence=0.95,
+    )
+    result = _validate(
+        artifact,
+        evidence_registry=lab.accepted_support_evidence(
+            "req", facts={"customer": "Ada", "priority": "low"}
+        ),
+    )
+    assert not result.grounded and not result.accepted
+    assert "EVIDENCE_FACT_UNSUPPORTED" in result.reason_codes
+
+
+def test_evidence_provenance_digest_is_verified():
+    registry = lab.accepted_support_evidence("req")
+    receipt = registry.receipts["ticket-42"].model_copy(update={"digest": "tampered"})
+    artifact = policy.CandidateArtifact(
+        artifact_id="tampered-provenance",
+        request_id="req",
+        route_id="route-fast-eu-a",
+        schema_id="support-ticket-v1",
+        structured_data={"customer": "Ada", "priority": "urgent"},
+        evidence_ids=("ticket-42",),
+        confidence=0.95,
+    )
+    result = _validate(
+        artifact,
+        evidence_registry=policy.EvidenceRegistry(receipts={"ticket-42": receipt}),
+    )
+    assert not result.grounded and not result.accepted
+    assert "EVIDENCE_PROVENANCE_INVALID" in result.reason_codes
 
 
 def test_low_confidence_correct_output_is_measured_as_false_promotion():
@@ -533,10 +641,9 @@ def test_low_confidence_correct_output_is_measured_as_false_promotion():
         evidence_ids=("ticket-42",),
         confidence=0.70,
     )
-    result = policy.validate_candidate_output(
+    result = _validate(
         artifact,
-        lab.expected_support_artifact(),
-        policy.GatePolicy(require_task_correctness=True, minimum_confidence=0.80),
+        gate=policy.GatePolicy(minimum_confidence=0.80),
     )
     assert not result.accepted and result.task_correct and result.false_promotion
 
@@ -587,20 +694,35 @@ def test_cost_reservation_blocks_promotion_before_next_model_call():
     context = lab.default_context("cost-bound", max_cost_usd=0.0009)
     run = _run(case, context=context)
     assert run.status is policy.RunStatus.BUDGET_EXCEEDED
-    assert run.terminal_reason == "COST_BUDGET_BLOCKED_NEXT_MODEL_CALL"
+    assert run.terminal_reason == "COST_BUDGET_BLOCKED_PROMOTION"
     assert len(run.attempts) == 1
 
 
-def test_deadline_blocks_promotion_before_next_model_call():
+def test_promotion_chooses_affordable_deadline_feasible_stronger_route():
     case = lab.FixtureCase(
         case_id="deadline-bound",
         responses={"route-fast-eu-a": (_correct_response(confidence=0.1),)},
     )
     context = lab.default_context("deadline-bound", deadline_ms=950)
     run = _run(case, context=context)
-    assert run.status is policy.RunStatus.DEADLINE_EXCEEDED
-    assert run.terminal_reason == "DEADLINE_BLOCKED_NEXT_MODEL_CALL"
-    assert len(run.attempts) == 1
+    assert run.status is policy.RunStatus.SUCCEEDED
+    assert run.final_route_id == "route-fast-eu-b"
+    assert len(run.attempts) == 2
+
+
+def test_promotion_chooses_affordable_stronger_route_instead_of_terminating():
+    case = lab.FixtureCase(
+        case_id="affordable-promotion",
+        responses={
+            "route-fast-eu-a": (_correct_response(confidence=0.1),),
+            "route-fast-eu-b": (_correct_response(),),
+        },
+    )
+    context = lab.default_context("affordable-promotion", max_cost_usd=0.0012)
+    run = _run(case, context=context)
+    assert run.status is policy.RunStatus.SUCCEEDED
+    assert run.final_route_id == "route-fast-eu-b"
+    assert len(run.attempts) == 2
 
 
 def test_cancellation_after_first_attempt_stops_the_next_model_call():
@@ -621,6 +743,157 @@ def test_pre_cancelled_context_makes_no_attempt():
     assert run.status is policy.RunStatus.CANCELLED
     assert run.terminal_reason == "CANCELLED_BEFORE_FIRST_MODEL_CALL"
     assert not run.attempts
+
+
+def test_actual_cost_overrun_is_recorded_and_stops_before_promotion():
+    case = lab.FixtureCase(
+        case_id="actual-cost-overrun",
+        responses={
+            "route-fast-eu-a": (
+                _correct_response(confidence=0.1, output_tokens=2_000),
+            ),
+            "route-balanced-eu": (_correct_response(),),
+        },
+    )
+    run = _run(
+        case,
+        context=lab.default_context("actual-cost-overrun", max_cost_usd=0.001),
+    )
+    assert run.status is policy.RunStatus.BUDGET_OVERRUN
+    assert run.terminal_reason == "ACTUAL_COST_EXCEEDED_REQUEST_BUDGET"
+    assert run.budget_overrun_usd > 0
+    assert len(run.attempts) == 1
+    assert run.attempts[0].status is policy.AttemptStatus.BUDGET_OVERRUN
+    assert run.attempts[0].reserved_cost_usd < run.attempts[0].cost_usd
+
+
+def test_impossible_actual_token_usage_is_adapter_invalid():
+    case = lab.FixtureCase(
+        case_id="invalid-provider-usage",
+        responses={
+            "route-fast-eu-a": (
+                _correct_response(output_tokens=5_000),
+            )
+        },
+    )
+    run = _run(
+        case,
+        context=lab.default_context("invalid-provider-usage", max_cost_usd=0.1),
+    )
+    assert run.status is policy.RunStatus.PROVIDER_FAILURE
+    assert run.terminal_reason == "ACTUAL_TOKEN_USAGE_EXCEEDS_ROUTE_LIMIT"
+    assert run.attempts[0].status is policy.AttemptStatus.INVALID_USAGE
+
+
+def test_fallback_route_circuit_opened_after_initial_decision_is_not_called():
+    case = lab.FixtureCase(
+        case_id="fallback-circuit-opens",
+        responses={
+            "route-fast-eu-a": (
+                lab.FixtureResponse(
+                    error_code=policy.ProviderErrorCode.MODEL_UNAVAILABLE
+                ),
+            ),
+            "route-fast-eu-b": (_correct_response(),),
+        },
+        route_state_updates={
+            2: {
+                "route-fast-eu-b": lab.RouteStateUpdate(
+                    circuit_state=policy.CircuitState.OPEN
+                )
+            }
+        },
+    )
+    run = _run(case)
+    assert run.status is policy.RunStatus.PROVIDER_FAILURE
+    assert run.terminal_reason == "NO_CURRENTLY_ELIGIBLE_FALLBACK_ROUTE"
+    assert len(run.attempts) == 1
+
+
+@pytest.mark.parametrize(
+    "update",
+    [
+        lab.RouteStateUpdate(health_status=policy.HealthStatus.UNAVAILABLE),
+        lab.RouteStateUpdate(capacity_age_seconds=300),
+        lab.RouteStateUpdate(lifecycle=policy.RouteLifecycle.DISABLED),
+    ],
+    ids=["unavailable", "stale-capacity", "disabled"],
+)
+def test_promotion_route_is_revalidated_before_call(update):
+    case = lab.FixtureCase(
+        case_id=f"promotion-revalidation-{update}",
+        responses={
+            "route-fast-eu-a": (_correct_response(confidence=0.1),),
+            "route-balanced-eu": (_correct_response(),),
+        },
+        route_state_updates={2: {"route-balanced-eu": update}},
+    )
+    context = lab.default_context(
+        "promotion-revalidation",
+        allowed_providers=("provider-a",),
+    )
+    run = _run(case, context=context)
+    assert run.status is policy.RunStatus.QUALITY_GATE_FAILED
+    assert run.terminal_reason == "NO_CURRENTLY_ELIGIBLE_PROMOTION_ROUTE"
+    assert len(run.attempts) == 1
+
+
+def test_runtime_breaker_records_provider_failure_and_success():
+    breakers = lab.CircuitBreakerRegistry(failure_threshold=1)
+    run = _run(lab.labelled_cases()[4], breaker_registry=breakers)
+    assert run.status is policy.RunStatus.SUCCEEDED
+    assert breakers.state("route-fast-eu-a") is policy.CircuitState.OPEN
+    assert breakers.state("route-fast-eu-b") is policy.CircuitState.CLOSED
+
+
+def test_runtime_admits_one_half_open_probe_and_closes_on_success():
+    breakers = lab.CircuitBreakerRegistry(failure_threshold=1, open_seconds=1)
+    breakers.set_state(
+        "route-fast-eu-a",
+        policy.CircuitState.OPEN,
+        now=lab.FIXED_TIME - timedelta(seconds=2),
+    )
+    run = _run(lab.labelled_cases()[0], breaker_registry=breakers)
+    assert run.status is policy.RunStatus.SUCCEEDED
+    assert len(run.attempts) == 1
+    assert breakers.state("route-fast-eu-a") is policy.CircuitState.CLOSED
+
+
+def test_runtime_capacity_ledger_blocks_retry_and_uses_fallback():
+    registry = lab.fixture_registry()
+    primary = _route(registry, "route-fast-eu-a")
+    limited = primary.model_copy(
+        update={
+            "capacity": primary.capacity.model_copy(
+                update={"remaining_requests_per_minute": 1}
+            )
+        }
+    )
+    registry = registry.model_copy(
+        update={
+            "routes": tuple(
+                limited if route.route_id == primary.route_id else route
+                for route in registry.routes
+            )
+        }
+    )
+    case = lab.FixtureCase(
+        case_id="capacity-consumed-before-retry",
+        responses={
+            "route-fast-eu-a": (
+                lab.FixtureResponse(error_code=policy.ProviderErrorCode.RATE_LIMIT),
+                _correct_response(),
+            ),
+            "route-fast-eu-b": (_correct_response(),),
+        },
+    )
+    run = _run(case, registry=registry)
+    assert run.status is policy.RunStatus.SUCCEEDED
+    assert [attempt.route_id for attempt in run.attempts] == [
+        "route-fast-eu-a",
+        "route-fast-eu-b",
+    ]
+    assert run.attempts[1].reason is policy.AttemptReason.PROVIDER_FALLBACK
 
 
 def test_provider_failure_uses_compatible_cross_provider_fallback():
@@ -701,18 +974,47 @@ def test_retry_exhaustion_then_uses_fallback():
 
 def test_fallbacks_require_same_equivalence_group_and_adapter_contract():
     registry = lab.fixture_registry()
-    decision = policy.select_route(
-        registry,
-        lab.support_requirements(),
-        lab.default_context("equivalence"),
-        now=lab.FIXED_TIME,
-    )
+    requirements = lab.support_requirements()
+    context = lab.default_context("equivalence")
     fallbacks = policy.compatible_fallbacks(
-        registry, decision, exclude_route_ids=("route-fast-eu-a",)
+        registry,
+        requirements,
+        context,
+        primary_route_id="route-fast-eu-a",
+        now=lab.FIXED_TIME,
+        exclude_route_ids=("route-fast-eu-a",),
     )
     assert "route-vision-eu" not in fallbacks
     assert "route-reasoning-eu" not in fallbacks
-    assert set(fallbacks) == {"route-fast-eu-b", "route-balanced-eu"}
+    assert fallbacks == ("route-fast-eu-b",)
+
+
+def test_equivalence_label_does_not_bypass_current_task_requirements():
+    registry = lab.fixture_registry()
+    route = _route(registry, "route-fast-eu-b")
+    incompatible = route.model_copy(
+        update={
+            "output_types": (policy.OutputType.TEXT,),
+            "supports_structured_outputs": False,
+        }
+    )
+    registry = registry.model_copy(
+        update={
+            "routes": tuple(
+                incompatible if item.route_id == route.route_id else item
+                for item in registry.routes
+            )
+        }
+    )
+    fallbacks = policy.compatible_fallbacks(
+        registry,
+        lab.support_requirements(),
+        lab.default_context("misconfigured-equivalence"),
+        primary_route_id="route-fast-eu-a",
+        now=lab.FIXED_TIME,
+        exclude_route_ids=("route-fast-eu-a",),
+    )
+    assert fallbacks == ()
 
 
 def test_max_provider_budget_stops_cross_provider_fallback():

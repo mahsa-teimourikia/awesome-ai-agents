@@ -24,10 +24,14 @@ Production jitter should be random and distributed. Retry budgets should be scop
 
 A fallback route must:
 
-1. already be eligible for the same trusted requirements and context;
-2. share the same `equivalence_group`;
-3. implement the same versioned adapter contract;
-4. fit the remaining provider, attempt, cost, and deadline budgets.
+1. pass a fresh evaluation of the same trusted `TaskRequirements` and `RoutingContext`;
+2. satisfy current lifecycle, health, breaker, capacity, region, retention, policy, deadline, and cost constraints;
+3. use a different provider;
+4. share the same `equivalence_group`;
+5. implement the same versioned adapter contract;
+6. fit the remaining provider, attempt, cost, and deadline budgets.
+
+The initial eligible set is historical evidence, not ongoing execution authority. An equivalence-group label is an additional registry assertion, not proof that modality, output/schema, tools, context limits, and data policy still pass.
 
 The common `CandidateArtifact` normalizes structured data, evidence IDs, tool calls, confidence, and provenance. This creates a validation surface; it does not claim equal tool behavior, context semantics, safety filters, or model quality.
 
@@ -35,7 +39,7 @@ After fallback, run the same artifact validator and completion policy. Never tru
 
 ## Circuit breaker state
 
-The lab keeps circuit state per route:
+The routing runtime keeps circuit state per route and consults it before every call:
 
 ```text
 CLOSED --threshold failures in window--> OPEN
@@ -44,7 +48,7 @@ HALF_OPEN --one probe succeeds--> CLOSED
 HALF_OPEN --probe fails--> OPEN
 ```
 
-Only one half-open probe is admitted. A production distributed system needs shared state or a lease; otherwise every process can stampede the recovering route.
+Recoverable provider failures call `record_failure()` and successful provider responses call `record_success()`. Only one half-open probe is admitted. A production distributed system needs shared state or a lease; otherwise every process can stampede the recovering route.
 
 ## Health, freshness, and capacity
 
@@ -57,9 +61,11 @@ Only one half-open probe is admitted. A production distributed system needs shar
 
 Production routing may add queue depth limits, adaptive concurrency, provider token buckets, regional quotas, hedging policy, and load shedding. Those signals need timestamps and ownership; “healthy” without freshness is not a safe fact.
 
+The lab's mutable capacity ledger is initialized from the provider snapshot and consumes request/token headroom after calls. It demonstrates local reservation and accounting, not a globally synchronized provider quota; production must reconcile shared limits.
+
 ## Trace every attempt
 
-`RouteAttempt` records a unique attempt ID, request ID, route, provider, fixture model ID, reason, start time, latency, tokens, cost, status, error code, and validation reasons. `RoutingRun` aggregates the final state and counts promotions separately from provider fallbacks.
+`RouteAttempt` records a unique attempt ID, request ID, route, provider, fixture model ID, reason, start time, latency, tokens, reserved cost, actual cost, status, error code, and validation reasons. `RoutingRun` aggregates the final state, explicit budget overrun, and counts promotions separately from provider fallbacks.
 
 This lets operations distinguish:
 

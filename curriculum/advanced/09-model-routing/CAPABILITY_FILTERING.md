@@ -56,7 +56,9 @@ reserve = input_tokens × input_price + upper_output_tokens × output_price
 
 Actual result tokens are used for accounting. The reserve is not a claim that estimates are exact. Production systems need a policy for estimate overrun, cached input, tool-call growth, reasoning tokens, and price changes.
 
-Deadline feasibility uses the workload p95, not a global latency claim. The runtime repeats the check before every additional retry, promotion, or fallback.
+Deadline feasibility uses the workload p95, not a global latency claim. The runtime repeats the complete admission check before every initial call, retry, promotion, or fallback. The original `RoutingDecision` remains an audit snapshot; current lifecycle, health, breaker, capacity, policy, task compatibility, remaining budget, and deadline decide whether a call may begin.
+
+Actual usage is accounted after the call. When it exceeds the reservation and request ceiling, `BUDGET_OVERRUN` records the irreversible spend and prevents further calls.
 
 ## Optimization and pinning
 

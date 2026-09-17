@@ -10,12 +10,14 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from policy import (
     ADAPTER_CONTRACT_VERSION,
+    AcceptedEvidence,
     AttemptReason,
     AttemptStatus,
     CandidateArtifact,
     CapacityState,
     CircuitState,
     DataClassification,
+    EvidenceRegistry,
     ExpectedArtifact,
     FailureAction,
     FailurePolicy,
@@ -39,6 +41,7 @@ from policy import (
     RunStatus,
     TaskRequirements,
     WorkloadProfile,
+    canonical_digest,
     compatible_fallbacks,
     decide_failure_action,
     evaluate_eligibility,
@@ -329,6 +332,39 @@ def expected_support_artifact() -> ExpectedArtifact:
     )
 
 
+def accepted_support_evidence(
+    request_id: str,
+    *,
+    tenant_id: str = TENANT,
+    evidence_id: str = "ticket-42",
+    facts: dict[str, Any] | None = None,
+    provenance_valid: bool = True,
+) -> EvidenceRegistry:
+    """Build the trusted evidence receipt used by the support fixture."""
+
+    structured_facts = facts or {"customer": "Ada", "priority": "urgent"}
+    source_id = "support-system/ticket-42"
+    source_version = "version-7"
+    receipt = AcceptedEvidence(
+        evidence_id=evidence_id,
+        request_id=request_id,
+        tenant_id=tenant_id,
+        source_id=source_id,
+        source_version=source_version,
+        digest=canonical_digest(
+            {
+                "source_id": source_id,
+                "source_version": source_version,
+                "structured_facts": structured_facts,
+            }
+        ),
+        structured_facts=structured_facts,
+        provenance_valid=provenance_valid,
+        accepted_at=FIXED_TIME,
+    )
+    return EvidenceRegistry(receipts={receipt.evidence_id: receipt})
+
+
 class FixtureResponse(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -343,12 +379,30 @@ class FixtureResponse(BaseModel):
     output_tokens: int = Field(default=200, ge=0)
 
 
+class RouteStateUpdate(BaseModel):
+    """Deterministic change applied immediately before a numbered model call."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    lifecycle: RouteLifecycle | None = None
+    health_status: HealthStatus | None = None
+    circuit_state: CircuitState | None = None
+    health_age_seconds: int | None = Field(default=None, ge=0)
+    capacity_age_seconds: int | None = Field(default=None, ge=0)
+    remaining_requests_per_minute: int | None = Field(default=None, ge=0)
+    remaining_tokens_per_minute: int | None = Field(default=None, ge=0)
+    available_concurrency: int | None = Field(default=None, ge=0)
+
+
 class FixtureCase(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True, arbitrary_types_allowed=True)
 
     case_id: str
     responses: dict[str, tuple[FixtureResponse, ...]]
     cancel_after_attempt: int | None = Field(default=None, ge=1)
+    route_state_updates: dict[int, dict[str, RouteStateUpdate]] = Field(
+        default_factory=dict
+    )
 
 
 @dataclass
@@ -386,23 +440,143 @@ def _route_by_id(registry: RegistrySnapshot, route_id: str) -> ModelRoute:
     return next(route for route in registry.routes if route.route_id == route_id)
 
 
+def _snapshot_registry(
+    registry: RegistrySnapshot,
+    live_routes: dict[str, ModelRoute],
+    breakers: CircuitBreakerRegistry,
+    *,
+    now: datetime,
+) -> RegistrySnapshot:
+    routes = []
+    for original in registry.routes:
+        route = live_routes[original.route_id]
+        breakers.refresh_state(route.route_id, now=now)
+        health = route.health.model_copy(
+            update={"circuit_state": breakers.state(route.route_id)}
+        )
+        routes.append(route.model_copy(update={"health": health}))
+    return registry.model_copy(update={"routes": tuple(routes)})
+
+
+def _apply_route_state_updates(
+    live_routes: dict[str, ModelRoute],
+    updates: dict[str, RouteStateUpdate],
+    *,
+    now: datetime,
+    breakers: CircuitBreakerRegistry,
+) -> None:
+    for route_id, update in updates.items():
+        route = live_routes[route_id]
+        health_changes: dict[str, Any] = {}
+        if update.health_status is not None:
+            health_changes["status"] = update.health_status
+            health_changes["last_updated_at"] = now
+        if update.health_age_seconds is not None:
+            health_changes["last_updated_at"] = now - timedelta(
+                seconds=update.health_age_seconds
+            )
+        capacity_changes: dict[str, Any] = {}
+        for field_name in (
+            "remaining_requests_per_minute",
+            "remaining_tokens_per_minute",
+            "available_concurrency",
+        ):
+            value = getattr(update, field_name)
+            if value is not None:
+                capacity_changes[field_name] = value
+                capacity_changes["last_updated_at"] = now
+        if update.capacity_age_seconds is not None:
+            capacity_changes["last_updated_at"] = now - timedelta(
+                seconds=update.capacity_age_seconds
+            )
+        changes: dict[str, Any] = {}
+        if update.lifecycle is not None:
+            changes["lifecycle"] = update.lifecycle
+        if health_changes:
+            changes["health"] = route.health.model_copy(update=health_changes)
+        if capacity_changes:
+            changes["capacity"] = route.capacity.model_copy(update=capacity_changes)
+        if changes:
+            live_routes[route_id] = route.model_copy(update=changes)
+        if update.circuit_state is not None:
+            breakers.set_state(route_id, update.circuit_state, now=now)
+
+
+def _consume_capacity(
+    live_routes: dict[str, ModelRoute],
+    route_id: str,
+    response: FixtureResponse,
+    *,
+    now: datetime,
+) -> None:
+    """Consume the lab's application ledger initialized from provider signals."""
+
+    route = live_routes[route_id]
+    capacity = route.capacity.model_copy(
+        update={
+            "remaining_requests_per_minute": max(
+                0, route.capacity.remaining_requests_per_minute - 1
+            ),
+            "remaining_tokens_per_minute": max(
+                0,
+                route.capacity.remaining_tokens_per_minute
+                - response.input_tokens
+                - response.output_tokens,
+            ),
+            "last_updated_at": now,
+        }
+    )
+    live_routes[route_id] = route.model_copy(update={"capacity": capacity})
+
+
+def _remaining_context(
+    context: RoutingContext,
+    *,
+    total_cost: float,
+) -> RoutingContext | None:
+    remaining = context.max_cost_usd - total_cost
+    if remaining <= 0:
+        return None
+    return context.model_copy(update={"max_cost_usd": remaining})
+
+
+def _provider_budget_allows(
+    route: ModelRoute,
+    *,
+    used_providers: set[str],
+    context: RoutingContext,
+) -> bool:
+    return len(used_providers | {route.provider}) <= context.max_providers
+
+
 def _promotion_route(
     registry: RegistrySnapshot,
-    decision_route_ids: tuple[str, ...],
+    eligible_route_ids: tuple[str, ...],
     *,
     current_route_id: str,
     used_route_ids: set[str],
-    task_family: str,
+    used_providers: set[str],
+    context: RoutingContext,
+    requirements: TaskRequirements,
 ) -> str | None:
     current = _route_by_id(registry, current_route_id)
-    current_quality = current.workload_profiles[task_family].quality_score
+    current_quality = current.workload_profiles[requirements.task_family].quality_score
     candidates = [
         _route_by_id(registry, route_id)
-        for route_id in decision_route_ids
+        for route_id in eligible_route_ids
         if route_id not in used_route_ids
         and _route_by_id(registry, route_id).equivalence_group
         == current.equivalence_group
-        and _route_by_id(registry, route_id).workload_profiles[task_family].quality_score
+        and _route_by_id(registry, route_id).adapter_contract_version
+        == current.adapter_contract_version
+        and _provider_budget_allows(
+            _route_by_id(registry, route_id),
+            used_providers=used_providers,
+            context=context,
+        )
+        and _route_by_id(registry, route_id)
+        .workload_profiles[requirements.task_family]
+        .quality_score
         > current_quality
     ]
     if not candidates:
@@ -410,8 +584,13 @@ def _promotion_route(
     return max(
         candidates,
         key=lambda route: (
-            route.workload_profiles[task_family].quality_score,
-            -route.workload_profiles[task_family].p95_latency_ms,
+            route.workload_profiles[requirements.task_family].quality_score,
+            -route.workload_profiles[requirements.task_family].p95_latency_ms,
+            -expected_cost_usd(
+                route,
+                input_tokens=requirements.expected_input_tokens,
+                output_tokens=requirements.upper_bound_output_tokens,
+            ),
         ),
     ).route_id
 
@@ -425,14 +604,36 @@ def run_routing_case(
     gate: GatePolicy | None = None,
     failure_policy: FailurePolicy | None = None,
     cancellation: CancellationToken | None = None,
+    evidence_registry: EvidenceRegistry | None = None,
+    breaker_registry: CircuitBreakerRegistry | None = None,
 ) -> RoutingRun:
     registry = registry or fixture_registry()
     requirements = requirements or support_requirements()
     context = context or default_context(case.case_id)
-    gate = gate or GatePolicy(require_task_correctness=True, minimum_confidence=0.80)
+    gate = gate or GatePolicy(minimum_confidence=0.80)
     failure_policy = failure_policy or FailurePolicy()
     cancellation = cancellation or CancellationToken(context.cancelled)
-    decision = select_route(registry, requirements, context, now=context.requested_at)
+    evidence_registry = evidence_registry or accepted_support_evidence(
+        context.request_id,
+        tenant_id=context.tenant_id,
+    )
+    breakers = breaker_registry or CircuitBreakerRegistry()
+    for route in registry.routes:
+        breakers.seed_state(
+            route.route_id,
+            route.health.circuit_state,
+            now=context.requested_at,
+        )
+    live_routes = {route.route_id: route for route in registry.routes}
+    initial_registry = _snapshot_registry(
+        registry,
+        live_routes,
+        breakers,
+        now=context.requested_at,
+    )
+    decision = select_route(
+        initial_registry, requirements, context, now=context.requested_at
+    )
     if context.cancelled:
         return RoutingRun(
             request_id=context.request_id,
@@ -443,6 +644,7 @@ def run_routing_case(
             artifact=None,
             attempts=(),
             total_cost_usd=0,
+            budget_overrun_usd=0,
             total_latency_ms=0,
             false_accepts=0,
             false_promotions=0,
@@ -460,6 +662,7 @@ def run_routing_case(
             artifact=None,
             attempts=(),
             total_cost_usd=0,
+            budget_overrun_usd=0,
             total_latency_ms=0,
             false_accepts=0,
             false_promotions=0,
@@ -482,6 +685,9 @@ def run_routing_case(
     false_promotions = 0
     promotions = 0
     fallbacks = 0
+    fallback_primary_route_id: str | None = None
+    promotion_origin_route_id: str | None = None
+    applied_state_updates: set[int] = set()
 
     def terminal(
         status: RunStatus,
@@ -498,6 +704,7 @@ def run_routing_case(
             artifact=artifact,
             attempts=tuple(attempts),
             total_cost_usd=total_cost,
+            budget_overrun_usd=max(0, total_cost - context.max_cost_usd),
             total_latency_ms=elapsed_ms,
             false_accepts=false_accepts,
             false_promotions=false_promotions,
@@ -512,11 +719,115 @@ def run_routing_case(
         if len(attempts) >= context.max_attempts:
             return terminal(RunStatus.BUDGET_EXCEEDED, "ATTEMPT_BUDGET_EXHAUSTED")
 
-        route = _route_by_id(registry, route_id)
+        call_number = len(attempts) + 1
+        now = context.requested_at + timedelta(milliseconds=elapsed_ms)
+        if call_number not in applied_state_updates:
+            _apply_route_state_updates(
+                live_routes,
+                case.route_state_updates.get(call_number, {}),
+                now=now,
+                breakers=breakers,
+            )
+            applied_state_updates.add(call_number)
+
+        runtime_context = _remaining_context(context, total_cost=total_cost)
+        if runtime_context is None:
+            return terminal(RunStatus.BUDGET_EXCEEDED, "COST_BUDGET_EXHAUSTED")
+        current_registry = _snapshot_registry(
+            registry,
+            live_routes,
+            breakers,
+            now=now,
+        )
+        current_report = evaluate_eligibility(
+            current_registry,
+            requirements,
+            runtime_context,
+            now=now,
+        )
+        currently_eligible = set(current_report.eligible_route_ids)
+        route = _route_by_id(current_registry, route_id)
+        route_admitted = route_id in currently_eligible and _provider_budget_allows(
+            route,
+            used_providers=used_providers,
+            context=context,
+        )
+
+        if not route_admitted:
+            replacement: str | None = None
+            if reason is AttemptReason.CASCADE_PROMOTION:
+                origin = promotion_origin_route_id or route_id
+                replacement = _promotion_route(
+                    current_registry,
+                    current_report.eligible_route_ids,
+                    current_route_id=origin,
+                    used_route_ids=used_route_ids,
+                    used_providers=used_providers,
+                    context=context,
+                    requirements=requirements,
+                )
+                if replacement is None:
+                    return terminal(
+                        RunStatus.QUALITY_GATE_FAILED,
+                        "NO_CURRENTLY_ELIGIBLE_PROMOTION_ROUTE",
+                    )
+            elif reason in (
+                AttemptReason.PROVIDER_FALLBACK,
+                AttemptReason.RETRY,
+            ):
+                primary_id = fallback_primary_route_id or route_id
+                candidates = compatible_fallbacks(
+                    current_registry,
+                    requirements,
+                    runtime_context,
+                    primary_route_id=primary_id,
+                    now=now,
+                    exclude_route_ids=tuple(used_route_ids | {route_id}),
+                )
+                candidates = tuple(
+                    candidate
+                    for candidate in candidates
+                    if _provider_budget_allows(
+                        _route_by_id(current_registry, candidate),
+                        used_providers=used_providers,
+                        context=context,
+                    )
+                )
+                if candidates and fallbacks < context.max_fallbacks:
+                    replacement = candidates[0]
+                    if reason is not AttemptReason.PROVIDER_FALLBACK:
+                        fallbacks += 1
+                    reason = AttemptReason.PROVIDER_FALLBACK
+                else:
+                    return terminal(
+                        RunStatus.PROVIDER_FAILURE,
+                        "NO_CURRENTLY_ELIGIBLE_FALLBACK_ROUTE",
+                    )
+            else:
+                refreshed = select_route(
+                    current_registry,
+                    requirements,
+                    runtime_context,
+                    now=now,
+                )
+                replacement = refreshed.selected_route_id
+                if replacement is None:
+                    return terminal(
+                        RunStatus.NO_ELIGIBLE_ROUTE,
+                        "NO_ROUTE_ADMITTED_AT_EXECUTION_TIME",
+                    )
+                reason = AttemptReason.POLICY_REROUTE
+            route_id = replacement
+            continue
+
+        if not breakers.allow_call(route_id, now=now):
+            return terminal(
+                RunStatus.PROVIDER_FAILURE,
+                "CIRCUIT_BLOCKED_NEXT_MODEL_CALL",
+            )
+
         profile = route.workload_profiles[requirements.task_family]
-        remaining_ms = int(
-            (context.deadline - context.requested_at).total_seconds() * 1000
-        ) - elapsed_ms
+        remaining_ms = int((context.deadline - now).total_seconds() * 1000)
         if profile.p95_latency_ms > remaining_ms:
             return terminal(RunStatus.DEADLINE_EXCEEDED, "DEADLINE_BLOCKED_NEXT_MODEL_CALL")
         reserved = expected_cost_usd(
@@ -526,28 +837,111 @@ def run_routing_case(
         )
         if total_cost + reserved > context.max_cost_usd:
             return terminal(RunStatus.BUDGET_EXCEEDED, "COST_BUDGET_BLOCKED_NEXT_MODEL_CALL")
-        new_provider_count = len(used_providers | {route.provider})
-        if new_provider_count > context.max_providers:
-            return terminal(RunStatus.BUDGET_EXCEEDED, "PROVIDER_BUDGET_EXHAUSTED")
 
-        started_at = context.requested_at + timedelta(milliseconds=elapsed_ms)
+        started_at = now
         response = client.call(route_id)
         used_route_ids.add(route_id)
         used_providers.add(route.provider)
         elapsed_ms += response.latency_ms
+        finished_at = context.requested_at + timedelta(milliseconds=elapsed_ms)
         cost = expected_cost_usd(
             route,
             input_tokens=response.input_tokens,
             output_tokens=response.output_tokens,
         )
         total_cost += cost
+        _consume_capacity(
+            live_routes,
+            route_id,
+            response,
+            now=finished_at,
+        )
         attempt_id = f"attempt-{context.request_id}-{len(attempts) + 1}"
 
+        provider_failure = response.error_code is not None
+        if provider_failure and response.error_code in failure_policy.fallback_errors:
+            breakers.record_failure(route_id, now=finished_at)
+        elif not provider_failure:
+            breakers.record_success(route_id)
+
+        if (
+            response.input_tokens > route.maximum_context_tokens
+            or response.output_tokens > route.maximum_output_tokens
+        ):
+            attempts.append(
+                RouteAttempt(
+                    attempt_id=attempt_id,
+                    request_id=context.request_id,
+                    route_id=route_id,
+                    provider=route.provider,
+                    model_fixture_id=route.model_fixture_id,
+                    reason=reason,
+                    started_at=started_at,
+                    latency_ms=response.latency_ms,
+                    input_tokens=response.input_tokens,
+                    output_tokens=response.output_tokens,
+                    reserved_cost_usd=reserved,
+                    cost_usd=cost,
+                    status=AttemptStatus.INVALID_USAGE,
+                    error_code=response.error_code,
+                )
+            )
+            return terminal(
+                RunStatus.PROVIDER_FAILURE,
+                "ACTUAL_TOKEN_USAGE_EXCEEDS_ROUTE_LIMIT",
+            )
+
+        if total_cost > context.max_cost_usd:
+            attempts.append(
+                RouteAttempt(
+                    attempt_id=attempt_id,
+                    request_id=context.request_id,
+                    route_id=route_id,
+                    provider=route.provider,
+                    model_fixture_id=route.model_fixture_id,
+                    reason=reason,
+                    started_at=started_at,
+                    latency_ms=response.latency_ms,
+                    input_tokens=response.input_tokens,
+                    output_tokens=response.output_tokens,
+                    reserved_cost_usd=reserved,
+                    cost_usd=cost,
+                    status=AttemptStatus.BUDGET_OVERRUN,
+                    error_code=response.error_code,
+                )
+            )
+            return terminal(
+                RunStatus.BUDGET_OVERRUN,
+                "ACTUAL_COST_EXCEEDED_REQUEST_BUDGET",
+            )
+
         if response.error_code is not None:
-            fallbacks_available = compatible_fallbacks(
+            post_call_context = _remaining_context(context, total_cost=total_cost)
+            current_registry = _snapshot_registry(
                 registry,
-                decision,
+                live_routes,
+                breakers,
+                now=finished_at,
+            )
+            raw_fallbacks = compatible_fallbacks(
+                current_registry,
+                requirements,
+                post_call_context or runtime_context,
+                primary_route_id=route_id,
+                now=finished_at,
                 exclude_route_ids=tuple(used_route_ids),
+            )
+            fallbacks_available = tuple(
+                candidate
+                for candidate in raw_fallbacks
+                if _provider_budget_allows(
+                    _route_by_id(current_registry, candidate),
+                    used_providers=used_providers,
+                    context=context,
+                )
+            )
+            provider_budget_blocked = bool(raw_fallbacks) and not bool(
+                fallbacks_available
             )
             retries = retry_counts.get(route_id, 0)
             failure = decide_failure_action(
@@ -572,6 +966,7 @@ def run_routing_case(
                     latency_ms=response.latency_ms,
                     input_tokens=response.input_tokens,
                     output_tokens=response.output_tokens,
+                    reserved_cost_usd=reserved,
                     cost_usd=cost,
                     status=(
                         AttemptStatus.RETRYABLE_FAILURE
@@ -586,13 +981,20 @@ def run_routing_case(
             if failure.action is FailureAction.RETRY:
                 elapsed_ms += failure.delay_ms
                 retry_counts[route_id] = retries + 1
+                fallback_primary_route_id = route_id
                 reason = AttemptReason.RETRY
                 continue
             if failure.action is FailureAction.FALLBACK:
                 route_id = fallbacks_available[0]
+                fallback_primary_route_id = attempts[-1].route_id
                 fallbacks += 1
                 reason = AttemptReason.PROVIDER_FALLBACK
                 continue
+            if provider_budget_blocked:
+                return terminal(
+                    RunStatus.BUDGET_EXCEEDED,
+                    "PROVIDER_BUDGET_EXHAUSTED",
+                )
             return terminal(
                 RunStatus.PROVIDER_FAILURE,
                 failure.reason_codes[0],
@@ -607,7 +1009,13 @@ def run_routing_case(
             evidence_ids=response.evidence_ids,
             confidence=response.confidence,
         )
-        validation = validate_candidate_output(artifact, expected, gate)
+        validation = validate_candidate_output(
+            artifact,
+            expected,
+            gate,
+            tenant_id=context.tenant_id,
+            evidence_registry=evidence_registry,
+        )
         false_accepts += int(validation.false_accept)
         false_promotions += int(validation.false_promotion)
         attempts.append(
@@ -622,6 +1030,7 @@ def run_routing_case(
                 latency_ms=response.latency_ms,
                 input_tokens=response.input_tokens,
                 output_tokens=response.output_tokens,
+                reserved_cost_usd=reserved,
                 cost_usd=cost,
                 status=(
                     AttemptStatus.ACCEPTED
@@ -636,19 +1045,70 @@ def run_routing_case(
         if validation.accepted:
             return terminal(
                 RunStatus.SUCCEEDED,
-                "FALSE_ACCEPTED_OUTPUT" if validation.false_accept else "OUTPUT_ACCEPTED",
+                "OUTPUT_ACCEPTED",
                 artifact=artifact,
             )
 
-        promoted = _promotion_route(
+        current_registry = _snapshot_registry(
             registry,
-            decision.eligible_route_ids,
+            live_routes,
+            breakers,
+            now=finished_at,
+        )
+        promotion_context = _remaining_context(context, total_cost=total_cost)
+        if promotion_context is None:
+            return terminal(
+                RunStatus.BUDGET_EXCEEDED,
+                "COST_BUDGET_BLOCKED_PROMOTION",
+            )
+        promotion_report = evaluate_eligibility(
+            current_registry,
+            requirements,
+            promotion_context,
+            now=finished_at,
+        )
+        promoted = _promotion_route(
+            current_registry,
+            promotion_report.eligible_route_ids,
             current_route_id=route_id,
             used_route_ids=used_route_ids,
-            task_family=requirements.task_family,
+            used_providers=used_providers,
+            context=context,
+            requirements=requirements,
         )
         if promoted is None:
+            origin = _route_by_id(current_registry, route_id)
+            stronger_ids = {
+                candidate.route_id
+                for candidate in current_registry.routes
+                if candidate.route_id not in used_route_ids
+                and candidate.equivalence_group == origin.equivalence_group
+                and candidate.adapter_contract_version
+                == origin.adapter_contract_version
+                and requirements.task_family in candidate.workload_profiles
+                and candidate.workload_profiles[
+                    requirements.task_family
+                ].quality_score
+                > origin.workload_profiles[requirements.task_family].quality_score
+            }
+            blocked_reasons = {
+                reason_code
+                for result in promotion_report.routes
+                if result.route_id in stronger_ids
+                for reason_code in result.reason_codes
+            }
+            if "COST_CEILING_EXCEEDED" in blocked_reasons:
+                return terminal(
+                    RunStatus.BUDGET_EXCEEDED,
+                    "COST_BUDGET_BLOCKED_PROMOTION",
+                )
+            if "REQUEST_DEADLINE_INFEASIBLE" in blocked_reasons:
+                return terminal(
+                    RunStatus.DEADLINE_EXCEEDED,
+                    "DEADLINE_BLOCKED_PROMOTION",
+                )
             return terminal(RunStatus.QUALITY_GATE_FAILED, "NO_SAFE_PROMOTION_ROUTE")
+        promotion_origin_route_id = route_id
         route_id = promoted
         promotions += 1
         reason = AttemptReason.CASCADE_PROMOTION
@@ -680,12 +1140,46 @@ class CircuitBreakerRegistry:
     def state(self, route_id: str) -> CircuitState:
         return self._states.setdefault(route_id, _Breaker()).state
 
+    def refresh_state(self, route_id: str, *, now: datetime) -> CircuitState:
+        breaker = self._states.setdefault(route_id, _Breaker())
+        if (
+            breaker.state is CircuitState.OPEN
+            and breaker.opened_at is not None
+            and now >= breaker.opened_at + self.open_duration
+        ):
+            breaker.state = CircuitState.HALF_OPEN
+            breaker.half_open_probe_in_flight = False
+        return breaker.state
+
+    def seed_state(
+        self,
+        route_id: str,
+        state: CircuitState,
+        *,
+        now: datetime,
+    ) -> None:
+        if route_id not in self._states:
+            self.set_state(route_id, state, now=now)
+
+    def set_state(
+        self,
+        route_id: str,
+        state: CircuitState,
+        *,
+        now: datetime,
+    ) -> None:
+        breaker = self._states.setdefault(route_id, _Breaker())
+        breaker.state = state
+        breaker.opened_at = now if state is CircuitState.OPEN else None
+        breaker.half_open_probe_in_flight = False
+        if state is CircuitState.CLOSED:
+            breaker.failures.clear()
+
     def allow_call(self, route_id: str, *, now: datetime) -> bool:
         breaker = self._states.setdefault(route_id, _Breaker())
+        self.refresh_state(route_id, now=now)
         if breaker.state is CircuitState.OPEN:
-            if breaker.opened_at is None or now < breaker.opened_at + self.open_duration:
-                return False
-            breaker.state = CircuitState.HALF_OPEN
+            return False
         if breaker.state is CircuitState.HALF_OPEN:
             if breaker.half_open_probe_in_flight:
                 return False
@@ -853,7 +1347,7 @@ def evaluation_fixture() -> dict[str, RoutingMetrics]:
             registry=registry,
             requirements=requirements,
             context=default_context(case.case_id),
-            gate=GatePolicy(require_task_correctness=True, minimum_confidence=0.80),
+            gate=GatePolicy(minimum_confidence=0.80),
         )
         for case in cases
     )
@@ -868,7 +1362,6 @@ def evaluation_fixture() -> dict[str, RoutingMetrics]:
     schema_gate = GatePolicy(
         require_semantic_constraints=False,
         require_grounding=False,
-        require_task_correctness=False,
     )
     for case in cases:
         response = case.responses.get("route-fast-eu-a", (FixtureResponse(),))[0]
@@ -889,7 +1382,16 @@ def evaluation_fixture() -> dict[str, RoutingMetrics]:
             evidence_ids=response.evidence_ids,
             confidence=response.confidence,
         )
-        validation = validate_candidate_output(artifact, expected, schema_gate)
+        validation = validate_candidate_output(
+            artifact,
+            expected,
+            schema_gate,
+            tenant_id=TENANT,
+            evidence_registry=accepted_support_evidence(
+                case.case_id,
+                tenant_id=TENANT,
+            ),
+        )
         baseline_false_accepts += int(validation.false_accept)
         baseline_success += int(validation.accepted and validation.task_correct)
     baseline = RoutingMetrics(

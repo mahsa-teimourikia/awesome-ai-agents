@@ -31,6 +31,8 @@ The application constructs two trusted objects:
 - `TaskRequirements`: workload family and technical needs;
 - `RoutingContext`: tenant and organizational constraints.
 
+It also resolves model-cited evidence through an application-owned `AcceptedEvidence` registry. A returned string such as `ticket-42` is not grounding by itself.
+
 Provider catalogs are also untrusted inputs. They may report technical capabilities, but the application must overlay classification, residency, retention, lifecycle, pricing, health, capacity, and tenant policy before a route can become eligible.
 
 ```text
@@ -81,7 +83,7 @@ These decisions are not interchangeable. A cheap route is irrelevant if it is in
 
 Quality is workload-specific. `model-fast-v1` can have one measured score for support extraction and no measurement at all for architecture reasoning. Missing evidence makes the route ineligible for that workload; it does not inherit a global “good model” label.
 
-Pricing accounts for both input and output tokens. Admission reserves the upper output bound; runtime accounting records actual tokens. A production registry should keep effective dates and conservative reserves because live usage and prices may exceed estimates.
+Pricing accounts for both input and output tokens. Admission reserves the upper output bound; runtime accounting records actual tokens. If actual usage unexpectedly exceeds the request ceiling, the spend cannot be undone: the run records `BUDGET_OVERRUN` and blocks every subsequent call. Token usage beyond a route's declared context/output limit is treated as invalid adapter/provider data. A production registry should keep effective dates and conservative reserves because live usage and prices may exceed estimates.
 
 Lifecycle states are explicit:
 
@@ -122,6 +124,10 @@ The support-ticket validator reports four separate signals:
 - evidence grounding;
 - task correctness against labelled fixture truth.
 
+Grounding is authoritative only when every cited receipt exists, is bound to the same request and tenant, has valid source/version/digest provenance, and its trusted structured facts support the candidate fields. The model cannot create authority by copying an expected evidence ID.
+
+Schema, semantics, grounding, and the fixture confidence threshold are online gates. `task_correct` is different: it uses labelled fixture truth to score false accepts and false promotions during evaluation. Production serving normally does not know ground truth at inference time and must use a measured proxy, independent evaluator, sandbox test, or review workflow. The fixture's model-supplied `confidence` is not a calibrated probability of correctness.
+
 JSON validity alone is intentionally insufficient. The fixture includes valid JSON with the wrong priority. A schema-only baseline accepts it; the governed policy rejects it and promotes.
 
 The automated gate is imperfect and must itself be evaluated:
@@ -139,7 +145,7 @@ The replay client validates routing mechanics against labelled fixture outcomes.
 | Fallback | Retryable/unavailable provider route | Same equivalence group and adapter contract, still eligible | `PROVIDER_FALLBACK` |
 | Reroute | Policy/context/health changes before work | Recompute eligibility and optimization | `POLICY_REROUTE` |
 
-The runtime checks cancellation, remaining deadline, conservative cost reserve, attempt count, provider count, and fallback count before every next model call. A cancellation must prevent the next call, not merely discard its result.
+The initial `RoutingDecision` is an audit snapshot, not durable permission to call every route it once listed. Before every initial call, retry, promotion, or fallback, the runtime recomputes task-aware eligibility from current lifecycle, health, live circuit state, capacity, policy, region, retention, remaining deadline, and remaining cost. An ineligible candidate is replaced by another currently eligible compatible route or the run terminates without calling it. A cancellation must prevent the next call, not merely discard its result.
 
 ## Reliability model
 
@@ -149,9 +155,11 @@ The fixture normalizes provider failures into a typed taxonomy:
 - fallback-capable after bounded retry: the retryable set plus model unavailable;
 - terminal: invalid request, authentication failure, policy denial, context too large, content rejection.
 
-Retries use bounded exponential backoff, deterministic fixture jitter, and `retry_after_ms` when supplied. They must fit the remaining deadline. Fallback is allowed only across routes that were already eligible and share both an equivalence group and adapter contract.
+Retries use bounded exponential backoff, deterministic fixture jitter, and `retry_after_ms` when supplied. They must fit the remaining deadline. Fallback recomputes current technical and organizational eligibility, then additionally requires a different provider, the same equivalence group, and the same adapter contract. Equivalence metadata is an assertion, not proof that current task requirements still pass.
 
-The route-specific circuit breaker implements `CLOSED → OPEN → HALF_OPEN`. Only one half-open probe is admitted. Health and capacity snapshots have freshness limits because stale “healthy” state is unsafe. Production systems also need distributed coordination, per-route token buckets, queue limits, and provider-specific herd control.
+The actual routing runtime uses the route-specific circuit breaker: it calls `allow_call()` before invocation, records recoverable provider failures, records successful responses, and implements `CLOSED → OPEN → HALF_OPEN`. Only one half-open probe is admitted. Health and capacity snapshots have freshness limits because stale “healthy” state is unsafe.
+
+The credential-free lab also maintains an application capacity ledger initialized from observed provider capacity and consumes request/token headroom after each call. That ledger is useful local admission/accounting state; it is not a globally authoritative provider quota. Production systems still need distributed coordination, provider reconciliation, per-route token buckets, queue limits, and herd control.
 
 ## Evaluation
 
@@ -163,7 +171,7 @@ The route-specific circuit breaker implements `CLOSED → OPEN → HALF_OPEN`. O
 4. correct output rejected by an over-conservative confidence signal;
 5. provider unavailability requiring a compatible fallback.
 
-The baseline always uses the cheapest route, checks schema only, and performs no recovery. The governed policy uses the full gate and bounded recovery. Report:
+The baseline always uses the cheapest route, checks schema only, and performs no recovery. The governed policy uses the full online gate and bounded recovery. Labelled `task_correct` remains evaluation-only. Report:
 
 - successful compliant task rate;
 - false-accept and false-promotion rates;
