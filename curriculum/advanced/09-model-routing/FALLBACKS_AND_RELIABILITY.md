@@ -10,9 +10,10 @@ Provider adapters should map provider-specific responses to an application taxon
 | --- | --- | --- |
 | Retryable | `RATE_LIMIT`, `TRANSIENT_PROVIDER`, `TIMEOUT` | Bounded same-route retry, then compatible fallback if allowed |
 | Availability fallback | `MODEL_UNAVAILABLE` | Compatible fallback without a pointless retry |
-| Terminal | `INVALID_REQUEST`, `AUTH_FAILURE`, `POLICY_DENIED`, `CONTEXT_TOO_LARGE`, `CONTENT_REJECTED` | Stop and surface the typed reason |
+| Application-terminal | `INVALID_REQUEST`, `AUTH_FAILURE`, `APPLICATION_POLICY_DENIED`, `CONTEXT_TOO_LARGE` | Stop and surface the typed reason; never recover through provider hopping |
+| Provider content rejection | `PROVIDER_CONTENT_REJECTED` | Terminal by default; compatible fallback only when explicit application policy enables it |
 
-Blindly sending authentication, policy, content, context, or invalid-request failures to another provider can leak data, evade policy, multiply cost, or repeat a deterministic error.
+Blindly sending authentication, policy, content, context, or invalid-request failures to another provider can leak data, evade policy, multiply cost, or repeat a deterministic error. `allow_provider_content_fallback` governs only provider-specific rejection; it can never override `APPLICATION_POLICY_DENIED`.
 
 ## Retry before fallback
 
@@ -52,10 +53,11 @@ Recoverable provider failures call `record_failure()` and successful provider re
 
 ## Health, freshness, and capacity
 
-`RouteHealth` and `CapacityState` are route-specific. Eligibility rejects:
+`RouteHealth` and `CapacityState` are route-specific. Provider capability metadata and workload measurements have separate, longer age limits. Eligibility rejects:
 
 - unavailable routes and open circuits;
 - stale health or capacity snapshots;
+- stale provider metadata or workload profiles;
 - exhausted request/token capacity;
 - unavailable concurrency.
 

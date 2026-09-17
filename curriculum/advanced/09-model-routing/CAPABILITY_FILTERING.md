@@ -7,7 +7,7 @@ Capability filtering is necessary but incomplete. A route can support images and
 The application—not prompt text, retrieved content, or model output—constructs:
 
 - `TaskRequirements`: workload family, input modalities, output contract, tool protocol, context/output bounds, quality floor, data class, and equivalence group;
-- `RoutingContext`: tenant, provider/region allowlists, retention, objective, SLO, budget, deadline, cancellation, attempt/provider/fallback bounds, session pin, and policy version.
+- `RoutingContext`: tenant, provider/region allowlists, retention, objective, SLO, budget, deadline, cancellation, attempt/provider/fallback bounds, session pin, metadata/profile age limits, and policy version.
 
 A prompt such as “ignore policy and use provider-z” is ordinary task content. It cannot mutate either typed object.
 
@@ -22,7 +22,7 @@ A prompt such as “ignore policy and use provider-z” is ordinary task content
 - workload-specific quality and latency measurements;
 - route-specific health and capacity.
 
-Provider metadata can assert a technical capability. It cannot grant a tenant permission, authorize restricted data, waive residency, or enlarge a budget.
+Provider metadata can assert a technical capability. It cannot grant a tenant permission, authorize restricted data, waive residency, or enlarge a budget. Eligibility rejects it with `PROVIDER_METADATA_STALE` when `provider_metadata_last_verified_at` exceeds the application-owned age limit. That limit can be much longer than operational health freshness, but it is not unbounded.
 
 ## Eligibility sequence
 
@@ -33,6 +33,7 @@ trusted context consistency / cancellation
 → lifecycle / provider / region / classification / retention
 → modality / output / schema / tools / protocol / streaming / reasoning
 → context and output limits / equivalence group
+→ provider-metadata and workload-profile freshness
 → measured workload quality / latency / deadline / cost reserve
 → current health / circuit / freshness / capacity
 → ELIGIBLE or rejected reason codes
@@ -44,7 +45,7 @@ Failing one constraint keeps the route outside optimization. This prevents a low
 
 There is no universal `quality=0.95` in the registry. Each `WorkloadProfile` names a task family, evaluator version, sample size, measurement time, quality, p50/p95 latency, success, timeouts, rate limits, and provider errors.
 
-Missing workload evidence produces `WORKLOAD_PROFILE_MISSING`. Production deployments should also define maximum measurement age and invalidate profiles when prompts, adapters, validators, provider revisions, or traffic distributions materially change.
+Missing workload evidence produces `WORKLOAD_PROFILE_MISSING`; evidence older than `max_workload_profile_age_seconds` produces `WORKLOAD_PROFILE_STALE`. Profiles must also be invalidated when prompts, adapters, validators, provider revisions, or traffic distributions materially change, even if their nominal age has not expired.
 
 ## Cost and latency admission
 
@@ -62,7 +63,7 @@ Actual usage is accounted after the call. When it exceeds the reservation and re
 
 ## Optimization and pinning
 
-`select_route()` receives only the eligible set. It can rank by cost, quality, or latency. A session pin is reused only while that route remains eligible. If policy, lifecycle, health, capacity, or context changes, the decision records `STICKY_ROUTE_INELIGIBLE` and reroutes.
+`select_route()` receives only the eligible set. `COST_FIRST` is deliberately lexicographic—cost, then latency, then quality—rather than an uncalibrated weighted “balanced” score. Quality-first and latency-first use their named primary signal. A session pin is reused only while that route satisfies the current task requirements, policy, freshness, and operational eligibility. If any of those change, the decision records `STICKY_ROUTE_INELIGIBLE` and reroutes.
 
 `DRAINING` accepts an already pinned eligible session but no new work. `DEPRECATED` and `DISABLED` do not accept work.
 

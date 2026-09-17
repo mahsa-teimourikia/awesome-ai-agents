@@ -81,7 +81,7 @@ These decisions are not interchangeable. A cheap route is irrelevant if it is in
 
 `ModelRoute` represents a deployable route, not a universal model score. A route binds a fixture model ID to a provider, deployment, region, equivalence group, adapter contract, capability set, application policy, pricing snapshot, workload measurements, health, capacity, and lifecycle.
 
-Quality is workload-specific. `model-fast-v1` can have one measured score for support extraction and no measurement at all for architecture reasoning. Missing evidence makes the route ineligible for that workload; it does not inherit a global “good model” label.
+Quality is workload-specific. `model-fast-v1` can have one measured score for support extraction and no measurement at all for architecture reasoning. Missing or stale evidence makes the route ineligible for that workload; it does not inherit a global “good model” label. Provider capability metadata also has a bounded verification age. Its longer freshness window is distinct from the short operational window for health and capacity.
 
 Pricing accounts for both input and output tokens. Admission reserves the upper output bound; runtime accounting records actual tokens. If actual usage unexpectedly exceeds the request ceiling, the spend cannot be undone: the run records `BUDGET_OVERRUN` and blocks every subsequent call. Token usage beyond a route's declared context/output limit is treated as invalid adapter/provider data. A production registry should keep effective dates and conservative reserves because live usage and prices may exceed estimates.
 
@@ -99,7 +99,7 @@ Lifecycle states are explicit:
 1. trusted context consistency and cancellation;
 2. lifecycle, tenant provider allowlist, region, classification, and retention;
 3. modalities, output type, structured output, tools, protocols, parallel tools, streaming, reasoning, context, and output limits;
-4. route-equivalence group and measured workload quality;
+4. route-equivalence group, current provider metadata, and fresh measured workload quality;
 5. latency SLO, upper-bound cost, deadline feasibility;
 6. route-specific health, circuit state, freshness, request/token capacity, and concurrency.
 
@@ -107,7 +107,7 @@ Only routes with no rejection reasons enter `select_route()`. The deterministic 
 
 The objective then ranks the eligible set:
 
-- `BALANCED_COST`: lowest expected cost, with latency and quality tie-breakers;
+- `COST_FIRST`: lowest expected cost, with latency and quality tie-breakers;
 - `QUALITY_FIRST`: highest measured workload quality;
 - `LATENCY_FIRST`: lowest measured p95 latency.
 
@@ -153,7 +153,10 @@ The fixture normalizes provider failures into a typed taxonomy:
 
 - retryable: rate limit, timeout, transient provider error;
 - fallback-capable after bounded retry: the retryable set plus model unavailable;
-- terminal: invalid request, authentication failure, policy denial, context too large, content rejection.
+- always terminal: invalid request, authentication failure, **application policy denial**, and context too large;
+- provider content rejection: terminal by default, with a compatible alternate route permitted only when explicit application policy enables it.
+
+`APPLICATION_POLICY_DENIED` and `PROVIDER_CONTENT_REJECTED` are deliberately separate. A provider-specific rejection never weakens application policy, and enabling its governed fallback cannot turn an application denial into a recoverable error.
 
 Retries use bounded exponential backoff, deterministic fixture jitter, and `retry_after_ms` when supplied. They must fit the remaining deadline. Fallback recomputes current technical and organizational eligibility, then additionally requires a different provider, the same equivalence group, and the same adapter contract. Equivalence metadata is an assertion, not proof that current task requirements still pass.
 

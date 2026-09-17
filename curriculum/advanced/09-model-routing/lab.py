@@ -296,7 +296,7 @@ def default_context(
     request_id: str,
     *,
     classification: DataClassification = DataClassification.SENSITIVE,
-    objective: RoutingObjective = RoutingObjective.BALANCED_COST,
+    objective: RoutingObjective = RoutingObjective.COST_FIRST,
     allowed_providers: tuple[str, ...] = ("provider-a", "provider-b", "provider-c"),
     allowed_regions: tuple[str, ...] = ("eu-west", "eu-central", "eu-north"),
     max_cost_usd: float = 0.02,

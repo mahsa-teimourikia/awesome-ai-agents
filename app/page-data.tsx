@@ -1420,6 +1420,7 @@ export const curriculumData:Subject[] = [
     "goals": [
       "Compute eligibility from trusted technical and organizational constraints before optimization.",
       "Use workload-specific quality, latency, reliability, and versioned input/output pricing evidence.",
+      "Reject stale provider metadata and workload profiles using application-owned age limits.",
       "Resolve cited evidence through request- and tenant-bound receipts before accepting grounded artifacts.",
       "Revalidate live route state and task-aware compatibility before every retry, promotion, and fallback.",
       "Separate pre-call cost reservation from actual usage and terminal budget-overrun accounting.",
@@ -1455,6 +1456,12 @@ export const curriculumData:Subject[] = [
         "options": ["Make the promotion call and discard it", "Fallback to another provider", "Stop before the next model invocation", "Ignore cancellation until the cascade completes"],
         "answer": 2,
         "explanation": "Cancellation is checked before every next model call."
+      },
+      {
+        "q": "Which rejection may use another provider route?",
+        "options": ["Application policy denial", "Provider-specific content rejection, but only when explicit application policy enables a compatible fallback", "Authentication failure", "An invalid request"],
+        "answer": 1,
+        "explanation": "Application policy denial is always terminal. Provider-specific rejection is separate and terminal by default; an application policy may explicitly permit a compatible alternate route."
       }
     ]
   },

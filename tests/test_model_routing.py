@@ -121,6 +121,38 @@ def test_provider_metadata_must_be_verified_after_effective_date():
         )
 
 
+def test_stale_provider_metadata_is_ineligible():
+    registry = lab.fixture_registry()
+    route = _route(registry, "route-fast-eu-a")
+    stale = route.model_copy(
+        update={
+            "provider_metadata_effective_at": lab.FIXED_TIME - timedelta(days=40),
+            "provider_metadata_last_verified_at": lab.FIXED_TIME
+            - timedelta(days=31),
+        }
+    )
+    registry = registry.model_copy(
+        update={
+            "routes": tuple(
+                stale if item.route_id == route.route_id else item
+                for item in registry.routes
+            )
+        }
+    )
+    result = _route_result(_eligibility(registry=registry), route.route_id)
+    assert not result.eligible
+    assert "PROVIDER_METADATA_STALE" in result.reason_codes
+
+
+def test_stale_workload_profile_is_ineligible():
+    context = lab.default_context("stale-profile").model_copy(
+        update={"max_workload_profile_age_seconds": 3_600}
+    )
+    result = _route_result(_eligibility(context=context), "route-fast-eu-a")
+    assert not result.eligible
+    assert "WORKLOAD_PROFILE_STALE" in result.reason_codes
+
+
 def test_default_eligible_set_contains_only_support_routes_allowed_by_policy():
     report = _eligibility()
     assert report.eligible_route_ids == (
@@ -403,7 +435,7 @@ def test_cheapest_ineligible_route_never_enters_optimization():
 @pytest.mark.parametrize(
     ("objective", "selected"),
     [
-        (policy.RoutingObjective.BALANCED_COST, "route-fast-eu-a"),
+        (policy.RoutingObjective.COST_FIRST, "route-fast-eu-a"),
         (policy.RoutingObjective.QUALITY_FIRST, "route-balanced-eu"),
         (policy.RoutingObjective.LATENCY_FIRST, "route-fast-eu-a"),
     ],
@@ -431,6 +463,30 @@ def test_ineligible_sticky_route_is_rerouted_with_reason():
         lab.fixture_registry(), lab.support_requirements(), context, now=lab.FIXED_TIME
     )
     assert decision.selected_route_id == "route-fast-eu-a"
+    assert "STICKY_ROUTE_INELIGIBLE" in decision.reason_codes
+
+
+def test_sticky_route_cannot_override_new_task_requirements():
+    requirements = lab.support_requirements().model_copy(
+        update={
+            "task_family": "image_analysis",
+            "required_input_modalities": (
+                policy.InputModality.TEXT,
+                policy.InputModality.IMAGE,
+            ),
+            "required_output_type": policy.OutputType.TEXT,
+            "structured_schema_id": None,
+            "required_equivalence_group": "image-analysis-v1",
+        }
+    )
+    context = lab.default_context(
+        "sticky-new-task",
+        sticky_route_id="route-fast-eu-b",
+    )
+    decision = policy.select_route(
+        lab.fixture_registry(), requirements, context, now=lab.FIXED_TIME
+    )
+    assert decision.selected_route_id == "route-vision-eu"
     assert "STICKY_ROUTE_INELIGIBLE" in decision.reason_codes
 
 
@@ -846,6 +902,46 @@ def test_runtime_breaker_records_provider_failure_and_success():
     assert breakers.state("route-fast-eu-b") is policy.CircuitState.CLOSED
 
 
+def test_open_runtime_breaker_reroutes_the_next_request_without_primary_call():
+    breakers = lab.CircuitBreakerRegistry(failure_threshold=2)
+    failure = lab.FixtureResponse(error_code=policy.ProviderErrorCode.RATE_LIMIT)
+    first = lab.FixtureCase(
+        case_id="open-breaker-first-request",
+        responses={
+            "route-fast-eu-a": (failure, failure),
+            "route-fast-eu-b": (_correct_response(),),
+        },
+    )
+    first_run = _run(first, breaker_registry=breakers)
+    assert first_run.status is policy.RunStatus.SUCCEEDED
+    assert [attempt.route_id for attempt in first_run.attempts] == [
+        "route-fast-eu-a",
+        "route-fast-eu-a",
+        "route-fast-eu-b",
+    ]
+    assert breakers.state("route-fast-eu-a") is policy.CircuitState.OPEN
+
+    second = lab.FixtureCase(
+        case_id="open-breaker-next-request",
+        responses={"route-fast-eu-b": (_correct_response(),)},
+    )
+    second_context = lab.default_context(second.case_id).model_copy(
+        update={
+            "requested_at": lab.FIXED_TIME + timedelta(seconds=1),
+            "deadline": lab.FIXED_TIME + timedelta(seconds=4),
+        }
+    )
+    second_run = _run(
+        second,
+        context=second_context,
+        breaker_registry=breakers,
+    )
+    assert second_run.status is policy.RunStatus.SUCCEEDED
+    assert [attempt.route_id for attempt in second_run.attempts] == [
+        "route-fast-eu-b"
+    ]
+
+
 def test_runtime_admits_one_half_open_probe_and_closes_on_success():
     breakers = lab.CircuitBreakerRegistry(failure_threshold=1, open_seconds=1)
     breakers.set_state(
@@ -912,8 +1008,8 @@ def test_provider_failure_uses_compatible_cross_provider_fallback():
     "error",
     [
         policy.ProviderErrorCode.AUTH_FAILURE,
-        policy.ProviderErrorCode.POLICY_DENIED,
-        policy.ProviderErrorCode.CONTENT_REJECTED,
+        policy.ProviderErrorCode.APPLICATION_POLICY_DENIED,
+        policy.ProviderErrorCode.PROVIDER_CONTENT_REJECTED,
         policy.ProviderErrorCode.INVALID_REQUEST,
         policy.ProviderErrorCode.CONTEXT_TOO_LARGE,
     ],
@@ -927,6 +1023,54 @@ def test_terminal_errors_do_not_blindly_retry_or_fallback(error):
     assert run.status is policy.RunStatus.PROVIDER_FAILURE
     assert len(run.attempts) == 1
     assert run.fallback_count == 0
+    assert run.attempts[0].status is policy.AttemptStatus.TERMINAL_FAILURE
+
+
+def test_provider_content_rejection_can_fallback_only_with_explicit_policy():
+    case = lab.FixtureCase(
+        case_id="governed-provider-content-fallback",
+        responses={
+            "route-fast-eu-a": (
+                lab.FixtureResponse(
+                    error_code=policy.ProviderErrorCode.PROVIDER_CONTENT_REJECTED
+                ),
+            ),
+            "route-fast-eu-b": (_correct_response(),),
+        },
+    )
+    run = _run(
+        case,
+        failure_policy=policy.FailurePolicy(
+            allow_provider_content_fallback=True
+        ),
+    )
+    assert run.status is policy.RunStatus.SUCCEEDED
+    assert [attempt.reason for attempt in run.attempts] == [
+        policy.AttemptReason.INITIAL,
+        policy.AttemptReason.PROVIDER_FALLBACK,
+    ]
+
+
+def test_application_policy_denial_cannot_be_overridden_by_fallback_policy():
+    case = lab.FixtureCase(
+        case_id="application-policy-denial",
+        responses={
+            "route-fast-eu-a": (
+                lab.FixtureResponse(
+                    error_code=policy.ProviderErrorCode.APPLICATION_POLICY_DENIED
+                ),
+            ),
+            "route-fast-eu-b": (_correct_response(),),
+        },
+    )
+    run = _run(
+        case,
+        failure_policy=policy.FailurePolicy(
+            allow_provider_content_fallback=True
+        ),
+    )
+    assert run.status is policy.RunStatus.PROVIDER_FAILURE
+    assert len(run.attempts) == 1
     assert run.attempts[0].status is policy.AttemptStatus.TERMINAL_FAILURE
 
 

@@ -76,7 +76,7 @@ class CircuitState(StrEnum):
 
 
 class RoutingObjective(StrEnum):
-    BALANCED_COST = "BALANCED_COST"
+    COST_FIRST = "COST_FIRST"
     QUALITY_FIRST = "QUALITY_FIRST"
     LATENCY_FIRST = "LATENCY_FIRST"
 
@@ -87,10 +87,10 @@ class ProviderErrorCode(StrEnum):
     TIMEOUT = "TIMEOUT"
     INVALID_REQUEST = "INVALID_REQUEST"
     AUTH_FAILURE = "AUTH_FAILURE"
-    POLICY_DENIED = "POLICY_DENIED"
+    APPLICATION_POLICY_DENIED = "APPLICATION_POLICY_DENIED"
     CONTEXT_TOO_LARGE = "CONTEXT_TOO_LARGE"
     MODEL_UNAVAILABLE = "MODEL_UNAVAILABLE"
-    CONTENT_REJECTED = "CONTENT_REJECTED"
+    PROVIDER_CONTENT_REJECTED = "PROVIDER_CONTENT_REJECTED"
 
 
 class FailureAction(StrEnum):
@@ -296,6 +296,8 @@ class RoutingContext(FrozenModel):
     max_providers: int = Field(default=2, ge=1)
     max_fallbacks: int = Field(default=1, ge=0)
     max_state_age_seconds: int = Field(default=120, gt=0)
+    max_provider_metadata_age_seconds: int = Field(default=2_592_000, gt=0)
+    max_workload_profile_age_seconds: int = Field(default=2_592_000, gt=0)
 
     @model_validator(mode="after")
     def valid_deadline(self) -> "RoutingContext":
@@ -427,6 +429,7 @@ class FailurePolicy(FrozenModel):
     base_backoff_ms: int = Field(default=100, ge=0)
     maximum_backoff_ms: int = Field(default=1000, ge=0)
     jitter_ms: int = Field(default=50, ge=0)
+    allow_provider_content_fallback: bool = False
     retryable_errors: tuple[ProviderErrorCode, ...] = (
         ProviderErrorCode.RATE_LIMIT,
         ProviderErrorCode.TRANSIENT_PROVIDER,
@@ -631,8 +634,14 @@ def evaluate_eligibility(
             reasons.append("ROUTE_GROUP_INCOMPATIBLE")
         if profile is None:
             reasons.append("WORKLOAD_PROFILE_MISSING")
-        elif profile.quality_score < requirements.minimum_quality:
-            reasons.append("QUALITY_THRESHOLD_NOT_MET")
+        else:
+            if (
+                now - profile.measured_at
+                > timedelta(seconds=context.max_workload_profile_age_seconds)
+            ):
+                reasons.append("WORKLOAD_PROFILE_STALE")
+            if profile.quality_score < requirements.minimum_quality:
+                reasons.append("QUALITY_THRESHOLD_NOT_MET")
         if (
             profile is not None
             and profile.success_rate < requirements.minimum_success_rate
@@ -648,6 +657,11 @@ def evaluate_eligibility(
             reasons.append("ROUTE_RATE_LIMITED")
         if route.health.circuit_state is CircuitState.OPEN:
             reasons.append("CIRCUIT_OPEN")
+        if (
+            now - route.provider_metadata_last_verified_at
+            > timedelta(seconds=context.max_provider_metadata_age_seconds)
+        ):
+            reasons.append("PROVIDER_METADATA_STALE")
         maximum_age = timedelta(seconds=context.max_state_age_seconds)
         if now - route.health.last_updated_at > maximum_age:
             reasons.append("HEALTH_STATE_STALE")
@@ -860,9 +874,8 @@ def validate_candidate_output(
 TERMINAL_PROVIDER_ERRORS = {
     ProviderErrorCode.INVALID_REQUEST,
     ProviderErrorCode.AUTH_FAILURE,
-    ProviderErrorCode.POLICY_DENIED,
+    ProviderErrorCode.APPLICATION_POLICY_DENIED,
     ProviderErrorCode.CONTEXT_TOO_LARGE,
-    ProviderErrorCode.CONTENT_REJECTED,
 }
 
 
@@ -881,6 +894,18 @@ def decide_failure_action(
             action=FailureAction.TERMINATE,
             delay_ms=0,
             reason_codes=(f"{error_code.value}_TERMINAL",),
+        )
+    if error_code is ProviderErrorCode.PROVIDER_CONTENT_REJECTED:
+        if policy.allow_provider_content_fallback and fallback_available:
+            return FailureDecision(
+                action=FailureAction.FALLBACK,
+                delay_ms=0,
+                reason_codes=("GOVERNED_PROVIDER_CONTENT_FALLBACK",),
+            )
+        return FailureDecision(
+            action=FailureAction.TERMINATE,
+            delay_ms=0,
+            reason_codes=("PROVIDER_CONTENT_REJECTED_TERMINAL_BY_DEFAULT",),
         )
     if error_code in policy.retryable_errors and retry_count < policy.max_retries_per_route:
         exponential = min(
