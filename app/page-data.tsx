@@ -1505,21 +1505,37 @@ export const curriculumData:Subject[] = [
     "id": "a11",
     "level": "Advanced",
     "step": "11",
-    "title": "Llm as judge agent judges",
-    "description": "Advanced exploration of Llm as judge agent judges.",
-    "time": "45-60 min",
-    "outcome": "Master advanced patterns.",
-    "lesson": "Deep dive into SOTA literature.",
-    "exercise": "Implement complex agentic systems.",
-    "failures": [],
-    "notebook": "curriculum/advanced/11-llm-as-judge-agent-judges/llm_as_judge_agent_judges.ipynb",
+    "title": "LLM-as-Judge and Evaluator Agents",
+    "description": "Treat model judges as fallible measurement instruments inside evidence-bound, application-owned controls.",
+    "time": "90-120 min",
+    "outcome": "Build and validate a calibrated evaluation pipeline with independent labels, hard gates, typed evidence, bias probes, and drift monitoring.",
+    "lesson": "Separate agreement from confidence calibration, semantic judgment from deterministic facts, and observed outcomes from causal claims.",
+    "exercise": "Measure a frozen Northstar validation set, probe pairwise position sensitivity, constrain an active evaluator, and test risk-specific rollout gates.",
+    "failures": ["Reference labels derived from judge predictions", "Critical failures hidden by averages", "Candidate or log text treated as authority", "Unbound or stale evidence", "Aggregate metrics hiding false passes"],
+    "notebook": "curriculum/advanced/11-llm-as-judge-agent-judges/11_llm_as_judge.ipynb",
     "refs": [
       "curriculum/advanced/11-llm-as-judge-agent-judges/README.md",
-      "curriculum/advanced/11-llm-as-judge-agent-judges/llm_as_judge_agent_judges.ipynb"
+      "curriculum/advanced/11-llm-as-judge-agent-judges/11_llm_as_judge.ipynb",
+      "curriculum/advanced/11-llm-as-judge-agent-judges/RUBRICS_AND_CALIBRATION.md",
+      "curriculum/advanced/11-llm-as-judge-agent-judges/JUDGE_BIASES.md",
+      "curriculum/advanced/11-llm-as-judge-agent-judges/EVALUATOR_AGENTS.md"
     ],
-    "code": "",
-    "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
-    "quiz": []
+    "code": "policy.py + lab.py",
+    "goals": ["Measure agreement, confidence calibration, asymmetric errors, and human reliability separately.","Run deterministic hard gates before semantic judgment and validate every evidence binding.","Test position sensitivity without leaking reference labels into runtime decisions.","Compare versioned judges and rubrics on a held-out set before changing rollout mode."],
+    "quiz": [
+      {
+        "q": "What authority does a high-confidence judge PASS grant by itself?",
+        "options": ["Production release authority", "Tool write access", "None; it is a typed proposal validated and aggregated by application policy", "Permission to ignore hard gates"],
+        "answer": 2,
+        "explanation": "Judge output is evidence for policy, not ground truth, authorization, or execution authority."
+      },
+      {
+        "q": "What should happen when pairwise choices follow screen position after an order swap?",
+        "options": ["Reveal the gold winner", "Average the answers", "Return position-unstable and abstain or escalate", "Always select the longer answer"],
+        "answer": 2,
+        "explanation": "Order sensitivity is a failed bias probe; the runtime must not use a hidden reference to resolve it."
+      }
+    ]
   },
   {
     "id": "a12",

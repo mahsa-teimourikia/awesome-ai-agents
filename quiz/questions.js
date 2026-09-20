@@ -1550,20 +1550,20 @@ export const questions = [
   {
     "id": "chkpt-llm_as_judge_agent_judges",
     "category": "Evaluation",
-    "prompt": "Why use an LLM-as-a-Judge instead of traditional unit tests for an Agent?",
+    "prompt": "A semantic judge gives a refund trajectory PASS with 0.95 confidence, but the provider receipt is absent. What should the evaluation system do?",
     "options": [
-      "Traditional unit tests cannot easily evaluate subjective qualities like tone, politeness, or complex reasoning accuracy in unstructured text.",
-      "It is cheaper than traditional unit tests.",
-      "It guarantees 100% mathematical accuracy.",
-      "It compiles the python code automatically."
+      "Pass because semantic confidence is high.",
+      "Apply the deterministic outcome hard gate and fail or return insufficient evidence according to policy.",
+      "Ask the same judge until it agrees with the trace.",
+      "Treat the agent's success claim as an authoritative receipt."
     ],
     "correct": [
-      0
+      1
     ],
-    "explanation": "Refer to the notebook for the detailed explanation.",
+    "explanation": "Known facts belong to deterministic validation. A judge score cannot compensate for missing authoritative evidence or override a hard gate.",
     "source": {
       "label": "Notebook Checkpoint",
-      "url": "curriculum/advanced/11-llm-as-judge-agent-judges/llm_as_judge_agent_judges.ipynb"
+      "url": "curriculum/advanced/11-llm-as-judge-agent-judges/11_llm_as_judge.ipynb"
     }
   },
   {
