@@ -1,24 +1,57 @@
-# Deep Dive: Public Benchmarks
+# Deep Dive: Public Benchmark Evidence
 
-The AI industry is flooded with leaderboards. A foundational model provider will claim they achieve "State of the Art on SWE-bench". 
+## A score answers a bounded question
 
-It is critical for enterprise engineers to understand what these benchmarks actually measure, and why a high score does NOT equal production readiness.
+A benchmark is a versioned measurement contract: cases, environment, allowed
+interaction, evaluator, and aggregation. A result is interpretable only inside that
+contract. SWE-bench, WebArena, GAIA, τ-bench, BrowserGym, OSWorld, and AgentBench
+exercise different capabilities and harnesses; there is no defensible conversion such
+as “one WebArena point equals some fraction of a SWE-bench point.”
 
-## Major Public Benchmarks
+Use this taxonomy:
 
-### 1. SWE-bench
-**What it measures:** An agent is given a GitHub issue and a codebase, and must generate a patch that passes the repository's unit tests.
-**The Catch:** Real enterprise software engineering is rarely just about passing unit tests. It involves negotiating with stakeholders, interpreting vague JIRA tickets, and understanding unwritten architectural guidelines. A high SWE-bench score proves coding capability, but not operational autonomy.
+| Type | Primary question |
+| --- | --- |
+| Capability benchmark | Can the system demonstrate a particular capability? |
+| System benchmark | Can the full agent complete representative tasks? |
+| Safety benchmark | Does behavior remain inside explicit risk boundaries? |
+| Regression suite | Did a candidate break previously established behavior? |
+| Load/performance benchmark | Does the system meet throughput and latency objectives? |
+| Production shadow evaluation | How does a candidate behave on real inputs without controlling effects? |
 
-### 2. WebArena
-**What it measures:** An agent must navigate a simulated e-commerce or forum website using browser automation, filling out forms and clicking buttons to achieve a goal.
-**The Catch:** The simulated websites in WebArena are static. Real websites have A/B tests, CAPTCHAs, cookie banners, and rapidly changing DOMs. A 90% score on WebArena often translates to a 20% success rate on the live internet.
+## Contamination and leakage
 
-### 3. τ-bench (Tau-Bench)
-**What it measures:** Customer service tool usage. The agent must interact with a simulated database (e.g., flight bookings) and adhere strictly to a company policy document.
-**The Catch:** This is the closest to an enterprise scenario, but the mocked databases do not simulate the latency, 500 errors, or rate limits that cause agents to enter destructive retry-loops in production.
+For a public case and a model with unknown training data, the accurate claim is
+**contamination risk**, not proven memorization. Record observable exposure:
 
-## The Data Contamination Problem
-The biggest risk with public benchmarks is **Data Contamination**. Because SWE-bench is built from public GitHub issues, those issues were likely in the training data of the LLM itself. The model might not be "reasoning" through the bug fix; it might just be reciting the patch it memorized during pre-training.
+- `PUBLIC_SOURCE`
+- `CONTROLLED_ENVIRONMENT`
+- `PRIVATE_HELD_OUT`
 
-This is why enterprises must build their own custom, private benchmarks.
+Then record development leakage independently. A private case may be exposed through
+prompt or rubric development, few-shot examples, fine-tuning, debugging, logs,
+repeated CI runs, memory, or caches. Held-out status is a process property, not a
+privacy label.
+
+Maintain three practical partitions:
+
+- development: visible and safe to tune against;
+- validation: held out from routine prompt/model development;
+- challenge: adversarial or rotated, with restricted exposure.
+
+Reset agent memory and retrieval/model/tool caches unless persistent learning is what
+the case explicitly tests. Bind RAG tests to corpus, index, and embedding versions.
+For changing web/search data, choose record/replay, a controlled corpus, or a dated
+live-eval mode and document the reproducibility trade-off.
+
+## Public benchmark limits do not make them irrelevant
+
+Public scores can screen models, reveal capability changes, support research, and
+provide common comparisons. Enterprise readiness additionally requires your workload,
+tools, identities, data, policy, failure modes, costs, and operational SLOs. Continue
+monitoring after release because neither public nor private offline cases establish
+future production performance.
+
+See the primary project documentation linked from the [course README](README.md), and
+pin the dataset, environment, evaluator, model, scaffold, and run configuration used
+for every result.

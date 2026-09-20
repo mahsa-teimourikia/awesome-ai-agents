@@ -1541,21 +1541,37 @@ export const curriculumData:Subject[] = [
     "id": "a12",
     "level": "Advanced",
     "step": "12",
-    "title": "Agent benchmarks",
-    "description": "Advanced exploration of Agent benchmarks.",
-    "time": "45-60 min",
-    "outcome": "Master advanced patterns.",
-    "lesson": "Deep dive into SOTA literature.",
-    "exercise": "Implement complex agentic systems.",
-    "failures": [],
-    "notebook": "curriculum/advanced/12-agent-benchmarks/agent_benchmarks.ipynb",
+    "title": "Agent Benchmarks and Enterprise Evals",
+    "description": "Engineer governed benchmark datasets, observable trajectory evaluation, paired regressions, uncertainty-aware metrics, and release gates.",
+    "time": "90-120 min",
+    "outcome": "Build a credential-free enterprise benchmark that separates capability, workload, safety, harness health, and production evidence.",
+    "lesson": "Treat benchmark cases, environments, evaluators, metrics, and release policy as versioned application-owned measurement contracts.",
+    "exercise": "Compare baseline and candidate on the same held-out Northstar cases, expose a critical cross-tenant regression, and repair it without changing ground truth.",
+    "failures": ["Unsupported contamination claims", "Private data mistaken for held-out data", "Self-declared grounding", "Critical failures hidden by averages", "Harness failures counted as agent failures", "Exact tool sequence overfitting"],
+    "notebook": "curriculum/advanced/12-agent-benchmarks/12_agent_benchmarks.ipynb",
     "refs": [
       "curriculum/advanced/12-agent-benchmarks/README.md",
-      "curriculum/advanced/12-agent-benchmarks/agent_benchmarks.ipynb"
+      "curriculum/advanced/12-agent-benchmarks/12_agent_benchmarks.ipynb",
+      "curriculum/advanced/12-agent-benchmarks/PUBLIC_BENCHMARKS.md",
+      "curriculum/advanced/12-agent-benchmarks/ENTERPRISE_EVALS.md",
+      "curriculum/advanced/12-agent-benchmarks/TRAJECTORY_ANALYSIS.md"
     ],
-    "code": "",
-    "goals": ["Review the theoretical concepts and architecture.","Open the companion notebook and execute the cells.","Trace the execution and observe the output.","Identify the boundary constraints and failure points."],
-    "quiz": []
+    "code": "policy.py + lab.py",
+    "goals": ["Distinguish public capability evidence from workload, safety, and production evidence.","Govern case identity, provenance, held-out splits, leakage, sensitive data, and environment versions.","Evaluate authoritative outcomes and observable trajectories with hard policy gates.","Report uncertainty, per-slice support, invalid runs, cost, latency, and paired regressions before release."],
+    "quiz": [
+      {
+        "q": "A candidate improves 12 routine cases but newly reads evidence from another tenant. Its aggregate compliant-success rate is above threshold. What should a blocking enterprise safety policy do?",
+        "options": ["Release because the average improved", "Average the safety failure against style", "Block because the zero-tolerance tenant gate and critical-regression budget failed", "Rerun until the case passes"],
+        "answer": 2,
+        "explanation": "High-risk failures have their own gates; aggregate gains cannot buy off a cross-tenant regression."
+      },
+      {
+        "q": "A sandbox database crashes on four evaluation cases. How should those runs affect the report?",
+        "options": ["Count all four as agent failures", "Discard them silently", "Mark them invalid/harness failures, expose the invalid-run rate, and restore valid support before deciding", "Treat the agent's SUCCESS text as authoritative"],
+        "answer": 2,
+        "explanation": "Measurement-system failure is not agent failure, but a high invalid-run rate makes the benchmark result unreliable."
+      }
+    ]
   },
   {
     "id": "a13",

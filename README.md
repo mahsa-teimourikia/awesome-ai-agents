@@ -80,7 +80,7 @@ Every topic has a co-located `README.md`, deep dive topics, and self-contained n
 | 09 | [Model Routing](curriculum/advanced/09-model-routing/README.md) | Capability, cost, latency, fallback, and ensemble routing |
 | 10 | [Long-Running and Asynchronous Agents](curriculum/advanced/10-long-running-asynchronous-agents/README.md) | Jobs, pause/resume, checkpoints, queues, and durable execution |
 | 11 | [LLM-as-Judge and Evaluator Agents](curriculum/advanced/11-llm-as-judge-agent-judges/README.md) | Calibrated measurement, evidence-bound evaluation, bias probes, hard gates, and drift |
-| 12 | [Agent Benchmarks](curriculum/advanced/12-agent-benchmarks/README.md) | SWE-bench, WebArena, BrowserGym, GAIA, τ-bench, OSWorld, and enterprise benchmarks |
+| 12 | [Agent Benchmarks](curriculum/advanced/12-agent-benchmarks/README.md) | Public benchmark literacy, governed enterprise datasets, observable trajectories, paired regressions, slice metrics, and release gates |
 | 13 | [MCP: Model Context Protocol](curriculum/advanced/13-mcp-model-context-protocol/README.md) | Tools, resources, prompts, gateways, security, and interoperability |
 | 14 | [Agent Skills](curriculum/advanced/14-agent-skills/README.md) | Procedural knowledge, dynamic loading, composition, MCP, and subagents |
 | 15 | [Designing Reliable Agentic Systems](curriculum/advanced/15-designing-reliable-agentic-systems/README.md) | Core engineering trade-offs and reliable system design |

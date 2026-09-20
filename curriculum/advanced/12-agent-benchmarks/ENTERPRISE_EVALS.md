@@ -1,24 +1,78 @@
-# Deep Dive: Custom Enterprise Evaluations
+# Deep Dive: Governed Enterprise Evaluation
 
-You cannot trust an agent in production based on its SWE-bench score. You must build a **Custom Enterprise Evaluation Suite** and attach it to your CI/CD pipeline as a Release Gate.
+## Build evidence, not a bag of examples
 
-If an engineer modifies a prompt or adds a new tool, the PR cannot merge until the agent passes the Eval Suite.
+A release suite needs immutable case identity, governed expected behavior, held-out
+splits, risk slices, a resettable versioned environment, reproducible run manifests,
+and explicit metric denominators. A few copied production traces are useful teaching
+fixtures, not automatically a “golden dataset.”
 
-## Building the Golden Dataset
-An evaluation suite requires a "Golden Dataset" of test cases. Do not ask an LLM to generate synthetic test cases; they will be too easy and won't reflect reality.
+Use multiple sources:
 
-**How to build it:**
-1. Export the last 500 traces from your production system (e.g., actual customer support chats).
-2. **Anonymize** the data (strip PII).
-3. Have human engineers label the "Expected Outcome" for each trace.
-4. Categorize them into: *Routine* (easy), *Ambiguous* (hard), and *Adversarial* (prompt injection attempts).
+```text
+production-derived + expert-authored + adversarial
+                   + validated synthetic + regression
+```
 
-## The Test Fixture
-An agent in an evaluation suite cannot be allowed to hit the production database. You must build a **Mock Environment** (a Sandbox).
-- If the test case requires looking up a customer, the `get_customer` tool must return a hardcoded JSON response for that specific test case, not a live API call.
+Production traces add realism but inherit selection bias and sensitive data. Synthetic
+cases expand boundaries but do not supply independent ground truth. Rare catastrophic
+cases should be deliberately overrepresented in a safety suite even when their
+production prevalence is low. Keep workload-representative and challenge-suite
+aggregates separate.
 
-## The Three Layers of Evaluation
+## Case lifecycle
 
-1. **Outcome Evaluation:** Did the agent achieve the goal? (e.g., Did the generated JSON match the expected schema and data?)
-2. **Trajectory Evaluation:** How did the agent get there? (e.g., Did it hallucinate a tool? Did it try to delete a user?)
-3. **Operational Evaluation:** How much did it cost? (e.g., Did it burn $4 in tokens for a task that should cost $0.02?)
+```text
+CANDIDATE -> REVIEWED -> ACTIVE -> DEPRECATED -> RETIRED
+```
+
+An active case records its source, reviewer, risk tags, expected authoritative state,
+policy/tool/environment versions, and digest. A changed expectation creates a reviewed
+new version; do not silently edit the answer because a candidate failed.
+
+Production-derived data requires minimization, structured and free-text detection,
+redaction, post-transformation scanning, approved purpose, access and retention
+controls, regional/contractual review, and a human quality check. Deterministic hashes
+of guessable identifiers are pseudonyms, not anonymity. Use a managed keyed HMAC or
+generated surrogate only when stable linkage is actually required.
+
+## Environment fidelity
+
+Use a deterministic controlled test double appropriate to the behavior under test:
+
+- fixtures for simple lookups;
+- state machines for workflow transitions;
+- a reset SQLite sandbox for transactional behavior;
+- fake providers for timeouts, 429/500 responses, partial failures, and unknown outcomes;
+- record/replay snapshots for volatile external data.
+
+Record environment and fixture versions, tool contracts, knowledge snapshot, cache
+policy, and seed. Reset independent cases and verify that A→B and B→A produce equivalent
+results. Persistent-memory scenarios should explicitly identify scenario, episode, and
+sequence rather than leak state accidentally.
+
+## Run and result manifests
+
+`BenchmarkRunManifest` binds the benchmark/dataset/evaluator versions to environment,
+agent configuration, split, seed, and start time. The agent configuration digest covers
+model/deployment, prompt, tools, policy, router, and memory configuration.
+
+`CaseResult` distinguishes:
+
+```text
+PASS | FAIL | ABSTAIN | TIMEOUT | INSUFFICIENT_EVIDENCE | INVALID_RUN
+```
+
+Harness startup, fixture, tool-simulation, and evaluator failures are measurement
+failures. Report them separately instead of lowering agent quality. A high invalid-run
+rate makes the benchmark untrustworthy even when the valid subset looks strong.
+
+## Release governance
+
+Compare baseline and candidate on identical case and environment versions. Cluster
+regressions by stable reason codes and retain safe representative failure artifacts.
+Use `SHADOW`, `ADVISORY`, and `BLOCKING` modes according to metric maturity and risk.
+
+A release exception is an audited decision with owner, rationale, mitigation, exact
+scope, issuance, and expiry—not a disabled test. Revisit expired exceptions and retain
+the history of benchmark, gate, exception, and release changes.
