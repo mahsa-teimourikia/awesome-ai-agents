@@ -102,6 +102,11 @@ def test_happy_path_survives_process_restart(tmp_path):
         lab.ProviderOutcome.SUCCESS,
         now=lab.FIXED_TIME + timedelta(minutes=8),
     )
+    process_b.observe_business_effect(
+        waiting.run_id,
+        prepared.logical_operation_id,
+        provider,
+    )
     completed = process_b.verify_and_complete(
         waiting.run_id,
         prepared.logical_operation_id,
@@ -671,7 +676,6 @@ def test_completion_requires_effect_verification(tmp_path):
     prepared = _claim_and_prepare(runtime, waiting.run_id)
     provider = lab.DeterministicProvider()
     runtime.execute(prepared, provider, lab.ProviderOutcome.SUCCESS, now=lab.FIXED_TIME + timedelta(minutes=8))
-    provider.effects.clear()
     with pytest.raises(policy.DurablePolicyError, match="EFFECT_VERIFICATION_FAILED"):
         runtime.verify_and_complete(
             waiting.run_id,
@@ -679,6 +683,427 @@ def test_completion_requires_effect_verification(tmp_path):
             provider,
             now=lab.FIXED_TIME + timedelta(minutes=9),
         )
+
+
+def test_cancel_after_provider_commit_preserves_reconciliation_obligation(tmp_path):
+    runtime = _runtime(tmp_path)
+    waiting = runtime.start_approval_run("run-cancel-after-commit")
+    _approve(runtime, waiting)
+    prepared = _claim_and_prepare(runtime, waiting.run_id)
+    provider = lab.DeterministicProvider()
+    runtime.store.assert_operation_call_allowed(
+        prepared, now=lab.FIXED_TIME + timedelta(minutes=8)
+    )
+    with pytest.raises(lab.ProviderTimeoutAfterCommit):
+        provider.execute(
+            prepared.logical_operation_id,
+            prepared.request_digest,
+            lab.ProviderOutcome.TIMEOUT_AFTER_COMMIT,
+        )
+    cancel = lab.signed_event(
+        event_id="cancel-after-provider-commit",
+        run_id=waiting.run_id,
+        event_type=policy.EventType.CANCEL_REQUESTED,
+        payload={"reason": "operator stop"},
+        occurred_at=lab.FIXED_TIME + timedelta(minutes=8, seconds=1),
+    )
+    pending = runtime.process_event(
+        cancel,
+        lab.fixture_context(),
+        now=lab.FIXED_TIME + timedelta(minutes=8, seconds=1),
+    )
+    uncertain = runtime.store.record_operation_result(
+        prepared,
+        now=lab.FIXED_TIME + timedelta(minutes=8, seconds=2),
+        failure_code=policy.FailureCode.UNKNOWN_OUTCOME,
+    )
+    reconciled = runtime.reconcile(
+        prepared.logical_operation_id,
+        provider,
+        now=lab.FIXED_TIME + timedelta(minutes=9),
+    )
+    runtime.observe_business_effect(
+        waiting.run_id, prepared.logical_operation_id, provider
+    )
+    final = runtime.verify_and_complete(
+        waiting.run_id,
+        prepared.logical_operation_id,
+        provider,
+        now=lab.FIXED_TIME + timedelta(minutes=10),
+    )
+    assert pending.run_status is policy.RunStatus.EXECUTING
+    assert runtime.store.history(waiting.run_id)[-1]["to_status"] == "CANCELLED"
+    assert uncertain.status is policy.RunStatus.RECONCILING
+    assert reconciled.status is policy.RunStatus.VERIFYING
+    assert final.status is policy.RunStatus.CANCELLED
+    assert provider.calls == 1
+    assert runtime.store.operation_record(prepared.logical_operation_id)["status"] == "SUCCEEDED"
+
+
+def test_manual_takeover_after_dispatch_preserves_effect_history(tmp_path):
+    runtime = _runtime(tmp_path)
+    waiting = runtime.start_approval_run("run-manual-after-dispatch")
+    _approve(runtime, waiting)
+    prepared = _claim_and_prepare(runtime, waiting.run_id)
+    provider = lab.DeterministicProvider()
+    runtime.store.assert_operation_call_allowed(
+        prepared, now=lab.FIXED_TIME + timedelta(minutes=8)
+    )
+    result = provider.execute(
+        prepared.logical_operation_id,
+        prepared.request_digest,
+        lab.ProviderOutcome.SUCCESS,
+    )
+    takeover = lab.signed_event(
+        event_id="manual-after-dispatch",
+        run_id=waiting.run_id,
+        event_type=policy.EventType.MANUAL_TAKEOVER,
+        payload={"operator": "incident-commander"},
+        occurred_at=lab.FIXED_TIME + timedelta(minutes=8, seconds=1),
+    )
+    runtime.process_event(
+        takeover,
+        lab.fixture_context(),
+        now=lab.FIXED_TIME + timedelta(minutes=8, seconds=1),
+    )
+    recorded = runtime.store.record_operation_result(
+        prepared,
+        provider_result=result,
+        now=lab.FIXED_TIME + timedelta(minutes=8, seconds=2),
+    )
+    runtime.observe_business_effect(
+        waiting.run_id, prepared.logical_operation_id, provider
+    )
+    final = runtime.verify_and_complete(
+        waiting.run_id,
+        prepared.logical_operation_id,
+        provider,
+        now=lab.FIXED_TIME + timedelta(minutes=9),
+    )
+    assert recorded.status is policy.RunStatus.VERIFYING
+    assert final.status is policy.RunStatus.MANUAL_CONTROL
+    assert runtime.store.operation_record(prepared.logical_operation_id)["status"] == "SUCCEEDED"
+
+
+def test_late_stale_attempt_result_cannot_mutate_active_attempt(tmp_path):
+    runtime = _runtime(tmp_path)
+    waiting = runtime.start_approval_run("run-stale-attempt")
+    _approve(runtime, waiting)
+    first = _claim_and_prepare(runtime, waiting.run_id)
+    provider = lab.DeterministicProvider()
+    runtime.execute(
+        first,
+        provider,
+        lab.ProviderOutcome.TRANSIENT_BEFORE_COMMIT,
+        now=lab.FIXED_TIME + timedelta(minutes=8),
+    )
+    ready = runtime.store.load_run(waiting.run_id)
+    runtime.store.claim_lease(
+        waiting.run_id,
+        "worker-a",
+        expected_version=ready.state_version,
+        now=lab.FIXED_TIME + timedelta(minutes=9),
+    )
+    second = runtime.store.prepare_operation(
+        waiting.run_id,
+        "worker-a",
+        lab.fixture_context(),
+        now=lab.FIXED_TIME + timedelta(minutes=9, seconds=1),
+    )
+    late_result = lab.ProviderResult(
+        provider_operation_id="provider:late",
+        logical_operation_id=first.logical_operation_id,
+        request_digest=first.request_digest,
+        status="SUCCEEDED",
+    )
+    with pytest.raises(policy.DurablePolicyError, match="STALE_ATTEMPT_RESULT"):
+        runtime.store.record_operation_result(
+            first,
+            provider_result=late_result,
+            now=lab.FIXED_TIME + timedelta(minutes=9, seconds=2),
+        )
+    operation = runtime.store.operation_record(first.logical_operation_id)
+    assert operation["active_attempt_id"] == second.attempt_id
+    assert operation["status"] == "IN_FLIGHT"
+
+
+def test_expired_lease_with_dispatched_operation_requires_reconciliation(tmp_path):
+    runtime = _runtime(tmp_path)
+    waiting = runtime.start_approval_run("run-expired-inflight")
+    _approve(runtime, waiting)
+    ready = runtime.store.load_run(waiting.run_id)
+    runtime.store.claim_lease(
+        waiting.run_id,
+        "worker-a",
+        expected_version=ready.state_version,
+        now=lab.FIXED_TIME + timedelta(minutes=7),
+        lease_seconds=1,
+    )
+    prepared = runtime.store.prepare_operation(
+        waiting.run_id,
+        "worker-a",
+        lab.fixture_context(),
+        now=lab.FIXED_TIME + timedelta(minutes=7, milliseconds=100),
+    )
+    runtime.store.assert_operation_call_allowed(
+        prepared, now=lab.FIXED_TIME + timedelta(minutes=7, milliseconds=200)
+    )
+    later = lab.FIXED_TIME + timedelta(minutes=7, seconds=2)
+    latest = runtime.store.load_run(waiting.run_id)
+    denied = runtime.store.claim_lease(
+        waiting.run_id,
+        "worker-b",
+        expected_version=latest.state_version,
+        now=later,
+    )
+    busy = runtime.store.prepare_operation(
+        waiting.run_id,
+        "worker-b",
+        lab.fixture_context(),
+        now=later,
+    )
+    recovered = runtime.store.recover_expired_inflight(waiting.run_id, now=later)
+    assert not denied.acquired
+    assert busy.disposition is lab.OperationDisposition.BUSY
+    assert recovered.status is policy.RunStatus.RECONCILING
+    assert runtime.store.operation_attempt_count(prepared.logical_operation_id) == 1
+
+
+def test_old_wait_generation_event_is_stale(tmp_path):
+    runtime = _runtime(tmp_path)
+    waiting = runtime.start_approval_run("run-old-generation")
+    receipt = lab.fixture_approval(waiting)
+    runtime.store.put_approval(receipt)
+    event = lab.signed_event(
+        event_id="old-generation",
+        run_id=waiting.run_id,
+        event_type=policy.EventType.APPROVAL_AVAILABLE,
+        payload={"approval_id": receipt.approval_id},
+        occurred_at=lab.FIXED_TIME + timedelta(minutes=1),
+        wait_generation=waiting.wait_generation - 1,
+    )
+    result = runtime.process_event(
+        event, lab.fixture_context(), now=lab.FIXED_TIME + timedelta(minutes=1)
+    )
+    assert result.disposition is lab.EventDisposition.STALE
+    assert "STALE_EVENT_WAIT_GENERATION" in result.reason_codes
+
+
+def test_materially_future_event_is_rejected(tmp_path):
+    runtime = _runtime(tmp_path)
+    waiting = runtime.start_approval_run("run-future-event")
+    event = lab.signed_event(
+        event_id="future-event",
+        run_id=waiting.run_id,
+        event_type=policy.EventType.CANCEL_REQUESTED,
+        payload={"reason": "future"},
+        occurred_at=lab.FIXED_TIME + timedelta(minutes=10),
+    )
+    result = runtime.process_event(
+        event, lab.fixture_context(), now=lab.FIXED_TIME + timedelta(minutes=1)
+    )
+    assert result.disposition is lab.EventDisposition.REJECTED
+    assert "EVENT_OCCURRED_IN_FUTURE" in result.reason_codes
+
+
+def test_wrong_source_cannot_emit_approval_event(tmp_path):
+    runtime = _runtime(tmp_path)
+    waiting = runtime.start_approval_run("run-wrong-source")
+    receipt = lab.fixture_approval(waiting)
+    runtime.store.put_approval(receipt)
+    event = lab.signed_event(
+        event_id="wrong-source",
+        run_id=waiting.run_id,
+        event_type=policy.EventType.APPROVAL_AVAILABLE,
+        payload={"approval_id": receipt.approval_id},
+        occurred_at=lab.FIXED_TIME + timedelta(minutes=1),
+        source="scheduler",
+    )
+    result = runtime.process_event(
+        event, lab.fixture_context(), now=lab.FIXED_TIME + timedelta(minutes=1)
+    )
+    assert result.disposition is lab.EventDisposition.REJECTED
+    assert "EVENT_SOURCE_NOT_AUTHORIZED" in result.reason_codes
+
+
+def test_source_event_id_dedupes_rewrapped_delivery(tmp_path):
+    runtime = _runtime(tmp_path)
+    waiting = runtime.start_approval_run("run-source-dedupe")
+    receipt = lab.fixture_approval(waiting)
+    runtime.store.put_approval(receipt)
+    first = lab.signed_event(
+        event_id="transport-1",
+        source_event_id="approval-source-42",
+        run_id=waiting.run_id,
+        event_type=policy.EventType.APPROVAL_AVAILABLE,
+        payload={"approval_id": receipt.approval_id},
+        occurred_at=lab.FIXED_TIME + timedelta(minutes=1),
+    )
+    second = lab.signed_event(
+        event_id="transport-2",
+        source_event_id="approval-source-42",
+        run_id=waiting.run_id,
+        event_type=policy.EventType.APPROVAL_AVAILABLE,
+        payload={"approval_id": receipt.approval_id},
+        occurred_at=lab.FIXED_TIME + timedelta(minutes=2),
+    )
+    runtime.process_event(
+        first, lab.fixture_context(), now=lab.FIXED_TIME + timedelta(minutes=1)
+    )
+    duplicate = runtime.process_event(
+        second, lab.fixture_context(), now=lab.FIXED_TIME + timedelta(minutes=2)
+    )
+    assert duplicate.disposition is lab.EventDisposition.DUPLICATE
+    assert duplicate.reason_codes == ("DUPLICATE_SOURCE_EVENT",)
+
+
+def test_approval_cannot_predate_proposal(tmp_path):
+    runtime = _runtime(tmp_path)
+    waiting = runtime.start_approval_run("run-predated-approval")
+    receipt = lab.fixture_approval(waiting).model_copy(
+        update={"issued_at": lab.FIXED_TIME - timedelta(minutes=1)}
+    )
+    result, _ = _approve(runtime, waiting, receipt=receipt)
+    assert result.disposition is lab.EventDisposition.REJECTED
+    assert "APPROVAL_PREDATES_PROPOSAL" in result.reason_codes
+
+
+def test_confirmed_no_effect_plus_cancellation_does_not_retry(tmp_path):
+    runtime = _runtime(tmp_path)
+    waiting = runtime.start_approval_run("run-no-effect-cancel")
+    _approve(runtime, waiting)
+    prepared = _claim_and_prepare(runtime, waiting.run_id)
+    runtime.store.assert_operation_call_allowed(
+        prepared, now=lab.FIXED_TIME + timedelta(minutes=8)
+    )
+    runtime.store.record_operation_result(
+        prepared,
+        failure_code=policy.FailureCode.UNKNOWN_OUTCOME,
+        now=lab.FIXED_TIME + timedelta(minutes=8, seconds=1),
+    )
+    cancel = lab.signed_event(
+        event_id="cancel-reconciliation",
+        run_id=waiting.run_id,
+        event_type=policy.EventType.CANCEL_REQUESTED,
+        payload={"reason": "stop"},
+        occurred_at=lab.FIXED_TIME + timedelta(minutes=8, seconds=2),
+    )
+    runtime.process_event(
+        cancel,
+        lab.fixture_context(),
+        now=lab.FIXED_TIME + timedelta(minutes=8, seconds=2),
+    )
+    provider = lab.DeterministicProvider()
+    final = runtime.reconcile(
+        prepared.logical_operation_id,
+        provider,
+        now=lab.FIXED_TIME + timedelta(minutes=9),
+    )
+    receipts = runtime.store.reconciliation_receipts(
+        prepared.logical_operation_id
+    )
+    assert final.status is policy.RunStatus.CANCELLED
+    assert receipts[-1]["status"] == "CONFIRMED_NO_EFFECT"
+    assert receipts[-1]["request_digest"] == prepared.request_digest
+    assert (
+        runtime.store.operation_record(prepared.logical_operation_id)["status"]
+        == "CONFIRMED_NO_EFFECT"
+    )
+    assert runtime.store.operation_attempt_count(prepared.logical_operation_id) == 1
+
+
+def test_still_unknown_reconciliation_remains_explicit(tmp_path):
+    runtime = _runtime(tmp_path)
+    waiting = runtime.start_approval_run("run-still-unknown")
+    _approve(runtime, waiting)
+    prepared = _claim_and_prepare(runtime, waiting.run_id)
+    runtime.store.assert_operation_call_allowed(
+        prepared, now=lab.FIXED_TIME + timedelta(minutes=8)
+    )
+    runtime.store.record_operation_result(
+        prepared,
+        failure_code=policy.FailureCode.UNKNOWN_OUTCOME,
+        now=lab.FIXED_TIME + timedelta(minutes=8, seconds=1),
+    )
+    provider = lab.DeterministicProvider()
+    run = runtime.reconcile(
+        prepared.logical_operation_id,
+        provider,
+        still_unknown=True,
+        now=lab.FIXED_TIME + timedelta(minutes=9),
+    )
+    assert run.status is policy.RunStatus.RECONCILING
+    assert runtime.store.reconciliation_receipts(prepared.logical_operation_id)[-1]["status"] == "STILL_UNKNOWN"
+
+
+def test_confirmed_no_effect_revalidates_retry_budget(tmp_path):
+    runtime = _runtime(tmp_path)
+    waiting = runtime.start_approval_run(
+        "run-no-effect-budget",
+        budgets=policy.BudgetState(max_activity_attempts=1),
+    )
+    _approve(runtime, waiting)
+    prepared = _claim_and_prepare(runtime, waiting.run_id)
+    runtime.store.assert_operation_call_allowed(
+        prepared, now=lab.FIXED_TIME + timedelta(minutes=8)
+    )
+    runtime.store.record_operation_result(
+        prepared,
+        failure_code=policy.FailureCode.UNKNOWN_OUTCOME,
+        now=lab.FIXED_TIME + timedelta(minutes=8, seconds=1),
+    )
+    final = runtime.reconcile(
+        prepared.logical_operation_id,
+        lab.DeterministicProvider(),
+        now=lab.FIXED_TIME + timedelta(minutes=9),
+    )
+    assert final.status is policy.RunStatus.FAILED
+    assert (
+        runtime.store.history(waiting.run_id)[-1]["reason_code"]
+        == "NO_EFFECT_CONFIRMED_BUDGET_EXHAUSTED"
+    )
+
+
+def test_registered_state_schema_migration_safely_resumes(tmp_path):
+    store = lab.DurableStore(tmp_path / "migration.db")
+    legacy = policy.RunRecord(
+        run_id="run-schema-v1",
+        tenant_id=lab.TENANT_ID,
+        subject_id=lab.SUBJECT_ID,
+        state_schema_version=1,
+        status=policy.RunStatus.CREATED,
+        current_step="created",
+        created_at=lab.FIXED_TIME,
+        updated_at=lab.FIXED_TIME,
+    )
+    store.create_run(legacy)
+    runtime = lab.WorkflowRuntime(
+        store,
+        state_migrations={1: lab.migrate_state_v1_to_v2},
+    )
+    migrated = runtime.load_compatible(
+        legacy.run_id, now=lab.FIXED_TIME + timedelta(minutes=1)
+    )
+    assert migrated.state_schema_version == 2
+    assert migrated.state_version == legacy.state_version + 1
+    assert store.history(legacy.run_id)[-1]["reason_code"] == "STATE_SCHEMA_MIGRATED_V1_TO_V2"
+
+
+def test_unregistered_state_schema_migration_fails_closed(tmp_path):
+    store = lab.DurableStore(tmp_path / "migration-missing.db")
+    legacy = policy.RunRecord(
+        run_id="run-schema-v1-no-migration",
+        tenant_id=lab.TENANT_ID,
+        subject_id=lab.SUBJECT_ID,
+        state_schema_version=1,
+        status=policy.RunStatus.CREATED,
+        current_step="created",
+        created_at=lab.FIXED_TIME,
+        updated_at=lab.FIXED_TIME,
+    )
+    store.create_run(legacy)
+    with pytest.raises(policy.DurablePolicyError, match="STATE_SCHEMA_VERSION_UNSUPPORTED"):
+        lab.WorkflowRuntime(store).load_compatible(legacy.run_id)
 
 
 @pytest.mark.parametrize(

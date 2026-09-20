@@ -10,15 +10,16 @@ import hashlib
 import hmac
 import json
 from collections.abc import Mapping
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 WORKFLOW_VERSION = "refund-workflow-v1"
-STATE_SCHEMA_VERSION = 1
+STATE_SCHEMA_VERSION = 2
 POLICY_VERSION = "northstar-refund-policy-v1"
+EVENT_MAX_FUTURE_SKEW = timedelta(minutes=1)
 
 
 class DurablePolicyError(ValueError):
@@ -123,11 +124,17 @@ ALLOWED_TRANSITIONS: Mapping[RunStatus, frozenset[RunStatus]] = {
             RunStatus.EXECUTING,
             RunStatus.VERIFYING,
             RunStatus.FAILED,
+            RunStatus.CANCELLED,
             RunStatus.MANUAL_CONTROL,
         }
     ),
     RunStatus.VERIFYING: frozenset(
-        {RunStatus.COMPLETED, RunStatus.FAILED, RunStatus.MANUAL_CONTROL}
+        {
+            RunStatus.COMPLETED,
+            RunStatus.FAILED,
+            RunStatus.CANCELLED,
+            RunStatus.MANUAL_CONTROL,
+        }
     ),
 }
 
@@ -159,6 +166,7 @@ class TimeoutPolicy(StrEnum):
 class OperationStatus(StrEnum):
     IN_FLIGHT = "IN_FLIGHT"
     UNKNOWN_OUTCOME = "UNKNOWN_OUTCOME"
+    CONFIRMED_NO_EFFECT = "CONFIRMED_NO_EFFECT"
     RETRYABLE_FAILURE = "RETRYABLE_FAILURE"
     SUCCEEDED = "SUCCEEDED"
     FAILED = "FAILED"
@@ -170,6 +178,12 @@ class AttemptStatus(StrEnum):
     UNKNOWN_OUTCOME = "UNKNOWN_OUTCOME"
     RETRYABLE_FAILURE = "RETRYABLE_FAILURE"
     TERMINAL_FAILURE = "TERMINAL_FAILURE"
+
+
+class ReconciliationStatus(StrEnum):
+    CONFIRMED_EFFECT = "CONFIRMED_EFFECT"
+    CONFIRMED_NO_EFFECT = "CONFIRMED_NO_EFFECT"
+    STILL_UNKNOWN = "STILL_UNKNOWN"
 
 
 class FailureCode(StrEnum):
@@ -276,10 +290,12 @@ class ApprovalReceipt(FrozenModel):
 
 class EventEnvelope(FrozenModel):
     event_id: str = Field(min_length=1)
+    source_event_id: str = Field(min_length=1)
     source: str = Field(min_length=1)
     tenant_id: str = Field(min_length=1)
     run_id: str = Field(min_length=1)
     event_type: EventType
+    wait_generation: int = Field(ge=0)
     occurred_at: datetime
     payload: Mapping[str, Any]
     payload_digest: str = Field(min_length=1)
@@ -309,8 +325,12 @@ class RunRecord(FrozenModel):
     budgets: BudgetState = Field(default_factory=BudgetState)
     workflow_attempt: int = Field(default=1, ge=1)
     state_version: int = Field(default=0, ge=0)
+    wait_generation: int = Field(default=0, ge=0)
+    wait_started_at: datetime | None = None
     pending_timer_id: str | None = None
     validated_approval_id: str | None = None
+    cancellation_requested: bool = False
+    manual_takeover_requested: bool = False
     lease_owner: str | None = None
     lease_expires_at: datetime | None = None
     created_at: datetime
@@ -335,20 +355,24 @@ def event_signature(
     secret: str,
     *,
     event_id: str,
+    source_event_id: str,
     source: str,
     tenant_id: str,
     run_id: str,
     event_type: EventType,
+    wait_generation: int,
     occurred_at: datetime,
     payload_digest_value: str,
 ) -> str:
     body = canonical_digest(
         {
             "event_id": event_id,
+            "source_event_id": source_event_id,
             "source": source,
             "tenant_id": tenant_id,
             "run_id": run_id,
             "event_type": event_type.value,
+            "wait_generation": wait_generation,
             "occurred_at": occurred_at.isoformat(),
             "payload_digest": payload_digest_value,
         }
@@ -366,21 +390,41 @@ def validate_event(
     run: RunRecord,
     *,
     secret: str,
+    now: datetime,
 ) -> ValidationResult:
     reasons: list[str] = []
     if event.run_id != run.run_id:
         reasons.append("EVENT_RUN_MISMATCH")
     if event.tenant_id != run.tenant_id:
         reasons.append("EVENT_TENANT_MISMATCH")
+    allowed_sources: Mapping[EventType, frozenset[str]] = {
+        EventType.APPROVAL_AVAILABLE: frozenset({"approval-gateway"}),
+        EventType.APPROVAL_REJECTED: frozenset({"approval-gateway"}),
+        EventType.APPROVAL_TIMEOUT: frozenset({"scheduler"}),
+        EventType.TIMER_FIRED: frozenset({"scheduler"}),
+        EventType.EXTERNAL_CALLBACK: frozenset({"integration-gateway"}),
+        EventType.CANCEL_REQUESTED: frozenset({"operator-control"}),
+        EventType.MANUAL_TAKEOVER: frozenset({"operator-control"}),
+    }
+    if event.source not in allowed_sources[event.event_type]:
+        reasons.append("EVENT_SOURCE_NOT_AUTHORIZED")
+    if event.wait_generation != run.wait_generation:
+        reasons.append("STALE_EVENT_WAIT_GENERATION")
+    if run.wait_started_at is not None and event.occurred_at < run.wait_started_at:
+        reasons.append("STALE_EVENT_BEFORE_WAIT")
+    if event.occurred_at > now + EVENT_MAX_FUTURE_SKEW:
+        reasons.append("EVENT_OCCURRED_IN_FUTURE")
     if event.payload_digest != payload_digest(event.payload):
         reasons.append("EVENT_PAYLOAD_DIGEST_INVALID")
     expected = event_signature(
         secret,
         event_id=event.event_id,
+        source_event_id=event.source_event_id,
         source=event.source,
         tenant_id=event.tenant_id,
         run_id=event.run_id,
         event_type=event.event_type,
+        wait_generation=event.wait_generation,
         occurred_at=event.occurred_at,
         payload_digest_value=event.payload_digest,
     )
@@ -422,6 +466,8 @@ def validate_approval(
         reasons.extend(reason for passed, reason in bindings if not passed)
         if now > proposal.expires_at:
             reasons.append("PROPOSAL_EXPIRED")
+        if receipt.issued_at < proposal.created_at:
+            reasons.append("APPROVAL_PREDATES_PROPOSAL")
     if now > receipt.expires_at:
         reasons.append("APPROVAL_EXPIRED")
     if receipt.issued_at > now:

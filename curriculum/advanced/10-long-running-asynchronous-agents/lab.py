@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import tempfile
+from collections.abc import Callable, Mapping
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from pathlib import Path
@@ -32,6 +33,7 @@ from policy import (
     OperationStatus,
     PreconditionSnapshot,
     Proposal,
+    ReconciliationStatus,
     RunRecord,
     RunStatus,
     TERMINAL_STATUSES,
@@ -91,6 +93,7 @@ class PreparedOperation(FrozenModel):
     disposition: OperationDisposition
     logical_operation_id: str
     attempt_id: str | None
+    owner: str
     request_digest: str
     reason_code: str
 
@@ -100,6 +103,46 @@ class ProviderResult(FrozenModel):
     logical_operation_id: str
     request_digest: str
     status: str
+
+
+class ReconciliationResult(FrozenModel):
+    status: ReconciliationStatus
+    provider_result: ProviderResult | None = None
+
+
+class BusinessEffectRecord(FrozenModel):
+    logical_operation_id: str
+    request_digest: str
+    target_id: str
+    amount_usd: int = Field(gt=0)
+    provider_operation_id: str
+
+
+class RefundLedger:
+    """Independent deterministic read model; it is not the provider ledger."""
+
+    def __init__(self) -> None:
+        self.refunds: dict[str, BusinessEffectRecord] = {}
+
+    def observe(
+        self,
+        provider_result: ProviderResult,
+        *,
+        target_id: str,
+        amount_usd: int,
+    ) -> BusinessEffectRecord:
+        record = BusinessEffectRecord(
+            logical_operation_id=provider_result.logical_operation_id,
+            request_digest=provider_result.request_digest,
+            target_id=target_id,
+            amount_usd=amount_usd,
+            provider_operation_id=provider_result.provider_operation_id,
+        )
+        self.refunds[provider_result.logical_operation_id] = record
+        return record
+
+    def query(self, logical_operation_id: str) -> BusinessEffectRecord | None:
+        return self.refunds.get(logical_operation_id)
 
 
 class EvaluationMetrics(FrozenModel):
@@ -184,9 +227,12 @@ class DurableStore:
                 );
                 CREATE TABLE IF NOT EXISTS inbox (
                     event_id TEXT PRIMARY KEY,
+                    source TEXT NOT NULL,
+                    source_event_id TEXT NOT NULL,
                     run_id TEXT NOT NULL,
                     tenant_id TEXT NOT NULL,
                     event_type TEXT NOT NULL,
+                    wait_generation INTEGER NOT NULL,
                     payload_digest TEXT NOT NULL,
                     status TEXT NOT NULL,
                     reason_code TEXT NOT NULL,
@@ -227,6 +273,8 @@ class DurableStore:
                     result_json TEXT,
                     owner TEXT NOT NULL,
                     attempt_count INTEGER NOT NULL,
+                    active_attempt_id TEXT,
+                    dispatched_at TEXT,
                     updated_at TEXT NOT NULL
                 );
                 CREATE TABLE IF NOT EXISTS execution_receipts (
@@ -239,6 +287,16 @@ class DurableStore:
                     completed_at TEXT,
                     failure_code TEXT
                 );
+                CREATE TABLE IF NOT EXISTS reconciliation_receipts (
+                    reconciliation_id TEXT PRIMARY KEY,
+                    logical_operation_id TEXT NOT NULL,
+                    request_digest TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    provider_operation_id TEXT,
+                    observed_at TEXT NOT NULL
+                );
+                CREATE UNIQUE INDEX IF NOT EXISTS inbox_source_event
+                    ON inbox(source, source_event_id);
                 """
             )
 
@@ -301,10 +359,12 @@ class DurableStore:
     ) -> None:
         cursor = connection.execute(
             """UPDATE runs
-               SET status = ?, state_version = ?, record_json = ?, updated_at = ?
+               SET status = ?, state_schema_version = ?, state_version = ?,
+                   record_json = ?, updated_at = ?
                WHERE run_id = ? AND state_version = ?""",
             (
                 run.status.value,
+                run.state_schema_version,
                 run.state_version,
                 self._record_json(run),
                 _iso(run.updated_at),
@@ -407,6 +467,82 @@ class DurableStore:
             )
         return updated
 
+    def _update_in_place_tx(
+        self,
+        connection: sqlite3.Connection,
+        run: RunRecord,
+        *,
+        now: datetime,
+        event_id: str | None,
+        reason_code: str,
+        updates: dict[str, Any],
+    ) -> RunRecord:
+        """CAS-update control metadata without pretending the state changed."""
+
+        updated = run.model_copy(
+            update={
+                **updates,
+                "state_version": run.state_version + 1,
+                "updated_at": now,
+            }
+        )
+        self._save_tx(connection, updated, expected_version=run.state_version)
+        self._append_history_tx(
+            connection,
+            updated,
+            from_status=run.status,
+            event_id=event_id,
+            reason_code=reason_code,
+        )
+        self._outbox_tx(
+            connection,
+            updated,
+            event_type="RUN_CONTROL_CHANGED",
+            payload={
+                "run_id": updated.run_id,
+                "status": updated.status.value,
+                "state_version": updated.state_version,
+                "reason_code": reason_code,
+            },
+            now=now,
+        )
+        return updated
+
+    def migrate_run(
+        self,
+        run_id: str,
+        migrator: Callable[[RunRecord], RunRecord],
+        *,
+        now: datetime,
+    ) -> RunRecord:
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            run = self._load_tx(connection, run_id)
+            migrated = migrator(run)
+            if migrated.run_id != run.run_id or migrated.status is not run.status:
+                raise DurablePolicyError("STATE_MIGRATION_CHANGED_IDENTITY_OR_STATUS")
+            if migrated.state_schema_version <= run.state_schema_version:
+                raise DurablePolicyError("STATE_MIGRATION_DID_NOT_ADVANCE_SCHEMA")
+            updated = migrated.model_copy(
+                update={
+                    "state_version": run.state_version + 1,
+                    "updated_at": now,
+                }
+            )
+            self._save_tx(connection, updated, expected_version=run.state_version)
+            self._append_history_tx(
+                connection,
+                updated,
+                from_status=run.status,
+                event_id=None,
+                reason_code=(
+                    f"STATE_SCHEMA_MIGRATED_V{run.state_schema_version}_TO_"
+                    f"V{updated.state_schema_version}"
+                ),
+            )
+            connection.commit()
+            return updated
+
     def transition(
         self,
         run_id: str,
@@ -462,10 +598,20 @@ class DurableStore:
         self, connection: sqlite3.Connection, event_id: str
     ) -> sqlite3.Row | None:
         return connection.execute(
-            """SELECT run_id, tenant_id, event_type, payload_digest, status,
-                      reason_code
+            """SELECT source, source_event_id, run_id, tenant_id, event_type,
+                      wait_generation, payload_digest, status, reason_code
                FROM inbox WHERE event_id = ?""",
             (event_id,),
+        ).fetchone()
+
+    def _existing_source_event_tx(
+        self, connection: sqlite3.Connection, source: str, source_event_id: str
+    ) -> sqlite3.Row | None:
+        return connection.execute(
+            """SELECT event_id, run_id, tenant_id, event_type, wait_generation,
+                      payload_digest
+               FROM inbox WHERE source = ? AND source_event_id = ?""",
+            (source, source_event_id),
         ).fetchone()
 
     def _insert_event_tx(
@@ -479,14 +625,18 @@ class DurableStore:
     ) -> None:
         connection.execute(
             """INSERT INTO inbox(
-                   event_id, run_id, tenant_id, event_type, payload_digest,
-                   status, reason_code, received_at, processed_at
-               ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                   event_id, source, source_event_id, run_id, tenant_id,
+                   event_type, wait_generation, payload_digest, status,
+                   reason_code, received_at, processed_at
+               ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 event.event_id,
+                event.source,
+                event.source_event_id,
                 event.run_id,
                 event.tenant_id,
                 event.event_type.value,
+                event.wait_generation,
                 event.payload_digest,
                 status.value,
                 reason_code,
@@ -525,9 +675,12 @@ class DurableStore:
             if existing is not None:
                 connection.commit()
                 same_delivery = (
-                    existing["run_id"] == event.run_id
+                    existing["source"] == event.source
+                    and existing["source_event_id"] == event.source_event_id
+                    and existing["run_id"] == event.run_id
                     and existing["tenant_id"] == event.tenant_id
                     and existing["event_type"] == event.event_type.value
+                    and existing["wait_generation"] == event.wait_generation
                     and existing["payload_digest"] == event.payload_digest
                 )
                 return self._event_result(
@@ -538,9 +691,34 @@ class DurableStore:
                     "DUPLICATE_EVENT" if same_delivery else "EVENT_ID_COLLISION",
                 )
 
-            event_validation = validate_event(event, run, secret=secret)
+            source_delivery = self._existing_source_event_tx(
+                connection, event.source, event.source_event_id
+            )
+            if source_delivery is not None:
+                connection.commit()
+                same_delivery = (
+                    source_delivery["run_id"] == event.run_id
+                    and source_delivery["tenant_id"] == event.tenant_id
+                    and source_delivery["event_type"] == event.event_type.value
+                    and source_delivery["wait_generation"] == event.wait_generation
+                    and source_delivery["payload_digest"] == event.payload_digest
+                )
+                return self._event_result(
+                    EventDisposition.DUPLICATE
+                    if same_delivery
+                    else EventDisposition.REJECTED,
+                    run,
+                    "DUPLICATE_SOURCE_EVENT"
+                    if same_delivery
+                    else "EVENT_SOURCE_ID_COLLISION",
+                )
+
+            event_validation = validate_event(event, run, secret=secret, now=now)
             if not event_validation.accepted:
-                stale = "STALE_EVENT_TERMINAL_RUN" in event_validation.reason_codes
+                stale = any(
+                    reason.startswith("STALE_EVENT")
+                    for reason in event_validation.reason_codes
+                )
                 self._insert_event_tx(
                     connection,
                     event,
@@ -571,22 +749,20 @@ class DurableStore:
             elif event.event_type in {EventType.APPROVAL_TIMEOUT, EventType.TIMER_FIRED}:
                 result = self._process_timer_tx(connection, event, run, now=now)
             elif event.event_type is EventType.CANCEL_REQUESTED:
-                result = self._simple_wait_transition_tx(
+                result = self._process_control_event_tx(
                     connection,
                     event,
                     run,
                     RunStatus.CANCELLED,
                     now=now,
-                    reason_code="CANCELLED_BY_TRUSTED_EVENT",
                 )
             elif event.event_type is EventType.MANUAL_TAKEOVER:
-                result = self._simple_wait_transition_tx(
+                result = self._process_control_event_tx(
                     connection,
                     event,
                     run,
                     RunStatus.MANUAL_CONTROL,
                     now=now,
-                    reason_code="MANUAL_TAKEOVER",
                 )
             else:
                 self._insert_event_tx(
@@ -603,6 +779,103 @@ class DurableStore:
                 )
             connection.commit()
             return result
+
+    def _process_control_event_tx(
+        self,
+        connection: sqlite3.Connection,
+        event: EventEnvelope,
+        run: RunRecord,
+        terminal_target: RunStatus,
+        *,
+        now: datetime,
+    ) -> EventProcessResult:
+        is_manual = terminal_target is RunStatus.MANUAL_CONTROL
+        terminal_reason = (
+            "MANUAL_TAKEOVER" if is_manual else "CANCELLED_BY_TRUSTED_EVENT"
+        )
+        operation = connection.execute(
+            """SELECT logical_operation_id, status, active_attempt_id,
+                      dispatched_at
+               FROM operations WHERE run_id = ?
+               ORDER BY updated_at DESC LIMIT 1""",
+            (run.run_id,),
+        ).fetchone()
+        effect_may_exist = bool(
+            operation
+            and (
+                operation["dispatched_at"] is not None
+                or operation["status"]
+                in {
+                    OperationStatus.UNKNOWN_OUTCOME.value,
+                    OperationStatus.SUCCEEDED.value,
+                }
+            )
+        )
+        if run.status in {
+            RunStatus.EXECUTING,
+            RunStatus.RECONCILING,
+            RunStatus.VERIFYING,
+        } and effect_may_exist:
+            flag = (
+                "manual_takeover_requested" if is_manual else "cancellation_requested"
+            )
+            reason = (
+                "MANUAL_TAKEOVER_PENDING_RECONCILIATION"
+                if is_manual
+                else "CANCELLATION_PENDING_RECONCILIATION"
+            )
+            updated = self._update_in_place_tx(
+                connection,
+                run,
+                now=now,
+                event_id=event.event_id,
+                reason_code=reason,
+                updates={flag: True},
+            )
+            self._insert_event_tx(
+                connection,
+                event,
+                status=InboxStatus.PROCESSED,
+                reason_code=reason,
+                now=now,
+            )
+            return self._event_result(EventDisposition.PROCESSED, updated, reason)
+
+        # A claimed but undispatched attempt can be closed without a remote
+        # reconciliation obligation because the call boundary was never crossed.
+        if operation and operation["status"] == OperationStatus.IN_FLIGHT.value:
+            connection.execute(
+                """UPDATE operations SET status = ?, updated_at = ?
+                   WHERE logical_operation_id = ? AND active_attempt_id = ?
+                     AND status = ? AND dispatched_at IS NULL""",
+                (
+                    OperationStatus.FAILED.value,
+                    _iso(now),
+                    operation["logical_operation_id"],
+                    operation["active_attempt_id"],
+                    OperationStatus.IN_FLIGHT.value,
+                ),
+            )
+            connection.execute(
+                """UPDATE execution_receipts
+                   SET status = ?, completed_at = ?, failure_code = ?
+                   WHERE attempt_id = ? AND status = ?""",
+                (
+                    AttemptStatus.TERMINAL_FAILURE.value,
+                    _iso(now),
+                    FailureCode.CANCELLED.value,
+                    operation["active_attempt_id"],
+                    AttemptStatus.STARTED.value,
+                ),
+            )
+        return self._simple_wait_transition_tx(
+            connection,
+            event,
+            run,
+            terminal_target,
+            now=now,
+            reason_code=terminal_reason,
+        )
 
     def _simple_wait_transition_tx(
         self,
@@ -919,6 +1192,7 @@ class DurableStore:
                         disposition=OperationDisposition.ALREADY_SUCCEEDED,
                         logical_operation_id=operation_id,
                         attempt_id=None,
+                        owner=worker_id,
                         request_digest=request_digest,
                         reason_code="OPERATION_ALREADY_SUCCEEDED",
                     )
@@ -928,6 +1202,7 @@ class DurableStore:
                         disposition=OperationDisposition.RECONCILE_REQUIRED,
                         logical_operation_id=operation_id,
                         attempt_id=None,
+                        owner=worker_id,
                         request_digest=request_digest,
                         reason_code="UNKNOWN_OUTCOME_REQUIRES_RECONCILIATION",
                     )
@@ -937,6 +1212,7 @@ class DurableStore:
                         disposition=OperationDisposition.BUSY,
                         logical_operation_id=operation_id,
                         attempt_id=None,
+                        owner=worker_id,
                         request_digest=request_digest,
                         reason_code="OPERATION_OWNED_BY_WORKER",
                     )
@@ -962,7 +1238,8 @@ class DurableStore:
                 raise DurablePolicyError(approval_validation.reason_codes[0])
 
             operation = connection.execute(
-                """SELECT status, request_digest, owner, attempt_count
+                """SELECT status, request_digest, owner, attempt_count,
+                          active_attempt_id
                    FROM operations WHERE logical_operation_id = ?""",
                 (operation_id,),
             ).fetchone()
@@ -976,6 +1253,7 @@ class DurableStore:
                         disposition=OperationDisposition.ALREADY_SUCCEEDED,
                         logical_operation_id=operation_id,
                         attempt_id=None,
+                        owner=worker_id,
                         request_digest=request_digest,
                         reason_code="OPERATION_ALREADY_SUCCEEDED",
                     )
@@ -985,6 +1263,7 @@ class DurableStore:
                         disposition=OperationDisposition.RECONCILE_REQUIRED,
                         logical_operation_id=operation_id,
                         attempt_id=None,
+                        owner=worker_id,
                         request_digest=request_digest,
                         reason_code="UNKNOWN_OUTCOME_REQUIRES_RECONCILIATION",
                     )
@@ -994,6 +1273,7 @@ class DurableStore:
                         disposition=OperationDisposition.BUSY,
                         logical_operation_id=operation_id,
                         attempt_id=None,
+                        owner=worker_id,
                         request_digest=request_digest,
                         reason_code="OPERATION_OWNED_BY_WORKER",
                     )
@@ -1020,12 +1300,15 @@ class DurableStore:
             connection.execute(
                 """INSERT INTO operations(
                        logical_operation_id, run_id, step_id, status,
-                       request_digest, owner, attempt_count, updated_at
-                   ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                       request_digest, owner, attempt_count, active_attempt_id,
+                       dispatched_at, updated_at
+                   ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)
                    ON CONFLICT(logical_operation_id) DO UPDATE SET
                        status = excluded.status,
                        owner = excluded.owner,
                        attempt_count = excluded.attempt_count,
+                       active_attempt_id = excluded.active_attempt_id,
+                       dispatched_at = NULL,
                        updated_at = excluded.updated_at""",
                 (
                     operation_id,
@@ -1035,6 +1318,7 @@ class DurableStore:
                     request_digest,
                     worker_id,
                     attempt_number,
+                    attempt_id,
                     _iso(now),
                 ),
             )
@@ -1056,6 +1340,7 @@ class DurableStore:
                 disposition=OperationDisposition.CLAIMED,
                 logical_operation_id=operation_id,
                 attempt_id=attempt_id,
+                owner=worker_id,
                 request_digest=request_digest,
                 reason_code="OPERATION_CLAIMED",
             )
@@ -1071,13 +1356,16 @@ class DurableStore:
         if prepared.attempt_id is None:
             raise DurablePolicyError("ATTEMPT_ID_REQUIRED")
         with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
             operation = connection.execute(
-                """SELECT run_id, status, owner, request_digest
+                """SELECT run_id, status, owner, request_digest,
+                          active_attempt_id, dispatched_at
                    FROM operations WHERE logical_operation_id = ?""",
                 (prepared.logical_operation_id,),
             ).fetchone()
             attempt = connection.execute(
-                "SELECT status FROM execution_receipts WHERE attempt_id = ?",
+                """SELECT logical_operation_id, status, request_digest
+                   FROM execution_receipts WHERE attempt_id = ?""",
                 (prepared.attempt_id,),
             ).fetchone()
             if operation is None or attempt is None:
@@ -1087,16 +1375,44 @@ class DurableStore:
                 raise DurablePolicyError("OPERATION_CALL_NOT_AUTHORIZED")
             if operation["status"] != OperationStatus.IN_FLIGHT.value:
                 raise DurablePolicyError("OPERATION_NOT_IN_FLIGHT")
+            if operation["active_attempt_id"] != prepared.attempt_id:
+                raise DurablePolicyError("STALE_ATTEMPT_RESULT")
+            if operation["owner"] != prepared.owner:
+                raise DurablePolicyError("STALE_ATTEMPT_RESULT")
+            if operation["dispatched_at"] is not None:
+                raise DurablePolicyError("OPERATION_ALREADY_DISPATCHED")
             if attempt["status"] != AttemptStatus.STARTED.value:
                 raise DurablePolicyError("ATTEMPT_NOT_ACTIVE")
+            if attempt["logical_operation_id"] != prepared.logical_operation_id:
+                raise DurablePolicyError("ATTEMPT_OPERATION_MISMATCH")
+            if attempt["request_digest"] != prepared.request_digest:
+                raise DurablePolicyError("ATTEMPT_DIGEST_MISMATCH")
             if operation["request_digest"] != prepared.request_digest:
                 raise DurablePolicyError("LOGICAL_OPERATION_DIGEST_MISMATCH")
+            if run.cancellation_requested or run.manual_takeover_requested:
+                raise DurablePolicyError("OPERATION_CALL_NOT_AUTHORIZED")
             if (
                 run.lease_owner != operation["owner"]
                 or run.lease_expires_at is None
                 or run.lease_expires_at <= now
             ):
                 raise DurablePolicyError("VALID_WORKER_LEASE_REQUIRED")
+            claimed = connection.execute(
+                """UPDATE operations SET dispatched_at = ?, updated_at = ?
+                   WHERE logical_operation_id = ? AND active_attempt_id = ?
+                     AND owner = ? AND status = ? AND dispatched_at IS NULL""",
+                (
+                    _iso(now),
+                    _iso(now),
+                    prepared.logical_operation_id,
+                    prepared.attempt_id,
+                    prepared.owner,
+                    OperationStatus.IN_FLIGHT.value,
+                ),
+            )
+            if claimed.rowcount != 1:
+                raise DurablePolicyError("OPERATION_DISPATCH_CONFLICT")
+            connection.commit()
 
     def record_operation_result(
         self,
@@ -1111,12 +1427,38 @@ class DurableStore:
         with self._connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
             operation = connection.execute(
-                "SELECT run_id, status FROM operations WHERE logical_operation_id = ?",
+                """SELECT run_id, status, owner, active_attempt_id, request_digest,
+                          dispatched_at
+                   FROM operations WHERE logical_operation_id = ?""",
                 (prepared.logical_operation_id,),
             ).fetchone()
             if operation is None:
                 raise DurablePolicyError("OPERATION_NOT_FOUND")
+            attempt = connection.execute(
+                """SELECT logical_operation_id, status, request_digest
+                   FROM execution_receipts WHERE attempt_id = ?""",
+                (prepared.attempt_id,),
+            ).fetchone()
+            if (
+                operation["status"] != OperationStatus.IN_FLIGHT.value
+                or operation["active_attempt_id"] != prepared.attempt_id
+                or operation["owner"] != prepared.owner
+                or operation["dispatched_at"] is None
+                or attempt is None
+                or attempt["logical_operation_id"] != prepared.logical_operation_id
+                or attempt["status"] != AttemptStatus.STARTED.value
+                or attempt["request_digest"] != prepared.request_digest
+                or operation["request_digest"] != prepared.request_digest
+            ):
+                raise DurablePolicyError("STALE_ATTEMPT_RESULT")
             run = self._load_tx(connection, operation["run_id"])
+            if run.status is not RunStatus.EXECUTING:
+                raise DurablePolicyError("STALE_ATTEMPT_RESULT")
+            if provider_result is not None and (
+                provider_result.logical_operation_id != prepared.logical_operation_id
+                or provider_result.request_digest != prepared.request_digest
+            ):
+                raise DurablePolicyError("PROVIDER_RESULT_BINDING_MISMATCH")
             if failure_code is None and provider_result is not None:
                 operation_status = OperationStatus.SUCCEEDED
                 attempt_status = AttemptStatus.SUCCEEDED
@@ -1137,32 +1479,56 @@ class DurableStore:
                 attempt_status = AttemptStatus.TERMINAL_FAILURE
                 target_status = RunStatus.FAILED
                 reason = "TERMINAL_ACTIVITY_FAILURE"
-            connection.execute(
+            if run.manual_takeover_requested and target_status in {
+                RunStatus.READY_TO_RESUME,
+                RunStatus.FAILED,
+            }:
+                target_status = RunStatus.MANUAL_CONTROL
+                reason = "MANUAL_TAKEOVER_AFTER_ATTEMPT_RECORDED"
+            elif run.cancellation_requested and target_status in {
+                RunStatus.READY_TO_RESUME,
+                RunStatus.FAILED,
+            }:
+                target_status = RunStatus.CANCELLED
+                reason = "CANCELLED_AFTER_ATTEMPT_RECORDED"
+            operation_update = connection.execute(
                 """UPDATE operations
                    SET status = ?, provider_operation_id = ?, result_json = ?,
                        updated_at = ?
-                   WHERE logical_operation_id = ?""",
+                   WHERE logical_operation_id = ? AND active_attempt_id = ?
+                     AND owner = ? AND status = ?""",
                 (
                     operation_status.value,
                     provider_result.provider_operation_id if provider_result else None,
                     provider_result.model_dump_json() if provider_result else None,
                     _iso(now),
                     prepared.logical_operation_id,
+                    prepared.attempt_id,
+                    prepared.owner,
+                    OperationStatus.IN_FLIGHT.value,
                 ),
             )
-            connection.execute(
+            if operation_update.rowcount != 1:
+                raise DurablePolicyError("STALE_ATTEMPT_RESULT")
+            attempt_update = connection.execute(
                 """UPDATE execution_receipts
                    SET status = ?, provider_operation_id = ?, completed_at = ?,
                        failure_code = ?
-                   WHERE attempt_id = ?""",
+                   WHERE attempt_id = ? AND logical_operation_id = ?
+                     AND request_digest = ? AND status = ?""",
                 (
                     attempt_status.value,
                     provider_result.provider_operation_id if provider_result else None,
                     _iso(now),
                     failure_code.value if failure_code else None,
                     prepared.attempt_id,
+                    prepared.logical_operation_id,
+                    prepared.request_digest,
+                    AttemptStatus.STARTED.value,
                 ),
             )
+            if attempt_update.rowcount != 1:
+                raise DurablePolicyError("STALE_ATTEMPT_RESULT")
             updated = self._transition_tx(
                 connection,
                 run,
@@ -1174,17 +1540,79 @@ class DurableStore:
             connection.commit()
             return updated
 
+    def recover_expired_inflight(
+        self,
+        run_id: str,
+        *,
+        now: datetime,
+    ) -> RunRecord:
+        """Convert an abandoned dispatched attempt into a reconciliation duty."""
+
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            run = self._load_tx(connection, run_id)
+            if run.status is not RunStatus.EXECUTING:
+                raise DurablePolicyError("RUN_NOT_EXECUTING")
+            if run.lease_expires_at is None or run.lease_expires_at > now:
+                raise DurablePolicyError("LEASE_NOT_EXPIRED")
+            operation = connection.execute(
+                """SELECT logical_operation_id, active_attempt_id
+                   FROM operations WHERE run_id = ? AND status = ?
+                     AND dispatched_at IS NOT NULL""",
+                (run_id, OperationStatus.IN_FLIGHT.value),
+            ).fetchone()
+            if operation is None:
+                raise DurablePolicyError("DISPATCHED_OPERATION_NOT_FOUND")
+            changed = connection.execute(
+                """UPDATE operations SET status = ?, updated_at = ?
+                   WHERE logical_operation_id = ? AND active_attempt_id = ?
+                     AND status = ?""",
+                (
+                    OperationStatus.UNKNOWN_OUTCOME.value,
+                    _iso(now),
+                    operation["logical_operation_id"],
+                    operation["active_attempt_id"],
+                    OperationStatus.IN_FLIGHT.value,
+                ),
+            )
+            if changed.rowcount != 1:
+                raise DurablePolicyError("STALE_ATTEMPT_RESULT")
+            connection.execute(
+                """UPDATE execution_receipts
+                   SET status = ?, completed_at = ?, failure_code = ?
+                   WHERE attempt_id = ? AND status = ?""",
+                (
+                    AttemptStatus.UNKNOWN_OUTCOME.value,
+                    _iso(now),
+                    FailureCode.UNKNOWN_OUTCOME.value,
+                    operation["active_attempt_id"],
+                    AttemptStatus.STARTED.value,
+                ),
+            )
+            updated = self._transition_tx(
+                connection,
+                run,
+                RunStatus.RECONCILING,
+                now=now,
+                event_id=None,
+                reason_code="EXPIRED_LEASE_REQUIRES_RECONCILIATION",
+            )
+            connection.commit()
+            return updated
+
     def record_reconciliation(
         self,
         logical_operation_id: str,
-        provider_result: ProviderResult | None,
+        result: ReconciliationResult,
+        context: TrustedExecutionContext,
         *,
         now: datetime,
     ) -> RunRecord:
         with self._connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
             operation = connection.execute(
-                """SELECT run_id, request_digest, attempt_count FROM operations
+                """SELECT run_id, request_digest, attempt_count, status
+                   FROM operations
                    WHERE logical_operation_id = ?""",
                 (logical_operation_id,),
             ).fetchone()
@@ -1193,58 +1621,123 @@ class DurableStore:
             run = self._load_tx(connection, operation["run_id"])
             if run.status is not RunStatus.RECONCILING:
                 raise DurablePolicyError("RUN_NOT_RECONCILING")
-            if provider_result is not None:
-                if provider_result.request_digest != operation["request_digest"]:
+            if operation["status"] != OperationStatus.UNKNOWN_OUTCOME.value:
+                raise DurablePolicyError("OPERATION_NOT_RECONCILING")
+            provider_result = result.provider_result
+            if result.status is ReconciliationStatus.CONFIRMED_EFFECT:
+                if provider_result is None:
+                    raise DurablePolicyError("RECONCILIATION_RESULT_REQUIRED")
+                if (
+                    provider_result.logical_operation_id != logical_operation_id
+                    or provider_result.request_digest != operation["request_digest"]
+                ):
                     raise DurablePolicyError("RECONCILIATION_DIGEST_MISMATCH")
-                connection.execute(
+                changed = connection.execute(
                     """UPDATE operations
                        SET status = ?, provider_operation_id = ?, result_json = ?,
                            updated_at = ?
-                       WHERE logical_operation_id = ?""",
+                       WHERE logical_operation_id = ? AND status = ?""",
                     (
                         OperationStatus.SUCCEEDED.value,
                         provider_result.provider_operation_id,
                         provider_result.model_dump_json(),
                         _iso(now),
                         logical_operation_id,
+                        OperationStatus.UNKNOWN_OUTCOME.value,
                     ),
                 )
+                if changed.rowcount != 1:
+                    raise DurablePolicyError("RECONCILIATION_STATE_CONFLICT")
                 target = RunStatus.VERIFYING
                 reason = "RECONCILIATION_CONFIRMED_EFFECT"
-            else:
-                connection.execute(
+            elif result.status is ReconciliationStatus.CONFIRMED_NO_EFFECT:
+                changed = connection.execute(
                     """UPDATE operations SET status = ?, updated_at = ?
-                       WHERE logical_operation_id = ?""",
+                       WHERE logical_operation_id = ? AND status = ?""",
                     (
-                        OperationStatus.RETRYABLE_FAILURE.value,
+                        OperationStatus.CONFIRMED_NO_EFFECT.value,
                         _iso(now),
                         logical_operation_id,
+                        OperationStatus.UNKNOWN_OUTCOME.value,
                     ),
                 )
-                target = RunStatus.READY_TO_RESUME
-                reason = "RECONCILIATION_CONFIRMED_NO_EFFECT"
-            updated = self._transition_tx(
-                connection,
-                run,
-                target,
-                now=now,
-                event_id=None,
-                reason_code=reason,
-            )
+                if changed.rowcount != 1:
+                    raise DurablePolicyError("RECONCILIATION_STATE_CONFLICT")
+                if run.manual_takeover_requested:
+                    target = RunStatus.MANUAL_CONTROL
+                    reason = "NO_EFFECT_CONFIRMED_MANUAL_CONTROL"
+                elif run.cancellation_requested:
+                    target = RunStatus.CANCELLED
+                    reason = "NO_EFFECT_CONFIRMED_CANCELLED"
+                else:
+                    approval_row = connection.execute(
+                        """SELECT receipt_json, consumed_at FROM approvals
+                           WHERE approval_id = ?""",
+                        (run.validated_approval_id,),
+                    ).fetchone()
+                    validation = (
+                        validate_approval(
+                            ApprovalReceipt.model_validate_json(
+                                approval_row["receipt_json"]
+                            ),
+                            run,
+                            context,
+                            now=now,
+                        )
+                        if approval_row is not None
+                        and approval_row["consumed_at"] is not None
+                        else None
+                    )
+                    if validation is None or not validation.accepted:
+                        target = RunStatus.FAILED
+                        reason = "NO_EFFECT_CONFIRMED_AUTHORITY_INVALID"
+                    elif (
+                        run.budgets.activity_attempts_used
+                        >= run.budgets.max_activity_attempts
+                        or run.budgets.cost_usd + 0.001
+                        > run.budgets.max_cost_usd
+                    ):
+                        target = RunStatus.FAILED
+                        reason = "NO_EFFECT_CONFIRMED_BUDGET_EXHAUSTED"
+                    else:
+                        target = RunStatus.READY_TO_RESUME
+                        reason = "RECONCILIATION_CONFIRMED_NO_EFFECT"
+            else:
+                updated = self._update_in_place_tx(
+                    connection,
+                    run,
+                    now=now,
+                    event_id=None,
+                    reason_code="RECONCILIATION_STILL_UNKNOWN",
+                    updates={},
+                )
+                target = None
+                reason = "RECONCILIATION_STILL_UNKNOWN"
+            if target is not None:
+                updated = self._transition_tx(
+                    connection,
+                    run,
+                    target,
+                    now=now,
+                    event_id=None,
+                    reason_code=reason,
+                )
+            receipt_number = connection.execute(
+                """SELECT COUNT(*) FROM reconciliation_receipts
+                   WHERE logical_operation_id = ?""",
+                (logical_operation_id,),
+            ).fetchone()[0] + 1
             connection.execute(
-                """INSERT INTO execution_receipts(
-                       attempt_id, logical_operation_id, status, request_digest,
-                       provider_operation_id, started_at, completed_at
-                   ) VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                """INSERT INTO reconciliation_receipts(
+                       reconciliation_id, logical_operation_id, request_digest,
+                       status, provider_operation_id, observed_at
+                   ) VALUES (?, ?, ?, ?, ?, ?)""",
                 (
-                    f"reconcile:{logical_operation_id}:{operation['attempt_count']}",
+                    f"reconcile:{logical_operation_id}:{receipt_number}",
                     logical_operation_id,
-                    AttemptStatus.SUCCEEDED.value
-                    if provider_result
-                    else AttemptStatus.RETRYABLE_FAILURE.value,
                     operation["request_digest"],
+                    result.status.value,
                     provider_result.provider_operation_id if provider_result else None,
-                    _iso(now),
                     _iso(now),
                 ),
             )
@@ -1256,6 +1749,7 @@ class DurableStore:
         run_id: str,
         logical_operation_id: str,
         provider_result: ProviderResult | None,
+        business_effect: BusinessEffectRecord | None,
         *,
         now: datetime,
     ) -> RunRecord:
@@ -1276,16 +1770,37 @@ class DurableStore:
                 or provider_result.request_digest != operation["request_digest"]
                 or provider_result.provider_operation_id
                 != operation["provider_operation_id"]
+                or business_effect is None
+                or business_effect.logical_operation_id != logical_operation_id
+                or business_effect.request_digest != operation["request_digest"]
+                or business_effect.provider_operation_id
+                != operation["provider_operation_id"]
+                or run.proposal is None
+                or business_effect.target_id != run.proposal.target
+                or business_effect.amount_usd
+                != int(run.proposal.parameters.get("amount_usd", 0))
             ):
                 raise DurablePolicyError("EFFECT_VERIFICATION_FAILED")
+            if run.manual_takeover_requested:
+                target = RunStatus.MANUAL_CONTROL
+                reason = "EFFECT_VERIFIED_MANUAL_CONTROL"
+                step = "manual_control_after_effect"
+            elif run.cancellation_requested:
+                target = RunStatus.CANCELLED
+                reason = "EFFECT_VERIFIED_CANCELLED"
+                step = "cancelled_after_effect"
+            else:
+                target = RunStatus.COMPLETED
+                reason = "EFFECT_VERIFIED"
+                step = "complete"
             updated = self._transition_tx(
                 connection,
                 run,
-                RunStatus.COMPLETED,
+                target,
                 now=now,
                 event_id=None,
-                reason_code="EFFECT_VERIFIED",
-                updates={"current_step": "complete"},
+                reason_code=reason,
+                updates={"current_step": step},
             )
             connection.commit()
             return updated
@@ -1324,6 +1839,25 @@ class DurableStore:
             ).fetchone()
             return int(row[0]) if row else 0
 
+    def operation_record(self, logical_operation_id: str) -> dict[str, Any] | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM operations WHERE logical_operation_id = ?",
+                (logical_operation_id,),
+            ).fetchone()
+            return dict(row) if row else None
+
+    def reconciliation_receipts(
+        self, logical_operation_id: str
+    ) -> tuple[dict[str, Any], ...]:
+        with self._connect() as connection:
+            rows = connection.execute(
+                """SELECT * FROM reconciliation_receipts
+                   WHERE logical_operation_id = ? ORDER BY observed_at""",
+                (logical_operation_id,),
+            ).fetchall()
+            return tuple(dict(row) for row in rows)
+
 
 class DeterministicProvider:
     """Fixture provider with a queryable operation ledger."""
@@ -1359,6 +1893,24 @@ class DeterministicProvider:
     def query(self, logical_operation_id: str) -> ProviderResult | None:
         return self.effects.get(logical_operation_id)
 
+    def reconcile(
+        self,
+        logical_operation_id: str,
+        *,
+        still_unknown: bool = False,
+    ) -> ReconciliationResult:
+        if still_unknown:
+            return ReconciliationResult(status=ReconciliationStatus.STILL_UNKNOWN)
+        provider_result = self.query(logical_operation_id)
+        return ReconciliationResult(
+            status=(
+                ReconciliationStatus.CONFIRMED_EFFECT
+                if provider_result is not None
+                else ReconciliationStatus.CONFIRMED_NO_EFFECT
+            ),
+            provider_result=provider_result,
+        )
+
 
 class WorkflowRuntime:
     def __init__(
@@ -1368,18 +1920,35 @@ class WorkflowRuntime:
         event_secret: str = EVENT_SECRET,
         supported_workflow_versions: tuple[str, ...] = (WORKFLOW_VERSION,),
         supported_state_schemas: tuple[int, ...] = (STATE_SCHEMA_VERSION,),
+        state_migrations: Mapping[int, Callable[[RunRecord], RunRecord]] | None = None,
+        business_ledger: RefundLedger | None = None,
     ) -> None:
         self.store = store
         self.event_secret = event_secret
         self.supported_workflow_versions = supported_workflow_versions
         self.supported_state_schemas = supported_state_schemas
+        self.state_migrations = dict(state_migrations or {})
+        self.business_ledger = business_ledger or RefundLedger()
 
-    def load_compatible(self, run_id: str) -> RunRecord:
+    def load_compatible(
+        self, run_id: str, *, now: datetime | None = None
+    ) -> RunRecord:
         run = self.store.load_run(run_id)
         if run.workflow_version not in self.supported_workflow_versions:
             raise DurablePolicyError("WORKFLOW_VERSION_UNSUPPORTED")
-        if run.state_schema_version not in self.supported_state_schemas:
-            raise DurablePolicyError("STATE_SCHEMA_VERSION_UNSUPPORTED")
+        seen: set[int] = set()
+        while run.state_schema_version not in self.supported_state_schemas:
+            if run.state_schema_version in seen:
+                raise DurablePolicyError("STATE_SCHEMA_MIGRATION_CYCLE")
+            seen.add(run.state_schema_version)
+            migrator = self.state_migrations.get(run.state_schema_version)
+            if migrator is None:
+                raise DurablePolicyError("STATE_SCHEMA_VERSION_UNSUPPORTED")
+            run = self.store.migrate_run(
+                run_id,
+                migrator,
+                now=now or run.updated_at,
+            )
         return run
 
     def start_approval_run(
@@ -1419,7 +1988,11 @@ class WorkflowRuntime:
             RunStatus.WAITING_APPROVAL,
             now=now,
             reason_code="PROPOSAL_PERSISTED_WORKER_RELEASED",
-            updates={"current_step": "wait_for_approval"},
+            updates={
+                "current_step": "wait_for_approval",
+                "wait_generation": running.wait_generation + 1,
+                "wait_started_at": now,
+            },
         )
         self.store.schedule_timer(
             timer_id,
@@ -1437,7 +2010,7 @@ class WorkflowRuntime:
         *,
         now: datetime,
     ) -> EventProcessResult:
-        self.load_compatible(event.run_id)
+        self.load_compatible(event.run_id, now=now)
         return self.store.process_event(
             event,
             context,
@@ -1490,11 +2063,33 @@ class WorkflowRuntime:
         provider: DeterministicProvider,
         *,
         now: datetime,
+        context: TrustedExecutionContext | None = None,
+        still_unknown: bool = False,
     ) -> RunRecord:
         return self.store.record_reconciliation(
             logical_operation_id,
-            provider.query(logical_operation_id),
+            provider.reconcile(
+                logical_operation_id,
+                still_unknown=still_unknown,
+            ),
+            context or fixture_context(),
             now=now,
+        )
+
+    def observe_business_effect(
+        self,
+        run_id: str,
+        logical_operation_id: str,
+        provider: DeterministicProvider,
+    ) -> BusinessEffectRecord:
+        run = self.store.load_run(run_id)
+        provider_result = provider.query(logical_operation_id)
+        if run.proposal is None or provider_result is None:
+            raise DurablePolicyError("BUSINESS_EFFECT_NOT_OBSERVABLE")
+        return self.business_ledger.observe(
+            provider_result,
+            target_id=run.proposal.target,
+            amount_usd=int(run.proposal.parameters.get("amount_usd", 0)),
         )
 
     def verify_and_complete(
@@ -1509,8 +2104,25 @@ class WorkflowRuntime:
             run_id,
             logical_operation_id,
             provider.query(logical_operation_id),
+            self.business_ledger.query(logical_operation_id),
             now=now,
         )
+
+
+def migrate_state_v1_to_v2(run: RunRecord) -> RunRecord:
+    """Explicit fixture migration; production migrations require separate rollout."""
+
+    if run.state_schema_version != 1:
+        raise DurablePolicyError("STATE_SCHEMA_MIGRATION_SOURCE_INVALID")
+    return run.model_copy(
+        update={
+            "state_schema_version": 2,
+            "wait_generation": run.wait_generation,
+            "wait_started_at": run.wait_started_at,
+            "cancellation_requested": False,
+            "manual_takeover_requested": False,
+        }
+    )
 
 
 def fixture_preconditions(
@@ -1602,27 +2214,44 @@ def signed_event(
     event_type: EventType,
     payload: dict[str, Any],
     occurred_at: datetime,
+    wait_generation: int = 1,
     tenant_id: str = TENANT_ID,
-    source: str = "trusted-event-gateway",
+    source: str | None = None,
+    source_event_id: str | None = None,
     secret: str = EVENT_SECRET,
 ) -> EventEnvelope:
+    default_sources = {
+        EventType.APPROVAL_AVAILABLE: "approval-gateway",
+        EventType.APPROVAL_REJECTED: "approval-gateway",
+        EventType.APPROVAL_TIMEOUT: "scheduler",
+        EventType.TIMER_FIRED: "scheduler",
+        EventType.EXTERNAL_CALLBACK: "integration-gateway",
+        EventType.CANCEL_REQUESTED: "operator-control",
+        EventType.MANUAL_TAKEOVER: "operator-control",
+    }
+    resolved_source = source or default_sources[event_type]
+    resolved_source_event_id = source_event_id or event_id
     digest = payload_digest(payload)
     signature = event_signature(
         secret,
         event_id=event_id,
-        source=source,
+        source_event_id=resolved_source_event_id,
+        source=resolved_source,
         tenant_id=tenant_id,
         run_id=run_id,
         event_type=event_type,
+        wait_generation=wait_generation,
         occurred_at=occurred_at,
         payload_digest_value=digest,
     )
     return EventEnvelope(
         event_id=event_id,
-        source=source,
+        source_event_id=resolved_source_event_id,
+        source=resolved_source,
         tenant_id=tenant_id,
         run_id=run_id,
         event_type=event_type,
+        wait_generation=wait_generation,
         occurred_at=occurred_at,
         payload=payload,
         payload_digest=digest,
@@ -1700,6 +2329,9 @@ def evaluate_same_cases(directory: str | Path) -> EvaluationReport:
         provider,
         ProviderOutcome.SUCCESS,
         now=FIXED_TIME + timedelta(minutes=8),
+    )
+    duplicate_runtime.observe_business_effect(
+        ready.run_id, prepared.logical_operation_id, provider
     )
     duplicate_runtime.verify_and_complete(
         ready.run_id,
@@ -1878,6 +2510,9 @@ def happy_path_demo(database_path: str | Path) -> dict[str, Any]:
         provider,
         ProviderOutcome.SUCCESS,
         now=FIXED_TIME + timedelta(minutes=7, seconds=2),
+    )
+    resumed.observe_business_effect(
+        ready.run_id, prepared.logical_operation_id, provider
     )
     completed = resumed.verify_and_complete(
         ready.run_id,

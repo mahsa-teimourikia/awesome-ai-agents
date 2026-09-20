@@ -6,7 +6,7 @@ Human review is a control boundary only when the reviewed object and the authori
 
 An agent may produce a typed `Proposal`. Planning permission allows that proposal to appear in the workflow; it does not authorize execution. A separate trusted path creates an `ApprovalReceipt`, and execution revalidates it against current state.
 
-The receipt binds run, tenant, subject, proposal ID/digest, precondition digest, action, target, approver, role, policy version, and time window. It is consumed once in the same transaction that advances the run.
+The receipt binds run, tenant, subject, proposal ID/digest, precondition digest, action, target, approver, role, policy version, and time window. It must not predate the proposal. It is consumed once in the same transaction that advances the run.
 
 Text such as `APPROVED`, an email subject, model output, or a callback body is not authority. UI/API authentication must establish the approver identity and role outside the model. The receipt records the resulting trusted decision.
 
@@ -42,14 +42,14 @@ If the timeout commits first, the approval becomes stale because the run is term
 
 ## Cancellation and manual takeover
 
-Cancellation must be persisted and checked before the next worker/provider call. Rejecting a result after an expensive or consequential call is too late. In the fixture, `CANCELLED` and `MANUAL_CONTROL` are terminal, so later approvals and callbacks are admitted only as stale audit records.
+Cancellation must be persisted and checked before the next worker/provider call. Rejecting a result after an expensive or consequential call is too late. Before dispatch, the fixture can move directly to terminal `CANCELLED` or `MANUAL_CONTROL`. After dispatch, however, cancellation changes control intent without changing history: it blocks another call but keeps the run in execution, reconciliation, or verification until the possible effect is resolved. A confirmed effect remains `SUCCEEDED` in the operation ledger and is independently verified before the final control state becomes `CANCELLED` or `MANUAL_CONTROL`. Confirmed absence reaches the requested control state without retry.
 
 A production system should define:
 
 - who may cancel or assume manual control;
 - whether in-flight activities receive cooperative cancellation;
 - what happens when a remote effect cannot be cancelled;
-- how reconciliation and compensation continue after cancellation; and
+- how reconciliation, independent verification, and compensation continue after cancellation; and
 - whether and how an operator may start a new run.
 
 Manual takeover should stop automated mutation. It should not erase the durable history or reuse an old approval receipt.

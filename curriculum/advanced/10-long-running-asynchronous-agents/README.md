@@ -19,11 +19,11 @@ By the end, you can:
 - use legal transitions and compare-and-swap state versions to reject stale writers;
 - validate an approval receipt against tenant, subject, proposal, digest, action, target, policy, role, expiry, and current preconditions;
 - release a worker while waiting for a signed event or durable timer;
-- claim work with an expiring lease before calling an external system;
+- claim work with an expiring lease and bind the provider result to the active attempt;
 - keep a logical operation ID stable while attempt IDs remain unique;
-- treat a timeout-after-commit as `UNKNOWN_OUTCOME`, reconcile it, and only then retry or complete;
+- treat a timeout-after-commit or an expired dispatched lease as `UNKNOWN_OUTCOME`, reconcile it, and only then retry or complete;
 - persist retry, action, model-call, and cost budgets across restarts;
-- pin workflow and state-schema versions rather than replaying incompatible code silently; and
+- pin workflow and state-schema versions, with an executable v1-to-v2 migration rather than silent replay; and
 - evaluate the governed runtime against a same-task naive baseline.
 
 ## Scenario and threat model
@@ -89,7 +89,8 @@ The durable record stores what the application needs to resume correctly:
 - current state, step, and monotonically increasing state version;
 - typed proposal and immutable precondition snapshot;
 - persistent budget counters;
-- pending timer and validated approval identifiers;
+- pending timer, wait generation, wait start, and validated approval identifiers;
+- durable cancellation and manual-takeover intent;
 - worker lease owner and expiry; and
 - timestamps.
 
@@ -113,7 +114,7 @@ If another worker advanced the run first, zero rows change and the stale writer 
 
 ## Events wake work; they do not authorize it
 
-An `EventEnvelope` binds a unique event ID, source, tenant, run, event type, occurrence time, payload digest, and HMAC signature. The durable inbox enforces one record per event ID. Admission checks the signature, payload digest, run and tenant bindings, and terminal state before dispatch.
+An `EventEnvelope` binds a unique envelope ID, stable source event ID, authenticated source, tenant, run, event type, occurrence time, wait generation, payload digest, and HMAC signature. The durable inbox deduplicates both the envelope and the source delivery. Admission checks the signature, payload digest, run and tenant bindings, source-to-event policy, current wait generation, wait start, freshness window, and terminal state before dispatch. A correctly signed event for an earlier wait cannot wake a later wait.
 
 For approval, the event only names a separately stored `ApprovalReceipt`. The receipt must be valid and unused, then it is consumed in the same transaction that moves the run to `READY_TO_RESUME`. A string like `APPROVED`, a queue delivery, or a truthy `approved` field has no authority by itself.
 
@@ -131,7 +132,7 @@ The receipt binds:
 - policy version; and
 - issue and expiry times.
 
-Execution revalidates current policy, permitted action and target, current approver role, and the exact precondition digest. If the order version, evidence, deployment, account state, policy, permission, or role changed, the old approval cannot authorize the new world. A reviewer approves one known proposal under known conditions—not “whatever the agent eventually decides.”
+The receipt must also be issued after the proposal it authorizes. Execution revalidates current policy, permitted action and target, current approver role, and the exact precondition digest. If the order version, evidence, deployment, account state, policy, permission, or role changed, the old approval cannot authorize the new world. A reviewer approves one known proposal under known conditions—not “whatever the agent eventually decides.”
 
 ## Waiting and timeout races
 
@@ -145,7 +146,7 @@ The fixture exposes three explicit timeout policies:
 
 Other domains may define `REMIND`, `REASSIGN`, or `REPLAN`; each still needs a persisted policy and an explicit state transition rather than ad hoc timer code.
 
-Cancellation and manual takeover are durable terminal control states. Late callbacks cannot resurrect them. “Resume” never means “ignore cancellation.”
+Cancellation and manual takeover are durable control intents. Before provider dispatch they may terminate the run immediately. After dispatch they must not erase an unresolved external effect: the run remains in `EXECUTING`, `RECONCILING`, or `VERIFYING` until effect outcome is known, while the intent blocks every new provider call. Confirmed effect is verified and then the control outcome becomes `CANCELLED` or `MANUAL_CONTROL`; confirmed no effect may reach that control outcome without retry. Late callbacks cannot resurrect terminal runs. “Resume” never means “ignore cancellation.”
 
 Long process-local sleeps are the anti-pattern because a process can disappear and consume worker capacity. Polling is not universally forbidden: managed orchestrators may use durable internal polling or event integrations. The design requirement is durable state and bounded resource use, not a slogan about one transport.
 
@@ -159,29 +160,31 @@ These controls solve different problems:
 | State transition | `run_id + expected state_version` | stale or competing writers advancing the same state |
 | External effect | `logical_operation_id + request_digest` | repeating a consequential provider operation |
 
-The logical operation ID stays stable across retries. Each attempt receives a unique attempt ID and receipt. This supports audit and recovery without pretending the whole distributed workflow runs exactly once. Queues and workers are commonly at-least-once; safety comes from dedupe, conditional writes, stable operation identity, provider support, and reconciliation.
+The logical operation ID stays stable across retries. Each attempt receives a unique attempt ID and receipt, and the operation stores exactly one `active_attempt_id`. Dispatch requires a matching owner and unexpired lease. A result may mutate state only when its active attempt, worker owner, request digest, dispatch marker, operation status, and current run state still match. This prevents a late result from attempt 1 from overwriting active attempt 2. Queues and workers are commonly at-least-once; safety comes from dedupe, conditional writes, stable operation identity, provider support, and reconciliation—not from an exactly-once claim.
 
 ## Claim, call, record
 
 The side-effect boundary is deliberately three-phase:
 
 1. **Claim:** in a short transaction, validate current authority and budgets; create or claim the stable logical operation; create a unique attempt receipt; commit.
-2. **Call:** outside the database transaction, invoke the provider with the stable operation ID.
-3. **Record:** in a new transaction, record success, retryable failure, terminal failure, or unknown outcome and transition accordingly.
+2. **Call:** in a short transaction, validate the active attempt and unexpired lease and persist `dispatched_at`; then, outside the transaction, invoke the provider with the stable operation ID.
+3. **Record:** in a new transaction, conditionally record success, retryable failure, terminal failure, or unknown outcome only for that active attempt and transition accordingly.
 
-The database lock is never held during the external call. A worker must hold an unexpired lease before claiming. Another worker can reclaim after expiry using the latest state version.
+The database lock is never held during the external call. A worker must hold an unexpired lease before claiming and immediately before dispatch. If a dispatched attempt's lease expires, the operation becomes an unknown outcome and enters reconciliation; another worker may not blindly issue the same effect again.
 
 ## Unknown outcomes are first-class
 
 A timeout does not prove failure. If the provider may have committed the refund before the response was lost, the run enters `RECONCILING`. A new execution claim returns `RECONCILE_REQUIRED`; it cannot blindly retry.
 
-The reconciler queries the provider with the stable logical operation ID:
+The reconciler queries the provider with the stable logical operation ID and writes a typed reconciliation receipt:
 
 - confirmed effect → record provider receipt, enter `VERIFYING`;
-- confirmed absence → enter `READY_TO_RESUME`, retaining the same logical operation ID for a new attempt;
+- confirmed absence → revalidate current approval, policy, preconditions, and retry budget before entering `READY_TO_RESUME`, retaining the same logical operation ID for a new attempt; if cancellation or manual takeover was requested, stop instead of retrying;
 - still unknown → remain paused or escalate under production policy.
 
-Only an independently observed provider record with the matching request digest permits completion. This is stronger than treating a worker's return value as truth.
+Provider acknowledgement and business-state verification are separate evidence. The lab's `RefundLedger` is an independent read model: completion requires both a matching provider receipt and a matching business effect record for the operation, request digest, target, and amount. This is stronger than treating a worker's return value—or even the provider response alone—as truth.
+
+Provider-side idempotency is provider-specific. Some APIs guarantee a stable key, some scope or expire it, and some provide no query by key. Before using automatic retries, verify the chosen provider's documented key lifetime, parameter-binding rules, and reconciliation API. When those guarantees are absent, pause for operator-assisted reconciliation.
 
 ## Attempts, failures, and budgets
 
@@ -198,7 +201,7 @@ The record carries both:
 - `workflow_version`: control-flow semantics;
 - `state_schema_version`: serialized state shape.
 
-`WorkflowRuntime.load_compatible()` rejects unsupported versions. Production systems typically pin old executions to compatible code, apply a tested schema migration, or use a framework's workflow-versioning mechanism. Deploying new code and hoping old histories replay correctly is not a migration plan.
+`WorkflowRuntime.load_compatible()` rejects unsupported versions unless an explicitly registered migration is available. The lab registers and tests `migrate_state_v1_to_v2()`, which upgrades legacy records through a compare-and-swap write before execution continues. Production systems typically pin old executions to compatible code, apply tested and observable migrations, or use a framework's workflow-versioning mechanism. Deploying new code and hoping old histories replay correctly is not a migration plan.
 
 ## Evaluation
 
@@ -252,7 +255,7 @@ The course requires no API key and makes no production provider calls.
 1. Add an encrypted event payload reference and a retention job without placing credentials or full retrieved context in the run record.
 2. Add a second effect that requires compensation. Define which failures retry, reconcile, compensate, or transfer to manual control.
 3. Replace SQLite with PostgreSQL and test two real worker processes competing under conditional updates.
-4. Add a schema-v2 migration and prove both a pinned v1 run and a migrated v2 run resume safely.
+4. Extend the provided v1-to-v2 migration with a rollback or manual-control strategy and test a partially migrated fleet.
 5. Model a provider that cannot query by idempotency key. Design an operator-assisted reconciliation path and explain why automatic retry is unsafe.
 
 ## Final principles
@@ -260,6 +263,10 @@ The course requires no API key and makes no production provider calls.
 **A callback is not authority.**
 
 **A timeout is not proof of failure.**
+
+**Cancellation changes control intent; it does not erase an in-flight effect.**
+
+**A provider acknowledgement is not independent business-state verification.**
 
 **A durable checkpoint is not a dump of all agent memory.**
 

@@ -28,6 +28,7 @@ The course stores a compact `RunRecord` and separate append-oriented ledgers. Th
 | `timers` | due time and timeout policy | pending → fired once |
 | `operations` | stable logical effect identity and outcome | conditional state changes |
 | `execution_receipts` | unique attempt evidence | append/update one attempt |
+| `reconciliation_receipts` | typed provider-query evidence | append, bound to operation and digest |
 
 `DurableStore` opens a connection per operation and uses short transactions. This lab choice exposes atomic boundaries. Production PostgreSQL, workflow histories, or cloud orchestration services use different primitives but should preserve the invariants.
 
@@ -39,7 +40,7 @@ Completion is reachable only from `VERIFYING`. A receipt must exist and match th
 
 ## Compare-and-swap and leases
 
-State-version CAS prevents lost updates. It does not by itself prevent two workers from both starting a side effect if they read before either writes. The runtime therefore requires an expiring lease and then atomically claims the logical operation before the external call.
+State-version CAS prevents lost updates. It does not by itself prevent two workers from both starting a side effect if they read before either writes. The runtime therefore requires an expiring lease, atomically claims the logical operation, and binds it to one `active_attempt_id` before the external call.
 
 Lease rules:
 
@@ -47,7 +48,9 @@ Lease rules:
 2. run must be claimable;
 3. another unexpired owner blocks the claim;
 4. successful claim increments state version;
-5. an expired lease may be replaced by a new owner using the latest version.
+5. immediately before dispatch, the runtime rechecks owner, active attempt, run state, cancellation intent, and lease, then persists a dispatch marker;
+6. a result is accepted only from that same active attempt and owner; and
+7. if a dispatched lease expires, recovery records an unknown outcome and requires reconciliation instead of allowing another provider call.
 
 Do not hold a database transaction open over a network or model call. It increases contention and still cannot make the remote system part of the local transaction.
 
@@ -62,7 +65,7 @@ Safe deployment strategies include:
 - migrate state with a tested, observable, reversible procedure; or
 - transfer incompatible runs to manual control.
 
-The lab rejects unsupported versions to make silent replay impossible.
+The lab rejects unsupported versions to make silent replay impossible. It also provides a registered `migrate_state_v1_to_v2()` path. `WorkflowRuntime.load_compatible()` applies that migration through a compare-and-swap update, while a missing migration fails closed. The fixture demonstrates the mechanism; production migration procedures also need rollout observability, backups, rollback or manual-control handling, and concurrency testing.
 
 ## Replay determinism versus explicit state persistence
 
