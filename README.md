@@ -79,7 +79,7 @@ Every topic has a co-located `README.md`, deep dive topics, and self-contained n
 | 08 | [Proactive Agents](curriculum/advanced/08-proactive-agents/README.md) | Events, schedules, persistent goals, and permission boundaries |
 | 09 | [Model Routing](curriculum/advanced/09-model-routing/README.md) | Capability, cost, latency, fallback, and ensemble routing |
 | 10 | [Long-Running and Asynchronous Agents](curriculum/advanced/10-long-running-asynchronous-agents/README.md) | Jobs, pause/resume, checkpoints, queues, and durable execution |
-| 11 | [LLM-as-Judge and Agent Judges](curriculum/advanced/11-llm-as-judge-agent-judges/README.md) | Rubrics, pairwise judging, calibration, bias, and ensembles |
+| 11 | [LLM-as-Judge and Evaluator Agents](curriculum/advanced/11-llm-as-judge-agent-judges/README.md) | Calibrated measurement, evidence-bound evaluation, bias probes, hard gates, and drift |
 | 12 | [Agent Benchmarks](curriculum/advanced/12-agent-benchmarks/README.md) | SWE-bench, WebArena, BrowserGym, GAIA, τ-bench, OSWorld, and enterprise benchmarks |
 | 13 | [MCP: Model Context Protocol](curriculum/advanced/13-mcp-model-context-protocol/README.md) | Tools, resources, prompts, gateways, security, and interoperability |
 | 14 | [Agent Skills](curriculum/advanced/14-agent-skills/README.md) | Procedural knowledge, dynamic loading, composition, MCP, and subagents |
