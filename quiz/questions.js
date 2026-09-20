@@ -1817,20 +1817,20 @@ export const questions = [
   {
     "id": "chkpt-long_running_asynchronous_agents",
     "category": "Advanced",
-    "prompt": "Why use Async Job Queues for Agents?",
+    "prompt": "A signed approval event arrives for a waiting run. What must happen before a consequential external action?",
     "options": [
-      "It makes the LLM hallucinate less.",
-      "LLM agents often take a long time to loop through tools and reason. Async queues prevent HTTP timeouts and allow the user to check back later.",
-      "It is required by OpenAI's Terms of Service.",
-      "It reduces the token cost."
+      "Execute because the signature alone grants authority.",
+      "Validate and consume the bound approval, recheck current policy and preconditions, then claim the stable operation under a valid lease.",
+      "Ask the model whether the event looks trustworthy.",
+      "Mark the run complete before calling the provider."
     ],
     "correct": [
       1
     ],
-    "explanation": "Refer to the notebook for the detailed explanation.",
+    "explanation": "A callback wakes the workflow; it does not authorize execution. Authority, current state, and the side-effect claim are separate controls.",
     "source": {
       "label": "Notebook Checkpoint",
-      "url": "curriculum/advanced/10-long-running-asynchronous-agents/long_running_asynchronous_agents.ipynb"
+      "url": "curriculum/advanced/10-long-running-asynchronous-agents/10_long_running_agents.ipynb"
     }
   },
   {
