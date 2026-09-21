@@ -359,14 +359,16 @@ export const learningPath = [
   },
   {
     "id": "a13",
-    "title": "Mcp model context protocol",
-    "description": "Advanced exploration of Mcp model context protocol.",
+    "title": "MCP: Model Context Protocol",
+    "description": "Build a governed MCP host with trusted discovery, point-of-use authorization, evidence controls, and safe consequential actions.",
     "material": "../curriculum/advanced/13-mcp-model-context-protocol/README.md",
-    "notebook": null,
-    "category": "Advanced - Mcp model context protocol",
-    "minutes": 60,
+    "notebook": "../curriculum/advanced/13-mcp-model-context-protocol/13_mcp_protocol.ipynb",
+    "category": "Advanced - MCP: Model Context Protocol",
+    "minutes": 135,
     "technologies": [
-      "Python"
+      "Python",
+      "Pydantic",
+      "MCP Python SDK"
     ]
   },
   {

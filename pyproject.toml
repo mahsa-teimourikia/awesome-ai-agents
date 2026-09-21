@@ -43,7 +43,8 @@ advanced = [
     "autogen==0.14.1",
     "crewai==1.15.20",
     "agentops",
-    "mcp",
+    # Tested adapter target; the framework-neutral policy core is SDK-independent.
+    "mcp==1.28.1",
     "chromadb",
     "temporalio",
     "anthropic",

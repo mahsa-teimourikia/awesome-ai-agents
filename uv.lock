@@ -552,7 +552,7 @@ requires-dist = [
     { name = "langchain-openai", marker = "extra == 'intermediate'" },
     { name = "langgraph", marker = "extra == 'frameworks'", specifier = ">=1.2.0,<2.0.0" },
     { name = "matplotlib", marker = "extra == 'advanced'" },
-    { name = "mcp", marker = "extra == 'advanced'" },
+    { name = "mcp", marker = "extra == 'advanced'", specifier = "==1.28.1" },
     { name = "nbclient", marker = "extra == 'contributor'" },
     { name = "nbconvert", marker = "extra == 'contributor'" },
     { name = "nbformat", marker = "extra == 'contributor'" },

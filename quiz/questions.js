@@ -1208,7 +1208,24 @@ export const questions = [
     "explanation": "A protocol tool schema alone is not a safe write boundary. Application controls validate the proposal, authorize it freshly, make replay safe, and preserve evidence for reconciliation and audit.",
     "source": {
       "label": "MCP: Model Context Protocol",
-      "url": "curriculum/advanced/13-mcp-model-context-protocol/README.md#security-risks-and-mitigations"
+      "url": "curriculum/advanced/13-mcp-model-context-protocol/README.md#consequential-tools-approval-retry-and-unknown-outcome"
+    }
+  },
+  {
+    "id": "mcp-discovery-snapshot",
+    "category": "Advanced",
+    "prompt": "A tool appeared in an authorized MCP discovery snapshot five minutes ago. What must happen before it executes now?",
+    "options": [
+      "Execute because discovery permanently authorized it",
+      "Recheck server identity and lifecycle, snapshot validity, delegated scope, tenant, purpose, descriptor digest, budgets, and any required approval",
+      "Trust the server's current tool description as policy",
+      "Ask the model whether the call still looks safe"
+    ],
+    "correct": [1],
+    "explanation": "Discovery is filtered context, not durable execution authority. Point-of-use checks close revocation, drift, tenant, budget, and approval races.",
+    "source": {
+      "label": "MCP: Application-owned authority boundary",
+      "url": "curriculum/advanced/13-mcp-model-context-protocol/README.md#application-owned-authority-boundary"
     }
   },
   {
