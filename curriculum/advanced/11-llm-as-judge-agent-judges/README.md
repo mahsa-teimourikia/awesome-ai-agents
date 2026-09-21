@@ -13,7 +13,7 @@ By the end, you can:
 - distinguish categorical agreement from confidence calibration;
 - measure ordinal agreement with weighted Cohen's κ while retaining individual human ratings and adjudication records;
 - separate deterministic facts from genuinely semantic criteria and prevent weighted averages from hiding a hard failure;
-- validate typed judge output against rubric, dataset, judge, prompt, and evidence-snapshot versions;
+- validate typed judge output against the application-selected judge, settings, complete rubric, trusted gates, and recomputed evidence snapshot;
 - test position sensitivity without leaking a gold label into the runtime;
 - constrain an evaluator agent with typed, read-only tools, tenant scope, temporal evidence, and finite budgets;
 - keep action execution, observed outcome, and causal attribution as different claims; and
@@ -67,7 +67,7 @@ The frozen `northstar-eval-v1` validation set includes:
 | prompt injection | candidate tries to instruct the judge |
 | ambiguous provider | insufficient evidence must not be forced into pass/fail |
 
-Reference labels were written independently of the deliberately imperfect judge predictions. Individual rater labels remain available after adjudication. The notebook reports exact agreement, within-one agreement, mean absolute error, quadratic weighted κ, Brier score, expected calibration error, false-pass and false-fail rates, and per-criterion/per-slice results.
+Reference labels were written independently of the deliberately imperfect judge predictions. Individual rater labels remain available after adjudication. The notebook reports exact agreement, within-one agreement, mean absolute error, quadratic weighted κ, Brier score, expected calibration error, false-pass and false-fail rates, and per-criterion/per-slice results. Slice reports retain their sample and negative-case counts so tiny slices cannot masquerade as strong release evidence.
 
 ## Core distinctions
 
@@ -101,13 +101,16 @@ uv run --extra core python scripts/execute-notebooks.py --timeout 90 \
 - Freeze a development set for rubric iteration and a held-out validation set for final measurement.
 - Blind irrelevant candidate identity; decide explicitly between reference-based and reference-free evaluation.
 - Record dataset, rubric, model/deployment, prompt, settings, evaluator code, and evidence snapshot versions.
+- Compare judge ID, model/deployment version, prompt version, and settings with application-selected inputs; never trust the judge to identify itself.
 - Measure individual human disagreement before adjudication rather than calling consensus infallible truth.
 - Run deterministic validators before semantic judgment; hard safety and authority failures are never averaged away.
 - Treat candidate artifacts and retrieved content as untrusted data, structurally separated from policy instructions.
 - Validate every cited evidence ID for source, tenant, scope, freshness, time alignment, and operation identity.
+- Reject future observations and retrievals outside an explicit clock-skew allowance, and recompute the evidence snapshot digest from the accepted records.
+- Require every mandatory semantic criterion and every trusted deterministic hard gate exactly once.
 - Grant evaluator agents only typed read capabilities; role names do not confer authority.
 - Bound tool calls, model calls, elapsed time, and cost; return insufficient evidence when the budget ends.
-- Track false passes, false fails, slices, positional consistency, test–retest stability, judge drift, and rubric drift.
+- Track false passes, false fails, slice support, slice false-pass rates, candidate consistency, tie consistency, abstention, position instability, test–retest stability, judge drift, and rubric drift.
 - Keep the judge in shadow mode until risk-specific validation supports a more consequential role.
 
 ## Knowledge check

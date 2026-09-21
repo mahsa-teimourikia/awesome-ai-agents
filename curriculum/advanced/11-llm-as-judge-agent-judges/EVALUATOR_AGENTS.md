@@ -32,8 +32,11 @@ A verdict cites evidence IDs. Before accepting it, the application verifies:
 - source authority is sufficient for the criterion;
 - tenant and scope match the evaluation case;
 - the observation is fresh enough;
+- observation and retrieval timestamps are not materially in the future;
 - post-action claims use post-action observations; and
 - consequential claims bind to the expected operation or provider receipt.
+
+The application sorts the accepted evidence records and recomputes a canonical digest over their IDs, content digests, provenance, tenant, timestamps, authority, and bindings. Both request and verdict must match that computed value. Repeating the same unverified snapshot label is not integrity protection.
 
 A database read or API response is independent evidence whose strength depends on provenance and integrity. It is not “cryptographic proof” unless an actual signature, attestation, or digest-verification mechanism supplies that property.
 
@@ -63,7 +66,7 @@ Return `INSUFFICIENT_EVIDENCE` or `ABSTAIN`; do not guess. A judge result can al
 3. semantic judgment
    relevance • explanation quality • uncertainty handling
 4. deterministic verdict validation
-   closed schema • versions • cited evidence • hard gates
+   selected judge/settings • complete criteria • recomputed snapshot • trusted hard gates
 5. application aggregation
    risk policy • human review • shadow/canary/blocking mode
 ```
