@@ -373,14 +373,16 @@ export const learningPath = [
   },
   {
     "id": "a14",
-    "title": "Agent skills",
-    "description": "Advanced exploration of Agent skills.",
+    "title": "Agent Skills",
+    "description": "Build governed procedural packages with eligibility-first routing, least-authority activation, sandboxed scripts, evidence validation, and lifecycle controls.",
     "material": "../curriculum/advanced/14-agent-skills/README.md",
-    "notebook": null,
-    "category": "Advanced - Agent skills",
-    "minutes": 60,
+    "notebook": "../curriculum/advanced/14-agent-skills/14_agent_skills.ipynb",
+    "category": "Advanced - Agent Skills",
+    "minutes": 135,
     "technologies": [
-      "Python"
+      "Python",
+      "Pydantic",
+      "Agent Skills"
     ]
   },
   {
