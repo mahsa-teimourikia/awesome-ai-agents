@@ -17,7 +17,9 @@ actor workload + delegated subject + tenant + audience
 ```
 
 The credential belongs to the host/runtime, never the model context. Delegation is
-attenuating: child scope must be a subset of parent scope. A ticket-server credential
+attenuating: child scope must be a subset of parent scope from authoritative host
+identity state. `parent_scopes` inside the same typed object is not independent proof,
+and a Pydantic model is not an authenticated token. A ticket-server credential
 cannot be replayed at billing; a Northstar credential cannot access Globex; and tenant
 membership does not authorize one subject's payroll record to another subject.
 
@@ -41,10 +43,16 @@ Execution therefore rechecks every condition immediately before the backend call
 
 ## Exact approval for consequential effects
 
-An approval receipt binds principal, tenant, capability, stable logical operation,
-canonical argument digest, policy version, approver identity/role, issuance, expiry,
-and unused state. Changed amount, customer, currency, policy, or operation invalidates
-the receipt. Consumption is atomic, so concurrent attempts cannot reuse it.
+An application-owned `ApproverContext` comes from authenticated state and is checked
+against the current approver registry, tenant, action permission, risk tier, and amount
+limit. An ordinary agent or caller-provided role string cannot mint authority.
+
+An approval receipt binds principal, tenant, subject, purpose, capability, stable
+logical operation, canonical argument digest, policy version, approver identity/role,
+issuance, and expiry. Changed amount, customer, currency, policy, or operation
+invalidates it. The approval claim progresses through `CLAIMED`, `IN_FLIGHT`, and a
+terminal/uncertain outcome for that logical operation; it is not merely deleted before
+dispatch.
 
 An elicitation response, a server-provided `APPROVED` string, a prompt, or a tool result
 cannot create this receipt.

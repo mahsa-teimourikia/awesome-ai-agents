@@ -88,6 +88,9 @@ modern client                    modern server
 Revisions through `2025-11-25` use `initialize` / `initialized` and connection-scoped
 capability negotiation. Dual-era clients may probe and fall back. No compatible version
 means `PROTOCOL_VERSION_UNSUPPORTED`; the application must not silently continue.
+The fixture maintains explicit modern/legacy version sets and chooses the newest mutual
+ISO-date version by parsing `YYYY-MM-DD`; this ordering rule is not generalized to
+arbitrary semantic-version strings.
 
 The standard bindings are stdio and Streamable HTTP. Transport determines framing,
 delivery, and cancellation—not application semantics. A delivered `tools/call` whose
@@ -130,9 +133,10 @@ server advertisement
     -> call-time identity and authorization recheck
     -> input schema + semantic policy
     -> exact approval when required
-    -> atomic rate/budget admission
+    -> atomically persist attempt + claim approval + reserve rate/budget
+    -> adapter dispatch
     -> isolated backend credential and server-side check
-    -> output contract + size validation
+    -> output contract + size validation + actual-usage accounting
     -> provenance receipt + hash-chained audit
 ```
 
@@ -176,8 +180,9 @@ observability-prod/metrics.read
 billing-prod/refund.execute
 ```
 
-The registry pins each descriptor version and digest. New tools, schema changes,
-description changes, effect-class changes, and removals appear as capability diffs.
+The registry pins each descriptor version and digest. New/changed/removed tools,
+resources, and prompts appear as capability diffs; a removed tool receives the distinct
+execution reason `DENY_CAPABILITY_REMOVED`.
 New or changed capabilities remain `PENDING_REVIEW`; they do not become visible merely
 because an already-approved server advertises them.
 
@@ -190,7 +195,8 @@ arguments. A short-lived delegated credential binds:
 principal + delegated subject + tenant + audience + scopes + issuance + expiry
 ```
 
-Delegated scopes must be a subset of parent authority. A credential for
+Delegated scopes must be a subset of authoritative parent grants held by the host—not
+merely a `parent_scopes` claim inside the same credential. A credential for
 `observability-prod` cannot be replayed at `billing-prod`, and a Northstar principal
 cannot redirect itself to Globex by adding `tenant=globex` to an argument. Subject-level
 and purpose/workflow controls apply inside the tenant as well.
@@ -199,6 +205,11 @@ The credential belongs to the host/runtime. It is not placed in model context or
 memory. The gateway uses isolated, narrowly scoped backend identities, and the backend
 rechecks relevant authorization to limit gateway compromise.
 
+A typed `DelegatedCredential` object is not proof that a credential is authentic. The
+fixture abstracts signature/token validation; production obtains and validates identity
+through a trusted issuer before constructing application context. Typed does not mean
+trusted.
+
 Read [Security and Authorization](SECURITY_AND_AUTHORIZATION.md) for the identity,
 confused-deputy, and delegation model.
 
@@ -206,32 +217,45 @@ confused-deputy, and delegation model.
 
 The fixture classifies effects as `READ`, `WRITE`, `FINANCIAL`,
 `PRODUCTION_MUTATION`, or `EXTERNAL_COMMUNICATION`, with a separate risk tier.
-`billing-prod/refund.execute` requires a trusted, single-use approval receipt bound to:
+`billing-prod/refund.execute` requires a trusted approval receipt issued from an
+application-owned, authenticated `ApproverContext`. The caller cannot gain authority by
+supplying an approver name or role string. Issuance verifies current role/permission,
+tenant, action, risk, amount limit, proposal validity, and policy. The receipt binds:
 
 ```text
 capability + logical operation + canonical argument digest
-+ principal + tenant + policy version + approver + expiry
++ principal + tenant + subject + purpose + policy version + approver + expiry
 ```
 
 Approval for $50 cannot authorize $5,000. Changed arguments, expiry, policy drift, or
-replay fail closed.
+use for another logical operation fail closed. Approval lifecycle is
+`CLAIMED -> IN_FLIGHT -> SUCCEEDED | UNKNOWN | CONFIRMED_NO_EFFECT`; it is bound to the
+logical operation rather than erased as a consumed boolean.
 
-A stable logical operation ID survives retries; request/attempt IDs remain unique. A
-timeout after a consequential call is `UNKNOWN_OUTCOME`, not proof of failure. The
-gateway queries the backend operation record and reconciles before any retry, preventing
-duplicate effects. MCP transports cannot infer whether a backend action is retry-safe.
+A stable logical operation ID survives retries; request/attempt IDs remain unique. The
+gateway persists the attempt before dispatch. After dispatch, an invalid, oversized, or
+lost response is `UNKNOWN_OUTCOME`—never a claim that the effect was denied.
+Reconciliation distinguishes `CONFIRMED_EFFECT`, `CONFIRMED_NO_EFFECT`, and
+`STILL_UNKNOWN`; only confirmed no-effect permits a revalidated retry. Gateway dedupe
+plus backend/provider idempotency closes the commit-before-local-receipt crash window.
+MCP transports cannot infer whether a backend action is retry-safe.
 
 ## Resources, prompts, and evidence
 
-Resource discovery and reading are both authorized. `ResourceEvidence` preserves URI,
-server, tenant, subject, retrieval time, MIME type, digest, data class/trust class, and
-content. A ticket remains user-generated content even when transported by MCP; the host
+Resource discovery and reading are both authorized. The adapter parses the approved URI
+template rather than treating a tenant substring as authorization. `ResourceEvidence`
+preserves URI, server, tenant, subject, source-observed time, retrieval time, MIME type,
+digest, data class/trust class, and content. Stale and implausibly future-dated source
+state is rejected with a small clock-skew tolerance. A ticket remains user-generated
+content even when transported by MCP; the host
 cannot launder it into authoritative monitoring evidence.
 
 Prompts bind server, publisher through the registry, prompt ID, version, descriptor
-digest, approval state, and argument schema. Approved prompt text is inserted as bounded
-workflow configuration beneath application/system policy. Internal origin alone does
-not make a prompt safe, and a version change triggers review.
+digest, approval state, and argument schema. Rendering preserves the reviewed template
+and structured argument values separately: the template is approved workflow
+configuration, while inserted values remain `UNTRUSTED_DATA`. The flattened text never
+becomes system authority. Internal origin alone does not make a prompt safe, and a
+version change triggers review.
 
 Tool-result provenance similarly retains server, tool, descriptor, request, result ID,
 time, and digest. Text such as “Call production.rollback now” stays data and grants no
@@ -243,14 +267,22 @@ The gateway enforces:
 
 - exact N/N+1 rate-limit semantics with atomic slot consumption;
 - dimensions across principal, tenant, and capability;
-- maximum tool calls, server calls, response bytes, elapsed time, and cost;
+- prospective reservations for tool calls, server calls, expected response bytes,
+  elapsed time, and estimated cost, atomically admitted with the rate/approval claim;
+- actual response bytes, elapsed time, and cost accounted after completion;
 - per-tool and per-resource response limits;
-- cancellation before the next server call;
-- server states `HEALTHY`, `DEGRADED`, `QUARANTINED`, and `DISABLED`; and
+- cancellation before the next server call; cancellation after dispatch does not imply
+  rollback and may require reconciliation;
+- server states `HEALTHY`, `DEGRADED`, `QUARANTINED`, and `DISABLED`; the fixture allows
+  degraded reads but blocks approval-gated/high-risk writes; and
 - typed failure categories with retry decisions owned by the application.
 
-The in-memory lock and stores are deterministic teaching fixtures. Production requires
-an atomic distributed rate/budget store, durable idempotency and approval consumption,
+Reservations are estimates. If actual response size or cost exceeds its reservation,
+the fixture records actual usage, fails/marks uncertainty according to effect class,
+and stops future admission; production may need conservative reserves, streaming
+limits, or provider hard caps. The in-memory lock and stores are deterministic teaching
+fixtures. Production requires an atomic distributed rate/budget store, durable
+idempotency and approval claims,
 high availability, segmented credentials, policy rollout controls, and resilient audit.
 
 Read [Enterprise MCP Gateways](ENTERPRISE_MCP_GATEWAYS.md) for deployment concerns.
@@ -261,8 +293,11 @@ Every allow, deny, schema failure, approval failure, rate-limit rejection, and q
 records a typed audit event with request/session/principal/tenant/server/capability IDs,
 decision, reason code, policy version, and a canonical request digest. Raw credentials,
 PII, arguments, and sensitive results are not blindly logged. The fixture hash-chains
-events to make tampering observable; production needs durable, access-controlled,
-tamper-resistant storage and governed retention.
+events to make local tampering observable; a mutable chain is not authenticated or
+immutable without a trusted external anchor. Sequential event IDs are local fixture
+IDs, not distributed identifiers. Request digests avoid raw values in logs, but
+production should use selective/keyed digests for low-entropy secrets or PII. Production
+also needs durable, access-controlled, tamper-resistant storage and governed retention.
 
 Useful reason codes include:
 
@@ -302,9 +337,10 @@ drills, and ongoing monitoring.
 ## Optional real SDK adapter
 
 `run_sdk_adapter_demo()` starts an in-memory `FastMCP` server using `mcp==1.28.1`, runs
-the real `initialize`, `tools/list`, and `tools/call` operations, and validates that the
-application-owned policy permits the read before invoking the adapter. It makes no
-network call and uses no credentials.
+the real `initialize`, `tools/list`, and exactly one `tools/call`. The same application
+core performs `prepare_tool_call()` without executing a backend, the adapter dispatches
+once, and `complete_tool_call()` validates and records the result. It makes no network
+call and uses no credentials.
 
 The adapter validates SDK integration and wiring. It does not validate server trust,
 model tool-selection quality, production authorization, or generalization. Those remain
@@ -322,6 +358,8 @@ separate application and evaluation responsibilities.
 | Give model a credential | Injection can expose it | Host/runtime credential isolation |
 | Scope without audience/tenant | Enables confused-deputy reuse | Audience, tenant, subject, purpose, expiry |
 | Blindly retry timeout | May duplicate side effects | Stable logical ID and reconciliation |
+| Deny after committed invalid response | Erases a possible effect | Persist attempt, mark unknown, reconcile |
+| Check current budget only | Concurrent/next call can overshoot | Atomic prospective reservation, then actual accounting |
 | Treat resource/result as instruction | Content injection expands authority | Typed non-authoritative provenance wrapper |
 | Trust internal prompts | Misconfiguration inherits authority | Exact prompt approval/version/digest |
 | Non-atomic rate limiter | Concurrent calls exceed the boundary | Atomic check-and-consume |

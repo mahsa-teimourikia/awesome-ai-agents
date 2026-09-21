@@ -25,8 +25,9 @@ static-secret vault.
 ## Capability snapshots and races
 
 An expiring snapshot binds server artifact, registry/policy versions, principal, tenant,
-and capability descriptor digests. It captures what was eligible at discovery time,
-not permanent authority.
+subject, purpose, credential ID/expiry/scope digest, and capability descriptor digests.
+It captures what was eligible at discovery time, not permanent authority; call-time
+authorization remains definitive.
 
 The gateway tests three important races:
 
@@ -44,12 +45,26 @@ for tools, servers, bytes, elapsed time, and cost. Retry policy distinguishes tr
 protocol, server, application, authorization, validation, and unknown-outcome failures.
 Authorization and validation denials are terminal.
 
+The gateway separates `prepare_tool_call()` from adapter dispatch and
+`complete_tool_call()`. Preparation atomically persists an attempt, claims any approval,
+and reserves estimated tool/server/byte/time/cost capacity. Completion releases the
+reservation and accounts actual usage. Estimates can be lower than actuals, so
+production may require conservative reserves or hard provider limits.
+
+Cancellation before dispatch stops the next call. Cancellation after dispatch does not
+roll back an external effect; an absent/invalid response remains an unknown outcome and
+must be reconciled. Reconciliation is authorized/audited and distinguishes confirmed
+effect, confirmed no effect, and still unknown.
+
 Rate limiting is atomic and multidimensional across principal, tenant, and capability.
 The fixture permits exactly N calls and rejects N+1, including under concurrent access.
 A production gateway needs a distributed atomic store rather than an in-process lock.
 
-Quarantine and restoration are governed events recording actor, reason, time, and
-policy version. Health states are `HEALTHY`, `DEGRADED`, `QUARANTINED`, and `DISABLED`.
+Lifecycle is the governance state (`DISCOVERED` through `ACTIVE`, `QUARANTINED`, or
+`RETIRED`); health is operational availability (`HEALTHY`, `DEGRADED`, `QUARANTINED`,
+or `DISABLED`). The fixture permits degraded reads but denies approval-gated/high-risk
+writes. Quarantine and restoration are governed events recording actor, reason, time,
+and policy version.
 
 ## Supply-chain review
 
@@ -63,5 +78,8 @@ metadata, not evidence that these controls passed.
 Audit records allowed and denied requests, schema failures, approval failures, rate
 limits, descriptor drift, and quarantine. Log identifiers, reason codes, policy version,
 and canonical digests—not credentials, raw sensitive arguments, or full tool results.
-The deterministic fixture hash-chains events; production requires durable,
-tamper-resistant storage, access control, retention, and monitoring.
+The deterministic fixture hash-chains events to make local edits observable; this does
+not authenticate a mutable chain. Local sequential IDs are not globally unique, and raw
+hashes of low-entropy sensitive values can be guessable. Production requires durable,
+tamper-resistant/externally anchored storage, selective or keyed digests, access
+control, retention, and monitoring.

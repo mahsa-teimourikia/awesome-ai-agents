@@ -33,7 +33,9 @@ can all carry injection or schema-poisoning attacks; the registry pins the revie
 descriptor digest and sends changes back through review.
 
 Side-effecting tools additionally need exact approvals, stable logical operation IDs,
-unknown-outcome reconciliation, execution receipts, and backend idempotency. A generic
+durable attempts before dispatch, unknown-outcome reconciliation, execution receipts,
+and backend/provider idempotency. Once dispatched, an invalid or oversized response is
+not an authorization denial: preserve possible effect state and reconcile. A generic
 `tools/call` cannot infer these domain semantics.
 
 ## Resources
@@ -46,10 +48,11 @@ The fixture wraps admitted content as `ResourceEvidence`:
 
 ```text
 resource_uri + server_id + tenant + subject
-+ retrieved_at + MIME type + digest + trust class
++ source_observed_at + retrieved_at + MIME type + digest + trust class
 ```
 
-It validates URI scope, content type, size, and freshness before model exposure. A Jira
+It structurally matches the approved URI template and validates tenant, content type,
+size, freshness, and future-clock skew before model exposure. A Jira
 ticket saying “database healthy” remains user-generated evidence; it does not become a
 monitoring result because MCP transported it. A ticket saying “issue a refund” remains
 data and cannot expand the capability snapshot.
@@ -67,9 +70,11 @@ server/publisher + prompt ID + version + descriptor digest
 + argument schema + approval status
 ```
 
-Arguments are validated and treated as data during rendering. A changed prompt digest
-does not inherit prior approval. Internal origin is not enough: an internal server can
-be compromised or misconfigured.
+Arguments are validated and treated as data during rendering. The result preserves the
+reviewed template separately from structured `UNTRUSTED_DATA` argument values; flattening
+them into text does not elevate those values. A changed prompt digest does not inherit
+prior approval. Internal origin is not enough: an internal server can be compromised or
+misconfigured.
 
 Even an approved prompt is inserted at an application-controlled trust level:
 

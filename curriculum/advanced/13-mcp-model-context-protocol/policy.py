@@ -79,6 +79,30 @@ class ExecutionStatus(StrEnum):
     RECONCILED = "RECONCILED"
 
 
+class OperationAttemptStatus(StrEnum):
+    RESERVED = "RESERVED"
+    CANCELLED = "CANCELLED"
+    DISPATCHED = "DISPATCHED"
+    RESPONSE_INVALID = "RESPONSE_INVALID"
+    OUTCOME_UNKNOWN = "OUTCOME_UNKNOWN"
+    SUCCEEDED = "SUCCEEDED"
+    RECONCILED = "RECONCILED"
+
+
+class ReconciliationOutcome(StrEnum):
+    CONFIRMED_EFFECT = "CONFIRMED_EFFECT"
+    CONFIRMED_NO_EFFECT = "CONFIRMED_NO_EFFECT"
+    STILL_UNKNOWN = "STILL_UNKNOWN"
+
+
+class ApprovalClaimStatus(StrEnum):
+    CLAIMED = "CLAIMED"
+    IN_FLIGHT = "IN_FLIGHT"
+    SUCCEEDED = "SUCCEEDED"
+    UNKNOWN = "UNKNOWN"
+    CONFIRMED_NO_EFFECT = "CONFIRMED_NO_EFFECT"
+
+
 class FailureCategory(StrEnum):
     TRANSPORT = "TRANSPORT"
     PROTOCOL = "PROTOCOL"
@@ -106,6 +130,24 @@ class PrincipalContext(FrozenModel):
     roles: tuple[str, ...] = ()
     permissions: tuple[str, ...] = ()
     purposes: tuple[str, ...] = ()
+
+
+class ApproverContext(FrozenModel):
+    approver_id: str = Field(min_length=1)
+    tenant_id: str = Field(min_length=1)
+    roles: tuple[str, ...] = ()
+    permissions: tuple[str, ...] = ()
+    permitted_risk_tiers: tuple[RiskTier, ...] = ()
+    max_amount_usd: float | None = Field(default=None, gt=0)
+    authenticated_at: datetime
+    expires_at: datetime
+    revoked: bool = False
+
+    @model_validator(mode="after")
+    def valid_authentication_window(self) -> "ApproverContext":
+        if self.expires_at <= self.authenticated_at:
+            raise ValueError("APPROVER_EXPIRY_INVALID")
+        return self
 
 
 class DelegatedCredential(FrozenModel):
@@ -173,6 +215,9 @@ class ToolDescriptor(FrozenModel):
     required_scope: str = Field(min_length=1)
     approval_required: bool = False
     max_result_bytes: int = Field(default=16_384, gt=0)
+    estimated_latency_ms: int = Field(default=40, gt=0)
+    estimated_cost_usd: float = Field(default=0.002, gt=0)
+    estimated_response_bytes: int = Field(default=128, gt=0)
 
     @model_validator(mode="after")
     def namespaced_identity(self) -> "ToolDescriptor":
@@ -232,6 +277,11 @@ class CapabilitySnapshot(FrozenModel):
     policy_version: str = Field(min_length=1)
     principal_id: str = Field(min_length=1)
     tenant_id: str = Field(min_length=1)
+    subject_id: str = Field(min_length=1)
+    purpose: str = Field(min_length=1)
+    credential_id: str = Field(min_length=1)
+    credential_expires_at: datetime
+    credential_scope_digest: str = Field(min_length=64, max_length=64)
     capability_digests: dict[str, str]
     hidden_reason_codes: dict[str, str] = Field(default_factory=dict)
     created_at: datetime
@@ -271,6 +321,8 @@ class ApprovalReceipt(FrozenModel):
     logical_operation_id: str = Field(min_length=1)
     principal_id: str = Field(min_length=1)
     tenant_id: str = Field(min_length=1)
+    target_subject_id: str | None = None
+    purpose: str = Field(min_length=1)
     arguments_digest: str = Field(min_length=64, max_length=64)
     policy_version: str = Field(min_length=1)
     approver_id: str = Field(min_length=1)
@@ -304,6 +356,11 @@ class BudgetState(FrozenModel):
     response_bytes: int = Field(default=0, ge=0)
     elapsed_ms: int = Field(default=0, ge=0)
     cost_usd: float = Field(default=0, ge=0)
+    reserved_tool_calls: int = Field(default=0, ge=0)
+    reserved_server_calls: int = Field(default=0, ge=0)
+    reserved_response_bytes: int = Field(default=0, ge=0)
+    reserved_elapsed_ms: int = Field(default=0, ge=0)
+    reserved_cost_usd: float = Field(default=0, ge=0)
     cancelled: bool = False
 
 
@@ -332,6 +389,52 @@ class ToolExecutionReceipt(FrozenModel):
     result: dict[str, Any] | None = None
     retryable: bool = False
     failure_category: FailureCategory | None = None
+    reconciliation_outcome: ReconciliationOutcome | None = None
+
+
+class OperationAttempt(FrozenModel):
+    attempt_id: str = Field(min_length=1)
+    request_id: str = Field(min_length=1)
+    session_id: str = Field(min_length=1)
+    logical_operation_id: str = Field(min_length=1)
+    server_id: str = Field(min_length=1)
+    capability_id: str = Field(min_length=1)
+    descriptor_digest: str = Field(min_length=64, max_length=64)
+    arguments_digest: str = Field(min_length=64, max_length=64)
+    principal_id: str = Field(min_length=1)
+    tenant_id: str = Field(min_length=1)
+    approval_id: str | None = None
+    policy_version: str = Field(min_length=1)
+    status: OperationAttemptStatus
+    reserved_latency_ms: int = Field(ge=0)
+    reserved_cost_usd: float = Field(ge=0)
+    created_at: datetime
+    dispatched_at: datetime | None = None
+    completed_at: datetime | None = None
+    failure_category: FailureCategory | None = None
+
+
+class ApprovalClaim(FrozenModel):
+    approval_id: str = Field(min_length=1)
+    logical_operation_id: str = Field(min_length=1)
+    attempt_id: str = Field(min_length=1)
+    status: ApprovalClaimStatus
+    claimed_at: datetime
+    updated_at: datetime
+
+
+class PreparedToolCall(FrozenModel):
+    prepared_id: str = Field(min_length=1)
+    attempt_id: str = Field(min_length=1)
+    proposal: ToolInvocationProposal
+    descriptor: ToolDescriptor
+    principal_id: str = Field(min_length=1)
+    tenant_id: str = Field(min_length=1)
+    credential_id: str = Field(min_length=1)
+    reserved_latency_ms: int = Field(ge=0)
+    reserved_cost_usd: float = Field(ge=0)
+    reserved_response_bytes: int = Field(ge=0)
+    prepared_at: datetime
 
 
 class ResourceRequest(FrozenModel):
@@ -350,6 +453,7 @@ class ResourceEvidence(FrozenModel):
     server_id: str = Field(min_length=1)
     tenant_id: str = Field(min_length=1)
     subject_id: str | None = None
+    source_observed_at: datetime
     retrieved_at: datetime
     mime_type: str = Field(min_length=1)
     digest: str = Field(min_length=64, max_length=64)
@@ -368,6 +472,9 @@ class RenderedPrompt(FrozenModel):
     descriptor_digest: str = Field(min_length=64, max_length=64)
     approved_at: datetime
     trust_level: str = Field(pattern="^(WORKFLOW_CONFIGURATION|UNTRUSTED_DATA)$")
+    template_text: str
+    arguments: dict[str, Any]
+    argument_trust_level: str = Field(default="UNTRUSTED_DATA", pattern="^UNTRUSTED_DATA$")
     rendered_text: str
     instruction_authority: bool = False
 
@@ -404,3 +511,4 @@ class AdapterReport(FrozenModel):
     listed_tools: tuple[str, ...]
     result: dict[str, Any]
     policy_reused: bool
+    adapter_calls: int = Field(ge=0)
