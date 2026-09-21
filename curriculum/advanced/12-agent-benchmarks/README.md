@@ -112,7 +112,7 @@ development / validation / challenge split
 risk and scenario slices
 policy + environment + fixture versions
 expected authoritative state
-required and forbidden tools
+required, allowed, and forbidden tools
 partial-order constraints
 cost and deadline budgets
 reviewer and lifecycle status
@@ -173,13 +173,27 @@ order:     metrics.read BEFORE mitigation.propose
 ```
 
 Two safe agents may order independent reads differently. The harness checks only
-ordering that the contract makes material.
+ordering that the contract makes material. `required ∪ allowed` is the complete tool
+allowlist: any call outside that set hard-fails as `UNAPPROVED_TOOL_ATTEMPT`, even when
+the tool is not named in `forbidden`. The explicit forbidden set identifies especially
+consequential violations and adds a critical `FORBIDDEN_TOOL_ATTEMPT` classification.
 
 Grounding is also verified, not self-declared:
 
 ```text
 claim -> cited evidence ID -> known tenant/version/digest -> support relation
 ```
+
+The application-owned evidence registry defines the authoritative tenant, source,
+source version, digest, and supported claims for each evidence ID. Agent observations
+may cite evidence; they cannot redefine it. The final claim must cite registry-backed
+evidence that supports that exact claim. Trace event IDs must be unique, and an
+optional observation digest can make post-capture mutation detectable.
+
+`allow_abstention` is permission in the case contract, not proof that the agent
+abstained. The observed `AgentDecision` is explicitly `ANSWER` or `ABSTAIN`. An answer
+on an abstention-allowed case can pass; an actual allowed abstention remains a typed
+`ABSTAIN` and is not reported as task success.
 
 An unauthorized action attempted and blocked by platform controls is still an agent
 policy failure. It proves containment worked; it does not prove the agent behaved
@@ -205,7 +219,9 @@ The credential-free fixture contains 20 governed cases:
 Four cases are visible development fixtures. Sixteen validation/challenge cases feed
 release metrics. Every case starts from a reset environment; the manifest records the
 dataset, evaluator, policy, tools, knowledge snapshot, cache policy, agent configuration
-digest, and deterministic seed.
+digest, and deterministic seed. Before scoring, the harness binds case → run manifest →
+observation across environment, fixture, tool versions, knowledge snapshot, and cache
+policy. A mismatch is an invalid measurement run, not an agent-quality result.
 
 The frozen candidate deliberately creates this comparison:
 
@@ -225,7 +241,8 @@ real model intelligence, routing accuracy, or generalization.
 The lab reports:
 
 - task success and **compliant success** (`correct outcome AND every hard gate`);
-- Wilson intervals and sample size for binary rates;
+- Wilson intervals and sample size for binary rates, with an optional lower-bound
+  release gate when point-estimate thresholds are too optimistic for small samples;
 - invalid-run and harness-failure rates outside the agent-quality denominator;
 - slice support, success, compliant success, and critical failures;
 - wall-clock p50/p95 separately from model/tool/queue work;
@@ -237,13 +254,18 @@ unnecessary, forbidden, and duplicate calls. The release policy decides which
 trade-offs matter. Multi-agent, routing, memory, proactive, long-running, and world-
 model systems should add the domain metrics taught in Advanced 01–10.
 
-Paired comparison runs baseline and candidate on identical cases and environment
-versions:
+Release metrics require exactly one result for every selected active case. Missing or
+duplicate results fail closed; a pre-run manifest may govern an explicit exclusion with
+a recorded reason.
+
+Paired comparison runs baseline and candidate only when benchmark, dataset, case,
+evaluator, policy, environment, and fixture versions are compatible:
 
 ```text
 PASS -> FAIL = regression
 FAIL -> PASS = improvement
 harness-invalid on either side = invalid comparison
+incompatible experiment binding = invalid comparison
 ```
 
 `+20` routine improvements cannot offset one cross-tenant regression. Quality, safety,
@@ -269,7 +291,14 @@ Benchmark drift is also a product concern: monitor changing tools, policies, lan
 segments, and workflows while retaining deliberately overrepresented rare safety cases.
 
 Exceptions require an owner, reason, mitigation, scope, issuance, and expiry. The
-fixture refuses to waive critical safety regressions. Never silently disable the case.
+fixture refuses to waive critical safety regressions. A validated exception proves
+only that its record is live and scoped; it does not mutate a `BLOCK` decision or grant
+release authority. A separate authorized release workflow would have to apply any
+permitted exception. Never silently disable the case.
+
+A zero critical-failure count means zero failures were observed in this finite run. It
+does not establish that the true production failure probability is zero; retain sample
+size and uncertainty, then continue monitoring after release.
 
 ## Run the course
 
@@ -292,14 +321,16 @@ PYTHONPATH=. uv run --extra core --extra contributor \
 | Failure | Why it misleads | Control |
 | --- | --- | --- |
 | One aggregate score | Easy cases hide severe slices | Slice support and hard gates |
-| Exact tool sequence | Rejects valid independent orderings | Required/allowed/forbidden sets + partial order |
-| `grounded=True` | Self-assertion is not evidence | Validate cited evidence and support |
+| Exact tool sequence | Rejects valid independent orderings | Closed `required ∪ allowed` set + explicit forbidden set + partial order |
+| `grounded=True` | Self-assertion is not evidence | Validate final-claim citations against the application registry |
+| `allow_abstention=True` | Permission is mistaken for observed behavior | Record explicit `ANSWER` / `ABSTAIN` decision |
 | `SUCCESS` text | Output is not authoritative state | Check trusted environment state/receipt |
 | IAM blocked the tool | Containment is mistaken for safe intent | Score agent behavior and platform containment separately |
 | Private dataset | Privacy is mistaken for held-out status | Track every development exposure |
 | Hash an ID | Pseudonymization is called anonymization | Minimize; use managed keyed pseudonyms if needed |
 | Rerun until pass | Flakiness disappears from reports | Repeated trials with variance where appropriate |
 | Harness crash = agent fail | Measurement error pollutes quality | Invalid-run and infrastructure-health accounting |
+| Missing release case | Partial suite appears complete | Exactly one result per selected case or a governed pre-run exclusion |
 | Candidate changes cases | Test gaming changes the gate | Independent ownership and reviewed dataset versions |
 
 ## Exercises

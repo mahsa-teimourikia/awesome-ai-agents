@@ -79,6 +79,11 @@ class CaseOutcome(StrEnum):
     INSUFFICIENT_EVIDENCE = "INSUFFICIENT_EVIDENCE"
 
 
+class AgentDecision(StrEnum):
+    ANSWER = "ANSWER"
+    ABSTAIN = "ABSTAIN"
+
+
 class FailureOrigin(StrEnum):
     NONE = "NONE"
     AGENT = "AGENT"
@@ -119,7 +124,11 @@ class ToolConstraint(FrozenModel):
         required, allowed, forbidden = map(set, (self.required, self.allowed, self.forbidden))
         if required & forbidden or allowed & forbidden:
             raise ValueError("CONFLICTING_TOOL_CONSTRAINT")
-        if len(required) != len(self.required) or len(forbidden) != len(self.forbidden):
+        if (
+            len(required) != len(self.required)
+            or len(allowed) != len(self.allowed)
+            or len(forbidden) != len(self.forbidden)
+        ):
             raise ValueError("DUPLICATE_TOOL_CONSTRAINT")
         return self
 
@@ -163,6 +172,9 @@ class BenchmarkCase(FrozenModel):
     policy_version: str = Field(min_length=1)
     environment_version: str = Field(min_length=1)
     fixture_version: str = Field(min_length=1)
+    tool_versions: dict[str, str] = Field(min_length=1)
+    knowledge_snapshot: str = Field(min_length=1)
+    cache_policy: str = Field(min_length=1)
     development_exposures: tuple[str, ...] = ()
     max_cost_usd: float = Field(gt=0)
     max_wall_clock_ms: int = Field(gt=0)
@@ -228,6 +240,13 @@ class BenchmarkRunManifest(FrozenModel):
     agent: AgentConfigManifest
     seed: int
     started_at: datetime
+    excluded_case_reasons: dict[str, str] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def governed_exclusions_have_reasons(self) -> "BenchmarkRunManifest":
+        if any(not case_id or not reason for case_id, reason in self.excluded_case_reasons.items()):
+            raise ValueError("INVALID_CASE_EXCLUSION")
+        return self
 
 
 class EvidenceRecord(FrozenModel):
@@ -277,14 +296,21 @@ class CaseObservation(FrozenModel):
     case_version: str = Field(min_length=1)
     environment_version: str = Field(min_length=1)
     fixture_version: str = Field(min_length=1)
+    tool_versions: dict[str, str] = Field(min_length=1)
+    knowledge_snapshot: str = Field(min_length=1)
+    cache_policy: str = Field(min_length=1)
+    agent_decision: AgentDecision
     reported_outcome: str = Field(min_length=1)
     authoritative_state: str | None
+    final_claim: str | None
+    final_claim_evidence_ids: tuple[str, ...] = ()
     events: tuple[TraceEvent, ...]
     evidence: tuple[EvidenceRecord, ...]
     final_artifact: dict[str, Any]
     operational: OperationalMetrics
     failure_origin: FailureOrigin = FailureOrigin.NONE
     platform_blocked_actions: tuple[str, ...] = ()
+    observation_digest: str | None = Field(default=None, min_length=64, max_length=64)
 
 
 class GateResult(FrozenModel):
@@ -295,6 +321,7 @@ class GateResult(FrozenModel):
 
 class TrajectoryResult(FrozenModel):
     missing_required_actions: tuple[str, ...] = ()
+    unapproved_tool_attempts: tuple[str, ...] = ()
     forbidden_tool_attempts: tuple[str, ...] = ()
     unnecessary_tool_calls: int = Field(default=0, ge=0)
     duplicate_calls: int = Field(default=0, ge=0)
@@ -304,6 +331,12 @@ class TrajectoryResult(FrozenModel):
 
 class CaseResult(FrozenModel):
     run_id: str = Field(min_length=1)
+    benchmark_id: str = Field(min_length=1)
+    dataset_version: str = Field(min_length=1)
+    evaluator_version: str = Field(min_length=1)
+    environment_version: str = Field(min_length=1)
+    fixture_version: str = Field(min_length=1)
+    policy_version: str = Field(min_length=1)
     case_id: str = Field(min_length=1)
     case_version: str = Field(min_length=1)
     outcome: CaseOutcome
@@ -365,6 +398,7 @@ class RegressionResult(FrozenModel):
     baseline_compliant: bool
     candidate_compliant: bool
     classification: str = Field(pattern="^(IMPROVEMENT|REGRESSION|UNCHANGED|INVALID_COMPARISON)$")
+    comparison_reason: str = Field(min_length=1)
     risk_tags: tuple[str, ...]
 
 
@@ -384,6 +418,7 @@ class ReleasePolicy(FrozenModel):
     mode: ReleaseMode
     min_valid_cases: int = Field(ge=1)
     min_compliant_success_rate: float = Field(ge=0, le=1)
+    min_compliant_success_lower_bound: float | None = Field(default=None, ge=0, le=1)
     max_critical_failures: int = Field(ge=0)
     max_critical_regressions: int = Field(ge=0)
     max_p95_wall_clock_ms: float = Field(gt=0)

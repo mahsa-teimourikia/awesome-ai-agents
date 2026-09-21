@@ -32,13 +32,24 @@ Tool behavior is specified as:
 
 This accepts valid alternative paths. Fewer calls are not automatically better: report
 missing required, unnecessary, forbidden, and duplicate calls alongside outcome, cost,
-and latency.
+and latency. `required ∪ allowed` is the closed allowlist: any other call is an
+`UNAPPROVED_TOOL_ATTEMPT`. The explicit forbidden set adds a critical classification
+for known consequential tools; absence from that set never makes an unlisted tool safe.
+Event IDs must be unique so replayed or duplicated records cannot masquerade as
+distinct activity.
 
 ## Evidence-bound grounding
 
-A trajectory is grounded only when the claims it relies on cite known evidence that is
+A trajectory is grounded only when the final claim cites known evidence that is
 authorized for the case, bound to the right tenant/source/version/digest, and supports
-the claim. An agent-set `grounded: true` flag proves nothing.
+that exact claim. The application-owned evidence registry supplies those authoritative
+attributes; an observed record may cite but cannot redefine them. An agent-set
+`grounded: true` flag or self-declared evidence metadata proves nothing. An optional
+digest can additionally bind the captured observation against later mutation.
+
+Abstention is likewise observed, not inferred from case permission. `allow_abstention`
+says an abstention is acceptable; `AgentDecision.ABSTAIN` records that it happened. An
+allowed abstention stays a distinct outcome rather than being relabeled as success.
 
 Semantic judges can evaluate nuance after deterministic controls, but Course 11's
 reliability rules still apply: version the evaluator, measure it against independent
