@@ -1,16 +1,67 @@
 # Deep Dive: Enterprise MCP Gateways
 
-In a local development environment, it is fine for an Agent (the Client) to connect directly to an MCP Server running on `localhost`. 
+A gateway can centralize policy, routing, credential isolation, budgets, and audit. It
+is a control point—not a universal trust oracle. A compromised gateway has broad blast
+radius, so production designs need least privilege, segmentation, high availability,
+policy versioning, and independent backend enforcement.
 
-In an enterprise environment, direct Client-to-Server connections are a security nightmare.
+## Request path
 
-## The Problem with Direct Connections
-If an Agent connects directly to the `Stripe MCP Server`, the Agent must hold the Stripe API keys in its memory. If the Agent is compromised (via Prompt Injection), the attacker can exfiltrate the Stripe API keys. Furthermore, you have no centralized way to audit *which* agents are making *which* tool calls.
+```text
+host identity and user intent
+  -> gateway admission
+  -> tenant-specific approved server route
+  -> short-lived server-audience credential
+  -> MCP client/transport
+  -> server-side authorization
+  -> narrowly scoped backend identity
+  -> backend system
+```
 
-## The Enterprise Gateway Architecture
-Enterprises place a **Gateway** between the Agent Host and the MCP Servers.
+The model never sees backend credentials. The gateway retrieves or uses narrowly scoped
+credentials through the organization's identity/secret system; it is not one giant
+static-secret vault.
 
-1. **Secret Isolation:** The Agent never sees the Stripe API keys. The Agent authenticates to the Gateway using an internal, short-lived JWT. The Gateway holds the Stripe secrets and injects them into the outbound request to the MCP Server.
-2. **Centralized Audit Logging:** The Gateway records every single initialization, capability request, and tool execution. If an agent goes rogue, the SOC team can immediately query the Gateway logs.
-3. **Tenant Routing:** In a multi-tenant SaaS application, the Gateway ensures that Agent A (acting on behalf of Customer 1) is physically prevented from routing requests to the MCP Server instance dedicated to Customer 2.
-4. **Emergency Kill Switch:** If an MCP Server is compromised (Supply Chain Attack), the Gateway can sever the connection globally, instantly neutralizing the threat for all agents across the enterprise.
+## Capability snapshots and races
+
+An expiring snapshot binds server artifact, registry/policy versions, principal, tenant,
+and capability descriptor digests. It captures what was eligible at discovery time,
+not permanent authority.
+
+The gateway tests three important races:
+
+- permission revoked after discovery → `DENY_SCOPE`;
+- server quarantined after discovery → `DENY_SERVER_QUARANTINED`;
+- descriptor changed after discovery → `DENY_DESCRIPTOR_CHANGED`.
+
+New tools and changed schemas/descriptions are `PENDING_REVIEW`. Capability-list change
+notifications prompt a fresh diff; they do not approve the change.
+
+## Resilience and execution
+
+Calls have deadlines, cancellation, bounded retries, response-size limits, and budgets
+for tools, servers, bytes, elapsed time, and cost. Retry policy distinguishes transport,
+protocol, server, application, authorization, validation, and unknown-outcome failures.
+Authorization and validation denials are terminal.
+
+Rate limiting is atomic and multidimensional across principal, tenant, and capability.
+The fixture permits exactly N calls and rejects N+1, including under concurrent access.
+A production gateway needs a distributed atomic store rather than an in-process lock.
+
+Quarantine and restoration are governed events recording actor, reason, time, and
+policy version. Health states are `HEALTHY`, `DEGRADED`, `QUARANTINED`, and `DISABLED`.
+
+## Supply-chain review
+
+Enterprise admission covers publisher identity, endpoint, package/container version and
+digest, provenance, vulnerability posture, network destinations, data retention,
+subprocessors, and capability namespaces. A public registry entry is useful discovery
+metadata, not evidence that these controls passed.
+
+## Audit
+
+Audit records allowed and denied requests, schema failures, approval failures, rate
+limits, descriptor drift, and quarantine. Log identifiers, reason codes, policy version,
+and canonical digests—not credentials, raw sensitive arguments, or full tool results.
+The deterministic fixture hash-chains events; production requires durable,
+tamper-resistant storage, access control, retention, and monitoring.
