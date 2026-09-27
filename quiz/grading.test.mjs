@@ -1,8 +1,13 @@
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 
 import { gradeQuiz, isExactMatch, normalizeSelection } from "./grading.js";
 import { questions } from "./questions.js";
+
+const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 test("the quiz contains at least 104 questions across 16 or more categories", () => {
   assert.ok(questions.length >= 104);
@@ -16,7 +21,7 @@ test("the quiz contains at least 104 questions across 16 or more categories", ()
   assert.ok(Object.values(categories).every((count) => count >= 1));
 });
 
-test("every question is a valid multiple-answer question", () => {
+test("every question has a valid answer set", () => {
   for (const question of questions) {
     assert.ok(question.id);
     assert.ok(question.prompt);
@@ -26,6 +31,17 @@ test("every question is a valid multiple-answer question", () => {
     assert.ok(question.correct.every((index) => index >= 0 && index < question.options.length));
     assert.ok(question.explanation.length >= 40);
     assert.ok(question.source.url);
+  }
+});
+
+test("every question cites an existing repository source", () => {
+  for (const question of questions) {
+    const [sourcePath] = question.source.url.split("#", 1);
+    assert.equal(
+      existsSync(resolve(repositoryRoot, sourcePath)),
+      true,
+      `${question.id} cites missing source ${sourcePath}`,
+    );
   }
 });
 

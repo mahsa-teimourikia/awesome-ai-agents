@@ -1,59 +1,54 @@
 # Learning Guide
 
-Welcome to the **awesome-ai-agents** curriculum! This guide explains how to get the most out of the repository, from the study loop to navigating the SOTA deep dives.
+This repository is a notebook-first path from bounded agents to governed,
+production-scale agentic systems. Start with the [installation guide](INSTALLATION.md),
+then use the [Learning Hub](https://mahsa-teimourikia.github.io/awesome-ai-agents/)
+or the [course map](COURSE_MAP.md) to choose a lesson.
 
-## 1. The Study Loop
+## The study loop
 
-Every lesson in this curriculum follows this core notebook-first learning loop:
+1. Read the lesson `README.md` for the concepts, constraints, and prerequisites.
+2. Read any co-located deep dives that support the lesson.
+3. Run the lesson's canonical notebook from top to bottom.
+4. Change one variable and inspect the resulting behavior.
+5. Exercise the documented failure modes and boundaries.
+6. Turn a meaningful fix or invariant into a repeatable test.
 
-1. **Read the Concept**: Read the `README.md` for the theory, architecture, and constraints.
-2. **Read the Deep Dives**: (Where applicable) Check out the `DEEP_DIVE_*.md` files to understand the specific State-of-the-Art (SOTA) mechanics underlying the topic (e.g., OmniParser bounding boxes, LangGraph state machines, Typed Errors).
-3. **Run the Notebook**: Execute the `[number]_[name].ipynb` file to see the implementation in action.
-4. **Change One Variable**: Modify the code to explore its boundaries and constraints.
-5. **Inspect the Failure Mode**: Trigger the deliberate failure to understand production risks.
-6. **Write a Test**: Fix the failure and write a test to prevent it.
+The objective is not merely to produce a successful output. It is to understand
+why the system succeeds, how it fails, and which application-owned controls make
+that behavior reproducible.
 
-## 2. The Deliberate Failure Ritual
+## Four learning levels
 
-Every module contains at least one deliberate failure. **This is not a bug; it is a feature.** 
+| Level | Published lessons | Goal |
+| --- | ---: | --- |
+| Beginner | 7 | Build one bounded, trustworthy agent and understand its runtime. |
+| Intermediate | 9 | Engineer tools, context, approvals, evaluation, planning, retrieval, and durable state. Course number 07 is reserved. |
+| Advanced | 14 | Design teams, memory, model routing, asynchronous execution, evaluation, protocols, and governed skills. |
+| Enterprise Agent | 17 | Synthesize architecture, operations, security, governance, economics, and human oversight. |
 
-Do not skip it. Understanding exactly how a system breaks (e.g., an LLM hallucinating a regex extraction, an infinite ReAct loop, a catastrophic mutation without idempotency) is far more important than seeing it succeed on the happy path.
+Enterprise Agent lessons are stored in `curriculum/advanced/15-31` for
+repository compatibility, but the Hub presents them as a separate 17-step
+track.
 
-## 3. Curriculum Architecture
+## Run the Learning Hub locally
 
-The repository is structured into three ascending altitudes. You should complete them in order to avoid jumping into complex multi-agent architectures without the necessary tool engineering fundamentals.
+The Hub is a React and Vite application in `app/`:
 
-### Beginner Track (Modules 01 - 05)
-**Goal:** Build one trustworthy agent.
-- Master the foundations (workflow vs. agent vs. RAG).
-- Learn why bounded loops (State Machines) are safer than unbounded loops (ReAct).
-- Explore orchestration frameworks and computer-using agents (UI navigation).
-
-### Intermediate Track (Modules 01 - 10)
-**Goal:** Improve and measure tools.
-- Focus strictly on Tool Engineering (JSON schemas, Typed Errors) and Context Engineering.
-- Implement Enterprise Guardrails (Regex sanitization, Output validation, HITL Idempotency).
-- Design Agentic RAG, Planning DAGs, and build robust automated Evaluation suites (LLM-as-a-judge).
-
-### Advanced Track (Modules 01 - 31)
-**Goal:** Design for coordination and scale to production.
-- Scale from single-agent to multi-agent architectures (AutoGen, CrewAI, Hybrid).
-- Implement Long-Running Asynchronous Agents and Proactive Agents.
-- Operationalize with Enterprise architecture (Governance, Security, Cost/Latency Economics, Protocol Stacks).
-
-## 4. The Interactive Learning Hub
-
-We provide a custom Next.js frontend to help you track your progress, read the material side-by-side with the code, and test your knowledge.
-
-To launch the Interactive Learning Hub:
 ```bash
-npm install
-npm run dev
+npm ci --prefix app
+npm run dev --prefix app
 ```
-Navigate to `http://localhost:3000` to start your guided journey.
 
-## 5. Checkpoint Quizzes
+Vite prints the local address when it starts. With the repository base path it
+is normally `http://localhost:5173/awesome-ai-agents/`.
 
-After completing a module, use the built-in quizzes in the Learning Hub to verify your knowledge. The quizzes rigorously test your understanding of the SOTA deep dives, ensuring you actually absorbed the trade-offs before moving to the next track. 
+## Check your understanding
 
-If you prefer to take the entire quiz at once, visit the `/awesome-ai-agents/quiz/` route in the Learning Hub.
+Each Hub lesson includes a checkpoint when embedded questions are available.
+Lessons without an embedded checkpoint link to the full cross-course knowledge
+check and the source lesson instead of displaying an empty quiz.
+
+Use the hosted [full Knowledge Check](https://mahsa-teimourikia.github.io/awesome-ai-agents/quiz/)
+for a broader assessment. Every answer links back to its supporting repository
+source.

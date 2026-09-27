@@ -10,6 +10,8 @@ dist/
 .DS_Store
 *.pyc
 node_modules/
+notebook_execution_summary.md
+agentops.log
 
 # Python Build/Packaging
 build/

@@ -42,7 +42,7 @@ export const questions = [
     "explanation": "Interaction choice is a reliability and authorization decision. Visual capability broadens reach but does not make UI actions safe or deterministic.",
     "source": {
       "label": "Computer-Using Agents",
-      "url": "curriculum/beginner/07-computer-using-agents/README.md#3-browser-automation-versus-visual-computer-use"
+      "url": "curriculum/beginner/07-computer-using-agents/README.md"
     }
   },
   {
@@ -65,7 +65,7 @@ export const questions = [
     "explanation": "UI drift is an observation problem, not permission to click broadly. A safe controller re-grounds the action in current state, bounds recovery, and pauses whenever it cannot establish a unique authorized target.",
     "source": {
       "label": "Computer-Using Agents",
-      "url": "curriculum/beginner/07-computer-using-agents/README.md#6-ui-changes-and-failure-recovery"
+      "url": "curriculum/beginner/07-computer-using-agents/README.md"
     }
   },
   {
@@ -88,7 +88,7 @@ export const questions = [
     "explanation": "An agent combines a model, instructions, tools, state, and a control loop. A chat interface can be useful, but it is not what makes the system an agent.",
     "source": {
       "label": "What is an AI agent? — A practical definition",
-      "url": "curriculum/beginner/01-ai-agent-foundations/README.md#a-practical-definition"
+      "url": "curriculum/beginner/01-ai-agent-foundations/README.md"
     }
   },
   {
@@ -111,7 +111,7 @@ export const questions = [
     "explanation": "The distinction concerns control. Workflows define paths in code; agents give the model more discretion. Hybrid agentic workflows can contain bounded model decisions.",
     "source": {
       "label": "Agentic workflows — Workflow versus agent",
-      "url": "curriculum/beginner/03-workflow-or-agent/README.md#workflow-versus-agent"
+      "url": "curriculum/beginner/03-workflow-or-agent/README.md"
     }
   },
   {
@@ -134,7 +134,7 @@ export const questions = [
     "explanation": "Completion, budgets, policy escalation, and lack of a useful safe next action are legitimate terminal states. Calling a tool alone says nothing about task completion.",
     "source": {
       "label": "What is an AI agent? — Stop conditions",
-      "url": "curriculum/beginner/01-ai-agent-foundations/README.md#stop-conditions"
+      "url": "curriculum/beginner/01-ai-agent-foundations/README.md"
     }
   },
   {
@@ -156,7 +156,7 @@ export const questions = [
     "explanation": "ReAct interleaves reasoning, action, and observation so external feedback can update the plan. It neither requires weight updates nor guarantees correctness.",
     "source": {
       "label": "What is an AI agent? — The agent loop",
-      "url": "curriculum/beginner/01-ai-agent-foundations/README.md#the-agent-loop"
+      "url": "curriculum/beginner/01-ai-agent-foundations/README.md"
     }
   },
   {
@@ -179,7 +179,7 @@ export const questions = [
     "explanation": "The model proposes an action; application code validates its shape, authorization, policy, budget, and any approval requirement before execution.",
     "source": {
       "label": "Evaluation and security — Permission model",
-      "url": "curriculum/intermediate/05-agent-evaluation/README.md#permission-model"
+      "url": "curriculum/intermediate/05-agent-evaluation/README.md"
     }
   },
   {
@@ -202,7 +202,7 @@ export const questions = [
     "explanation": "Checkpointing, typed failures, hard budgets, and explicit termination improve recovery and auditability. Retrying a write after an uncertain result can duplicate a side effect.",
     "source": {
       "label": "Agentic workflows — Reliability patterns",
-      "url": "curriculum/beginner/03-workflow-or-agent/README.md#reliability-patterns"
+      "url": "curriculum/beginner/03-workflow-or-agent/README.md"
     }
   },
   {
@@ -225,7 +225,7 @@ export const questions = [
     "explanation": "The assistant should ground its recommendation in service health, incident records, and runbook guidance. A customer report is a signal to investigate, not proof of an active incident.",
     "source": {
       "label": "AgentOps Lab",
-      "url": "curriculum/advanced/05-incident-response/README.md#notebook-01-learning-objectives"
+      "url": "curriculum/advanced/05-incident-response/README.md"
     }
   },
   {
@@ -248,7 +248,7 @@ export const questions = [
     "explanation": "Budgets do not make a model correct, but they keep the application in control when the model repeats itself, seeks impossible certainty, or consumes too much time or spend.",
     "source": {
       "label": "AgentOps Lab",
-      "url": "curriculum/advanced/05-incident-response/README.md#notebook-01-learning-objectives"
+      "url": "curriculum/advanced/05-incident-response/README.md"
     }
   },
   {
@@ -271,7 +271,7 @@ export const questions = [
     "explanation": "Good agent tools are narrow, typed, clear about failures and risk, and safe to preview or repeat. Overly broad tools make selection, permissioning, and evaluation harder.",
     "source": {
       "label": "What is an AI agent? — Tools",
-      "url": "curriculum/beginner/01-ai-agent-foundations/README.md#tools"
+      "url": "curriculum/beginner/01-ai-agent-foundations/README.md"
     }
   },
   {
@@ -294,7 +294,7 @@ export const questions = [
     "explanation": "The SDK can package the loop mechanics, tool schemas, dispatch, traces, and sessions. Product-specific authorization, approval, and side-effect boundaries still belong in application design.",
     "source": {
       "label": "AgentOps Lab - Notebook 03",
-      "url": "curriculum/advanced/05-incident-response/README.md#notebook-03-learning-objectives"
+      "url": "curriculum/advanced/05-incident-response/README.md"
     }
   },
   {
@@ -317,7 +317,7 @@ export const questions = [
     "explanation": "Frameworks package the loop; they do not erase it. Traces and sessions improve inspectability and continuity, but tool exposure and safety boundaries remain design responsibilities.",
     "source": {
       "label": "AgentOps Lab - Notebook 03",
-      "url": "curriculum/advanced/05-incident-response/README.md#notebook-03-learning-objectives"
+      "url": "curriculum/advanced/05-incident-response/README.md"
     }
   },
   {
@@ -340,7 +340,7 @@ export const questions = [
     "explanation": "Long-term memory influences future runs, so writes need provenance, isolation, validation, retention, review, and deletion. Model-generated content is not automatically trustworthy.",
     "source": {
       "label": "What is an AI agent? — State and memory",
-      "url": "curriculum/beginner/01-ai-agent-foundations/README.md#state-and-memory"
+      "url": "curriculum/beginner/01-ai-agent-foundations/README.md"
     }
   },
   {
@@ -363,7 +363,7 @@ export const questions = [
     "explanation": "Thread-scoped state tracks the current run: request, service, evidence, confidence, attempts, suspected cause, and recommendation. Unverified permanent facts belong behind memory validation, not directly in working state.",
     "source": {
       "label": "AgentOps Lab - Notebook 05",
-      "url": "curriculum/advanced/05-incident-response/README.md#notebook-05-learning-objectives"
+      "url": "curriculum/advanced/05-incident-response/README.md"
     }
   },
   {
@@ -386,7 +386,7 @@ export const questions = [
     "explanation": "Unverified long-term memory can steer future incident diagnosis away from current evidence. It needs provenance, validation, scope, auditability, and a way to deactivate or delete it.",
     "source": {
       "label": "AgentOps Lab - Notebook 05",
-      "url": "curriculum/advanced/05-incident-response/README.md#notebook-05-learning-objectives"
+      "url": "curriculum/advanced/05-incident-response/README.md"
     }
   },
   {
@@ -409,7 +409,7 @@ export const questions = [
     "explanation": "A broad command tool collapses many risk levels into one string interface. Narrow tools make schema validation, permissions, approvals, tracing, and retries much clearer.",
     "source": {
       "label": "AgentOps Lab - Notebook 04",
-      "url": "curriculum/advanced/05-incident-response/README.md#notebook-04-learning-objectives"
+      "url": "curriculum/advanced/05-incident-response/README.md"
     }
   },
   {
@@ -432,7 +432,7 @@ export const questions = [
     "explanation": "Transient timeout and rate-limit errors may be retried within a budget. Permission failures should escalate, while invalid or malformed requests should stop rather than loop.",
     "source": {
       "label": "AgentOps Lab - Notebook 04",
-      "url": "curriculum/advanced/05-incident-response/README.md#notebook-04-learning-objectives"
+      "url": "curriculum/advanced/05-incident-response/README.md"
     }
   },
   {
@@ -454,7 +454,7 @@ export const questions = [
     "explanation": "Read-only evidence tools should not require the same approval burden as consequential actions. Rollbacks, restarts, and customer notifications should pause for approval.",
     "source": {
       "label": "AgentOps Lab - Notebook 06",
-      "url": "curriculum/advanced/05-incident-response/README.md#notebook-06-learning-objectives"
+      "url": "curriculum/advanced/05-incident-response/README.md"
     }
   },
   {
@@ -477,7 +477,7 @@ export const questions = [
     "explanation": "Effective HITL checkpoints preserve the action, evidence, reviewer identity, decision, reason, and final action. Context-free approval creates review fatigue and weak auditability.",
     "source": {
       "label": "AgentOps Lab - Notebook 06",
-      "url": "curriculum/advanced/05-incident-response/README.md#notebook-06-learning-objectives"
+      "url": "curriculum/advanced/05-incident-response/README.md"
     }
   },
   {
@@ -499,7 +499,7 @@ export const questions = [
     "explanation": "Retrieved documents are data, not authority. They may contain prompt-injection attempts and cannot override system instructions or authorize operational tools.",
     "source": {
       "label": "AgentOps Lab - Notebook 07",
-      "url": "curriculum/advanced/05-incident-response/README.md#notebook-07-learning-objectives"
+      "url": "curriculum/advanced/05-incident-response/README.md"
     }
   },
   {
@@ -522,7 +522,7 @@ export const questions = [
     "explanation": "A restart guardrail should require approval, trusted authorization source, an allowed target, and audit context. Retrieved text is not a valid source of authorization.",
     "source": {
       "label": "AgentOps Lab - Notebook 07",
-      "url": "curriculum/advanced/05-incident-response/README.md#notebook-07-learning-objectives"
+      "url": "curriculum/advanced/05-incident-response/README.md"
     }
   },
   {
@@ -545,7 +545,7 @@ export const questions = [
     "explanation": "MCP primarily connects applications to context and tools, while A2A-style protocols coordinate agents. Neither protocol removes the need for identity, authorization, and message validation.",
     "source": {
       "label": "README — Tools, memory, and protocols",
-      "url": "README.md#tools-memory-and-protocols"
+      "url": "README.md"
     }
   },
   {
@@ -568,7 +568,7 @@ export const questions = [
     "explanation": "Routing is useful when categories need distinct prompts, tools, models, or policies. Unknown cases, routing evaluation, and traceability reduce silent misroutes.",
     "source": {
       "label": "Architecture patterns — Routing",
-      "url": "curriculum/intermediate/06-trajectory-optimization/README.md#3-routing"
+      "url": "curriculum/intermediate/06-trajectory-optimization/README.md"
     }
   },
   {
@@ -591,7 +591,7 @@ export const questions = [
     "explanation": "Evaluator-optimizer works when quality can be judged and feedback can improve the artifact. Bound iterations and prefer executable or deterministic checks where available.",
     "source": {
       "label": "Architecture patterns — Evaluator-optimizer",
-      "url": "curriculum/intermediate/06-trajectory-optimization/README.md#6-evaluator-optimizer"
+      "url": "curriculum/intermediate/06-trajectory-optimization/README.md"
     }
   },
   {
@@ -614,7 +614,7 @@ export const questions = [
     "explanation": "Task A has a fixed path: retrieve checkout status and format it. Operations work can absolutely use agents, but this task does not need dynamic tool selection.",
     "source": {
       "label": "AgentOps Lab - Notebook 02",
-      "url": "curriculum/advanced/05-incident-response/README.md#notebook-02-learning-objectives"
+      "url": "curriculum/advanced/05-incident-response/README.md"
     }
   },
   {
@@ -637,7 +637,7 @@ export const questions = [
     "explanation": "Task C justifies bounded agency because each observation affects the next evidence source. That does not remove application-owned tool allowlists, budgets, or grounding rules.",
     "source": {
       "label": "AgentOps Lab - Notebook 02",
-      "url": "curriculum/advanced/05-incident-response/README.md#notebook-02-learning-objectives"
+      "url": "curriculum/advanced/05-incident-response/README.md"
     }
   },
   {
@@ -660,7 +660,7 @@ export const questions = [
     "explanation": "Informed approval happens before consequence, presents decision context and alternatives, and pauses on durable state. A vague confirmation encourages approval fatigue.",
     "source": {
       "label": "Agentic workflows — Human-in-the-loop",
-      "url": "curriculum/beginner/03-workflow-or-agent/README.md#human-in-the-loop-is-a-workflow-boundary"
+      "url": "curriculum/beginner/03-workflow-or-agent/README.md"
     }
   },
   {
@@ -683,7 +683,7 @@ export const questions = [
     "explanation": "The hybrid design starts with deterministic classification, then selects the least autonomous reliable path. Agents are components inside policy and approval workflows, not replacements for them.",
     "source": {
       "label": "AgentOps Lab - Notebook 13",
-      "url": "curriculum/advanced/05-incident-response/README.md#notebook-13-learning-objectives"
+      "url": "curriculum/advanced/05-incident-response/README.md"
     }
   },
   {
@@ -706,7 +706,7 @@ export const questions = [
     "explanation": "Production control boundaries should be implemented in deterministic application code. Retrieved documents can provide evidence, but they cannot authorize side effects such as rollback.",
     "source": {
       "label": "AgentOps Lab - Notebook 13",
-      "url": "curriculum/advanced/05-incident-response/README.md#notebook-13-learning-objectives"
+      "url": "curriculum/advanced/05-incident-response/README.md"
     }
   },
   {
@@ -729,7 +729,7 @@ export const questions = [
     "explanation": "Agents-as-tools return a specialist result to the orchestrator; handoffs transfer ownership. Both still need permissions, context design, tracing, and evaluation.",
     "source": {
       "label": "Architecture patterns — Orchestrator-worker",
-      "url": "curriculum/intermediate/06-trajectory-optimization/README.md#5-orchestrator-worker"
+      "url": "curriculum/intermediate/06-trajectory-optimization/README.md"
     }
   },
   {
@@ -752,7 +752,7 @@ export const questions = [
     "explanation": "Multi-agent systems can help through parallelism and specialization, but coordination has real cost. Use them when contracts are clear and measured gains exceed that cost.",
     "source": {
       "label": "Agentic workflows — When to introduce multiple agents",
-      "url": "curriculum/beginner/03-workflow-or-agent/README.md#when-to-introduce-multiple-agents"
+      "url": "curriculum/beginner/03-workflow-or-agent/README.md"
     }
   },
   {
@@ -775,7 +775,7 @@ export const questions = [
     "explanation": "Clear contracts, provenance, aggregation, and budgets reduce duplicated work, merge errors, and runaway fan-out. Delegation depth and breadth should be bounded.",
     "source": {
       "label": "Architecture patterns — Parallelization and orchestrator-worker",
-      "url": "curriculum/intermediate/06-trajectory-optimization/README.md#4-parallelization"
+      "url": "curriculum/intermediate/06-trajectory-optimization/README.md"
     }
   },
   {
@@ -797,7 +797,7 @@ export const questions = [
     "explanation": "A specialist team is justified by separable expertise, measurable improvement, explicit ownership, and bounded coordination. A simple fixed workflow or prettier architecture is not enough.",
     "source": {
       "label": "AgentOps Lab - Notebook 10",
-      "url": "curriculum/advanced/05-incident-response/README.md#notebook-10-learning-objectives"
+      "url": "curriculum/advanced/05-incident-response/README.md"
     }
   },
   {
@@ -820,7 +820,7 @@ export const questions = [
     "explanation": "The comparison should cover outcome quality, operational cost, coordination overhead, and risk-review value. More agent names are not evidence of a better architecture.",
     "source": {
       "label": "AgentOps Lab - Notebook 10",
-      "url": "curriculum/advanced/05-incident-response/README.md#notebook-10-learning-objectives"
+      "url": "curriculum/advanced/05-incident-response/README.md"
     }
   },
   {
@@ -843,7 +843,7 @@ export const questions = [
     "explanation": "Selector-style teams make speaker selection and shared context explicit, but they still need termination, ownership, evaluation, and loop controls. The framework does not guarantee correctness.",
     "source": {
       "label": "AgentOps Lab - Notebook 11",
-      "url": "curriculum/advanced/05-incident-response/README.md#notebook-11-learning-objectives"
+      "url": "curriculum/advanced/05-incident-response/README.md"
     }
   },
   {
@@ -866,7 +866,7 @@ export const questions = [
     "explanation": "Team loops need global message budgets, per-agent turn budgets, ownership rules, and explicit termination. Unlimited peer-to-peer delegation is exactly the failure mode to prevent.",
     "source": {
       "label": "AgentOps Lab - Notebook 11",
-      "url": "curriculum/advanced/05-incident-response/README.md#notebook-11-learning-objectives"
+      "url": "curriculum/advanced/05-incident-response/README.md"
     }
   },
   {
@@ -889,7 +889,7 @@ export const questions = [
     "explanation": "CrewAI's teaching value is the readable role/task/crew structure. It can clarify ownership and provenance, but policy, approval, and side-effect controls still belong around the crew.",
     "source": {
       "label": "AgentOps Lab - Notebook 12",
-      "url": "curriculum/advanced/05-incident-response/README.md#notebook-12-learning-objectives"
+      "url": "curriculum/advanced/05-incident-response/README.md"
     }
   },
   {
@@ -912,7 +912,7 @@ export const questions = [
     "explanation": "The same scenario highlights different framework strengths. None of them remove trajectory evaluation, policy enforcement, or the need to choose the simplest reliable architecture.",
     "source": {
       "label": "AgentOps Lab - Notebook 12",
-      "url": "curriculum/advanced/05-incident-response/README.md#notebook-12-learning-objectives"
+      "url": "curriculum/advanced/05-incident-response/README.md"
     }
   },
   {
@@ -934,7 +934,7 @@ export const questions = [
     "explanation": "The capstone requires experimental justification. Multi-agent is only justified when it improves the result enough to beat the simpler baseline after cost, latency, trajectory, and risk are considered.",
     "source": {
       "label": "AgentOps Lab - Notebook 14",
-      "url": "curriculum/advanced/05-incident-response/README.md#notebook-14-capstone-objectives"
+      "url": "curriculum/advanced/05-incident-response/README.md"
     }
   },
   {
@@ -957,7 +957,7 @@ export const questions = [
     "explanation": "Agent evaluation needs outcome, trajectory, operations, and safety evidence. Fluent final text can conceal a failed or unauthorized task.",
     "source": {
       "label": "Evaluation and security — Grade three layers",
-      "url": "curriculum/intermediate/05-agent-evaluation/README.md#grade-three-layers"
+      "url": "curriculum/intermediate/05-agent-evaluation/README.md"
     }
   },
   {
@@ -979,7 +979,7 @@ export const questions = [
     "explanation": "The capstone can prepare rollback, feature-flag disablement, and customer notification for review, but execution requires human approval. Metrics and logs are read-only investigation tools.",
     "source": {
       "label": "AgentOps Lab - Notebook 14",
-      "url": "curriculum/advanced/05-incident-response/README.md#notebook-14-capstone-objectives"
+      "url": "curriculum/advanced/05-incident-response/README.md"
     }
   },
   {
@@ -1002,7 +1002,7 @@ export const questions = [
     "explanation": "The capstone keeps retrieved content outside the trusted control boundary and prevents stale-memory bias. It stores evaluated reports, blocks unapproved execution, and enforces budgets.",
     "source": {
       "label": "AgentOps Lab - Notebook 14",
-      "url": "curriculum/advanced/05-incident-response/README.md#notebook-14-capstone-objectives"
+      "url": "curriculum/advanced/05-incident-response/README.md"
     }
   },
   {
@@ -1025,7 +1025,7 @@ export const questions = [
     "explanation": "The capstone grades evidence coverage, forbidden actions, recommendation support, and operational budgets. The number of agents is not a success criterion.",
     "source": {
       "label": "AgentOps Lab - Notebook 14",
-      "url": "curriculum/advanced/05-incident-response/README.md#notebook-14-capstone-objectives"
+      "url": "curriculum/advanced/05-incident-response/README.md"
     }
   },
   {
@@ -1047,7 +1047,7 @@ export const questions = [
     "explanation": "Agent evaluation should inspect outcome, trajectory, and operations. Fluency alone misses forbidden tools, unsupported diagnoses, cost regressions, and poor recovery.",
     "source": {
       "label": "AgentOps Lab - Notebook 08",
-      "url": "curriculum/advanced/05-incident-response/README.md#notebook-08-learning-objectives"
+      "url": "curriculum/advanced/05-incident-response/README.md"
     }
   },
   {
@@ -1070,7 +1070,7 @@ export const questions = [
     "explanation": "Cost per successful task rewards reliable outcomes rather than isolated cheap calls. A cheap failed trajectory is still expensive from a product perspective.",
     "source": {
       "label": "AgentOps Lab - Notebook 08",
-      "url": "curriculum/advanced/05-incident-response/README.md#notebook-08-learning-objectives"
+      "url": "curriculum/advanced/05-incident-response/README.md"
     }
   },
   {
@@ -1093,7 +1093,7 @@ export const questions = [
     "explanation": "The goal is not token minimization at any cost. The goal is a shorter, cheaper, faster trajectory that still succeeds and remains evidence-supported.",
     "source": {
       "label": "AgentOps Lab - Notebook 09",
-      "url": "curriculum/advanced/05-incident-response/README.md#notebook-09-learning-objectives"
+      "url": "curriculum/advanced/05-incident-response/README.md"
     }
   },
   {
@@ -1116,7 +1116,7 @@ export const questions = [
     "explanation": "The notebook's simple efficiency score combines success with latency, cost, and trajectory length so learners compare reliable paths instead of isolated token counts.",
     "source": {
       "label": "AgentOps Lab - Notebook 09",
-      "url": "curriculum/advanced/05-incident-response/README.md#notebook-09-learning-objectives"
+      "url": "curriculum/advanced/05-incident-response/README.md"
     }
   },
   {
@@ -1140,7 +1140,7 @@ export const questions = [
     "explanation": "Origin and authorization determine trust, not presentation. User content, retrieval, tool output, and peer messages can all carry malicious or incorrect instructions—even in valid JSON.",
     "source": {
       "label": "Evaluation and security — Threat model",
-      "url": "curriculum/intermediate/05-agent-evaluation/README.md#threat-model"
+      "url": "curriculum/intermediate/05-agent-evaluation/README.md"
     }
   },
   {
@@ -1163,7 +1163,7 @@ export const questions = [
     "explanation": "Safe writes use previews, idempotency, attribution, receipts, and state verification. An uncertain timeout may mean a write succeeded, so blind retries can duplicate it.",
     "source": {
       "label": "Evaluation and security — Side-effect safety",
-      "url": "curriculum/intermediate/05-agent-evaluation/README.md#side-effect-safety"
+      "url": "curriculum/intermediate/05-agent-evaluation/README.md"
     }
   },
   {
@@ -1208,7 +1208,7 @@ export const questions = [
     "explanation": "A protocol tool schema alone is not a safe write boundary. Application controls validate the proposal, authorize it freshly, make replay safe, and preserve evidence for reconciliation and audit.",
     "source": {
       "label": "MCP: Model Context Protocol",
-      "url": "curriculum/advanced/13-mcp-model-context-protocol/README.md#consequential-tools-approval-retry-and-unknown-outcome"
+      "url": "curriculum/advanced/13-mcp-model-context-protocol/README.md"
     }
   },
   {
@@ -1225,7 +1225,7 @@ export const questions = [
     "explanation": "Discovery is filtered context, not durable execution authority. Point-of-use checks close revocation, drift, tenant, budget, and approval races.",
     "source": {
       "label": "MCP: Application-owned authority boundary",
-      "url": "curriculum/advanced/13-mcp-model-context-protocol/README.md#application-owned-authority-boundary"
+      "url": "curriculum/advanced/13-mcp-model-context-protocol/README.md"
     }
   },
   {
@@ -1247,7 +1247,7 @@ export const questions = [
     "explanation": "Skills package reusable procedural knowledge; tools execute operations. Skill activation is not authority, and any tool or subagent action still requires application-owned scope, policy, validation, and budgets.",
     "source": {
       "label": "Agent Skills",
-      "url": "curriculum/advanced/14-agent-skills/README.md#tools-versus-skills"
+      "url": "curriculum/advanced/14-agent-skills/README.md"
     }
   },
   {
@@ -1270,7 +1270,7 @@ export const questions = [
     "explanation": "Skills require lifecycle governance. Composition should not implicitly union privileges; use the caller's policy and a conservative contract for each handoff and tool invocation.",
     "source": {
       "label": "Agent Skills",
-      "url": "curriculum/advanced/14-agent-skills/README.md#security-and-production-checklist"
+      "url": "curriculum/advanced/14-agent-skills/README.md"
     }
   },
   {
@@ -1316,7 +1316,7 @@ export const questions = [
     "explanation": "Teams add routing, communication, context, security, termination, and operational complexity. Retain them only when a controlled evaluation shows a material benefit over a strong single-agent or workflow baseline.",
     "source": {
       "label": "Agent Communication and Coordination",
-      "url": "curriculum/advanced/30-agent-communication-coordination/README.md#when-does-multi-agent-outperform-one-well-designed-agent"
+      "url": "curriculum/advanced/30-agent-communication-coordination/README.md"
     }
   },
   {
@@ -1339,7 +1339,7 @@ export const questions = [
     "explanation": "A blackboard is a governed shared evidence store, not a global scratchpad. Provenance, scope, validation, conflict handling, and bounded convergence preserve inspectability and prevent chat text from becoming authority.",
     "source": {
       "label": "Agent Communication and Coordination",
-      "url": "curriculum/advanced/30-agent-communication-coordination/README.md#communication-is-a-system-contract"
+      "url": "curriculum/advanced/30-agent-communication-coordination/README.md"
     }
   },
   {
@@ -1362,7 +1362,7 @@ export const questions = [
     "explanation": "The protocols address complementary boundaries. None turns metadata, UI events, discovered capability, commerce intent, or payment intent into self-executing authority.",
     "source": {
       "label": "The Agent Protocol Stack",
-      "url": "curriculum/advanced/31-agent-protocol-stack/README.md#layer-by-layer-guide"
+      "url": "curriculum/advanced/31-agent-protocol-stack/README.md"
     }
   },
   {
@@ -1386,7 +1386,7 @@ export const questions = [
     "explanation": "Eligibility, typed validation, layered termination, and explicit coordination accounting bound the team. Text and review output do not create execution authority.",
     "source": {
       "label": "Bounded AutoGen Selector Teams",
-      "url": "curriculum/advanced/02-autogen-selector-teams/README.md#the-control-plane"
+      "url": "curriculum/advanced/02-autogen-selector-teams/README.md"
     }
   },
   {
@@ -1809,7 +1809,7 @@ export const questions = [
     "explanation": "Refer to the notebook for the detailed explanation.",
     "source": {
       "label": "Notebook Checkpoint",
-      "url": "curriculum/advanced/05-incident-response/incident_response.ipynb"
+      "url": "curriculum/advanced/05-incident-response/05_incident_response_capstone.ipynb"
     }
   },
   {

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta
       name="description"
-      content="An interactive, multiple-answer quiz for testing practical knowledge of AI agents and agentic workflows."
+      content="An interactive, exact-match quiz for testing practical knowledge of AI agents and agentic workflows."
     >
     <title>AI Agents Knowledge Check</title>
     <link rel="stylesheet" href="./styles.css">
@@ -36,22 +36,22 @@
         <h1>AI Agents Knowledge Check</h1>
         <p class="hero-copy">
           Test your understanding of agent loops, tools, memory, workflows,
-          orchestration, evaluation, and safety. Every question has more than one
-          correct answer.
+          orchestration, evaluation, and safety. Questions may have one or more
+          correct answers; select the complete answer set.
         </p>
 
         <div class="hero-stats" role="group" aria-label="Quiz summary">
           <div>
-            <strong id="question-count">18</strong>
+            <strong id="question-count">—</strong>
             <span>questions</span>
           </div>
           <div>
-            <strong id="category-count">6</strong>
+            <strong id="category-count">—</strong>
             <span>technical areas</span>
           </div>
           <div>
             <strong>Exact</strong>
-            <span>multi-answer grading</span>
+            <span>answer-set grading</span>
           </div>
         </div>
       </div>
@@ -61,17 +61,17 @@
       <aside class="progress-panel" aria-label="Quiz progress">
         <p class="panel-label">Your progress</p>
         <div class="progress-copy">
-          <strong><span id="answered-count">0</span>/<span id="progress-total">18</span></strong>
+          <strong><span id="answered-count">0</span>/<span id="progress-total">—</span></strong>
           <span>answered</span>
         </div>
         <progress
           class="progress-track"
           id="progress-track"
           aria-label="Questions answered"
-          max="18"
+          max="1"
           value="0"
         >
-          0 of 18 answered
+          Quiz loading
         </progress>
 
         <nav
