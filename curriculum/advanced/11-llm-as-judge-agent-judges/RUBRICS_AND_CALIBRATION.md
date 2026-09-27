@@ -16,6 +16,8 @@ uncertainty         ABSTAIN missing provider-health evidence
 
 Application policy aggregates these results. A failed authorization or safety gate forces overall failure regardless of an average. Valid JSON, citation existence, tenant match, allowlist adherence, latency, cost, approvals, and operation receipts are deterministic checks—not questions for an LLM.
 
+Every mandatory semantic criterion must appear exactly once. The trusted application layer separately produces every required deterministic hard gate; a model cannot create, omit, or replace those results.
+
 Anchors should describe observable qualities. Appropriate uncertainty means identifying limits, alternative hypotheses, and missing evidence; an invented “93% confidence” is not inherently strong uncertainty handling.
 
 ## Reference design
@@ -49,7 +51,7 @@ There is no universal “good κ” threshold. Interpret judge performance relat
 
 ## Confidence calibration
 
-Calibration asks whether confidence corresponds to empirical correctness. If a judge assigns 0.8 confidence across many comparable cases, about 80% should be correct for that probability to be calibrated.
+Calibration asks whether confidence corresponds to empirical correctness. In this course, `CriterionResult.confidence` is the estimated probability that the criterion judgment is correct. It is not the rubric score, the candidate's quality, general certainty, or the probability of overall `PASS`. If a judge assigns 0.8 confidence across many comparable cases, about 80% should be correct for that probability to be calibrated.
 
 The lab reports:
 
@@ -64,4 +66,4 @@ Every result binds the dataset, rubric, judge provider/model/deployment, model v
 
 Before upgrading a judge, rerun the same frozen validation set and compare agreement, pass rate, criteria, slices, and test–retest stability. When changing a rubric, replay old and new rubrics on the same frozen cases. Historical scores from different rubric versions are not directly interchangeable.
 
-Use application-specific thresholds for false passes, false fails, agreement, calibration error, sample size, and critical slices. Start in shadow mode, progress through a constrained canary, and use blocking mode only when the evidence supports that consequence.
+Use application-specific thresholds for false passes, false fails, agreement, calibration error, sample size, and critical slices. Release metrics must contain held-out validation cases only. For critical slices, require minimum case support and explicit false-pass limits; a one-example slice is a diagnostic, not reliable blocking evidence. Start in shadow mode, progress through a constrained canary, and use blocking mode only when the evidence supports that consequence.

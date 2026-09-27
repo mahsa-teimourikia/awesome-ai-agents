@@ -62,7 +62,29 @@ def _semantic_result(criterion_id="grounding", *, status=policy.CriterionStatus.
     )
 
 
+def _semantic_results(evidence_ids=("receipt-refund-absent",)):
+    return (
+        _semantic_result("grounding", evidence_ids=evidence_ids),
+        _semantic_result("explanation_quality"),
+        _semantic_result("uncertainty_handling"),
+    )
+
+
+def _trusted_gates():
+    return (
+        policy.HardGateResult(gate_id="authorization", passed=True, reason_code="AUTHORIZED"),
+        policy.HardGateResult(
+            gate_id="outcome_binding",
+            passed=True,
+            evidence_ids=("receipt-refund-absent",),
+            reason_code="OPERATION_BOUND",
+        ),
+    )
+
+
 def _request(case_id="refund-absent", evidence_ids=("receipt-refund-absent",)):
+    evidence = lab.fixture_evidence()
+    accepted = tuple(evidence[evidence_id] for evidence_id in evidence_ids if evidence_id in evidence)
     return policy.JudgeRequest(
         evaluation_id="eval-1",
         case_id=case_id,
@@ -71,11 +93,11 @@ def _request(case_id="refund-absent", evidence_ids=("receipt-refund-absent",)):
         rubric_version=lab.RUBRIC.rubric_version,
         candidate_artifact=_case(case_id).candidate_artifact,
         trusted_evidence_ids=evidence_ids,
-        evidence_snapshot_digest=lab.EVIDENCE_SNAPSHOT,
+        evidence_snapshot_digest=lab.evidence_snapshot_digest(accepted),
     )
 
 
-def _verdict(*, request=None, results=None, gates=(), decision=policy.JudgeDecision.PASS, **updates):
+def _verdict(*, request=None, results=None, gates=None, decision=policy.JudgeDecision.PASS, **updates):
     request = request or _request()
     base = policy.JudgeVerdict(
         evaluation_id=request.evaluation_id,
@@ -88,12 +110,26 @@ def _verdict(*, request=None, results=None, gates=(), decision=policy.JudgeDecis
         prompt_version=lab.JUDGE_V1.prompt_version,
         settings={"temperature": 0},
         evidence_snapshot_digest=request.evidence_snapshot_digest,
-        criterion_results=tuple(results or (_semantic_result(evidence_ids=request.trusted_evidence_ids),)),
-        hard_gate_results=tuple(gates),
+        criterion_results=tuple(
+            _semantic_results(request.trusted_evidence_ids) if results is None else results
+        ),
+        hard_gate_results=tuple(_trusted_gates() if gates is None else gates),
         verdict=decision,
         confidence=0.8,
     )
     return base.model_copy(update=updates)
+
+
+def _validate(verdict, request, *, evidence=None, expected_judge=None, settings=None, gates=None):
+    return lab.validate_judge_verdict(
+        verdict,
+        request,
+        lab.RUBRIC,
+        evidence or lab.fixture_evidence(),
+        expected_judge=expected_judge or lab.JUDGE_V1,
+        expected_settings=settings or {"temperature": 0},
+        trusted_hard_gates=_trusted_gates() if gates is None else gates,
+    )
 
 
 def test_golden_references_are_independent_from_predictions():
@@ -162,6 +198,13 @@ def test_metrics_include_criterion_and_slice_reports():
     metrics = lab.evaluation_metrics()
     assert set(metrics.per_criterion) == {"grounding", "explanation_quality", "uncertainty_handling"}
     assert {"high-risk", "adversarial", "operation-binding"} <= set(metrics.per_slice)
+    assert metrics.per_slice["high-risk"].case_count == 2
+    assert metrics.per_slice["high-risk"].negative_case_count == 2
+
+
+def test_empty_evaluation_dataset_is_rejected_instead_of_using_default_fixture():
+    with pytest.raises(ValueError, match="EMPTY_EVALUATION_DATASET"):
+        lab.evaluation_metrics(())
 
 
 def test_semantic_criterion_requires_anchors():
@@ -227,28 +270,104 @@ def test_judge_cannot_score_deterministic_criterion():
     request = _request()
     verdict = _verdict(results=[_semantic_result("authorization")])
     with pytest.raises(policy.EvaluationPolicyError, match="JUDGE_CANNOT_OVERRIDE_DETERMINISTIC_CRITERION"):
-        lab.validate_judge_verdict(verdict, request, lab.RUBRIC, lab.fixture_evidence())
+        _validate(verdict, request)
 
 
 def test_judge_result_must_bind_to_request_and_versions():
     request = _request()
     verdict = _verdict(request=request, case_id="other-case")
     with pytest.raises(policy.EvaluationPolicyError, match="VERDICT_REQUEST_BINDING_MISMATCH"):
-        lab.validate_judge_verdict(verdict, request, lab.RUBRIC, lab.fixture_evidence())
+        _validate(verdict, request)
 
 
 def test_judge_result_must_bind_to_evidence_snapshot():
     request = _request()
     verdict = _verdict(request=request, evidence_snapshot_digest="other-snapshot")
-    with pytest.raises(policy.EvaluationPolicyError, match="VERDICT_EVIDENCE_SNAPSHOT_MISMATCH"):
-        lab.validate_judge_verdict(verdict, request, lab.RUBRIC, lab.fixture_evidence())
+    with pytest.raises(policy.EvaluationPolicyError, match="EVIDENCE_SNAPSHOT_INTEGRITY_FAILURE"):
+        _validate(verdict, request)
+
+
+def test_valid_verdict_binds_expected_judge_snapshot_criteria_and_gates():
+    request = _request()
+    _validate(_verdict(request=request), request)
+
+
+@pytest.mark.parametrize(
+    ("update", "reason"),
+    [
+        ({"judge_id": "self-asserted-judge"}, "JUDGE_IDENTITY_MISMATCH"),
+        ({"judge_version": "other/model/version/deployment"}, "JUDGE_VERSION_MISMATCH"),
+        ({"prompt_version": "modified-prompt"}, "JUDGE_PROMPT_VERSION_MISMATCH"),
+        ({"settings": {"temperature": 0.7}}, "JUDGE_SETTINGS_MISMATCH"),
+    ],
+)
+def test_judge_cannot_self_assert_identity_version_prompt_or_settings(update, reason):
+    request = _request()
+    verdict = _verdict(request=request, **update)
+    with pytest.raises(policy.EvaluationPolicyError, match=reason):
+        _validate(verdict, request)
+
+
+def test_modified_evidence_after_snapshot_is_rejected():
+    request = _request()
+    evidence = lab.fixture_evidence()
+    evidence["receipt-refund-absent"] = evidence["receipt-refund-absent"].model_copy(
+        update={"source_version": "tampered-v3"}
+    )
+    with pytest.raises(policy.EvaluationPolicyError, match="EVIDENCE_SNAPSHOT_INTEGRITY_FAILURE"):
+        _validate(_verdict(request=request), request, evidence=evidence)
+
+
+def test_missing_required_semantic_criterion_is_rejected():
+    request = _request()
+    verdict = _verdict(
+        request=request,
+        results=(
+            _semantic_result("grounding", evidence_ids=request.trusted_evidence_ids),
+            _semantic_result("explanation_quality"),
+        ),
+    )
+    with pytest.raises(policy.EvaluationPolicyError, match="MISSING_CRITERION_RESULT"):
+        _validate(verdict, request)
+
+
+def test_duplicate_semantic_criterion_remains_rejected():
+    request = _request()
+    duplicate = _semantic_result("grounding", evidence_ids=request.trusted_evidence_ids)
+    verdict = _verdict(
+        request=request,
+        results=(duplicate, duplicate, _semantic_result("explanation_quality"), _semantic_result("uncertainty_handling")),
+    )
+    with pytest.raises(policy.EvaluationPolicyError, match="DUPLICATE_CRITERION_RESULT"):
+        _validate(verdict, request)
+
+
+def test_missing_required_trusted_hard_gate_is_rejected():
+    request = _request()
+    gates = (_trusted_gates()[0],)
+    verdict = _verdict(request=request, gates=gates)
+    with pytest.raises(policy.EvaluationPolicyError, match="MISSING_REQUIRED_HARD_GATE"):
+        _validate(verdict, request, gates=gates)
+
+
+def test_model_provided_fake_hard_gate_is_rejected():
+    request = _request()
+    fake = policy.HardGateResult(
+        gate_id="authorization",
+        passed=True,
+        reason_code="MODEL_SAYS_AUTHORIZED",
+    )
+    verdict_gates = (fake, _trusted_gates()[1])
+    verdict = _verdict(request=request, gates=verdict_gates)
+    with pytest.raises(policy.EvaluationPolicyError, match="HARD_GATE_INTEGRITY_FAILURE"):
+        _validate(verdict, request, gates=_trusted_gates())
 
 
 def test_unknown_evidence_id_is_rejected():
     request = _request(evidence_ids=("missing",))
     verdict = _verdict(request=request, results=[_semantic_result(evidence_ids=("missing",))])
     with pytest.raises(policy.EvaluationPolicyError, match="UNKNOWN_OR_UNTRUSTED_EVIDENCE_ID"):
-        lab.validate_judge_verdict(verdict, request, lab.RUBRIC, lab.fixture_evidence())
+        _validate(verdict, request)
 
 
 def test_evidence_must_support_the_scored_criterion():
@@ -256,15 +375,18 @@ def test_evidence_must_support_the_scored_criterion():
     request = _request(evidence_ids=("receipt-refund-absent",))
     verdict = _verdict(request=request, results=[_semantic_result("explanation_quality", evidence_ids=request.trusted_evidence_ids)])
     with pytest.raises(policy.EvaluationPolicyError, match="EVIDENCE_DOES_NOT_SUPPORT_CRITERION"):
-        lab.validate_judge_verdict(verdict, request, lab.RUBRIC, evidence)
+        _validate(verdict, request, evidence=evidence)
 
 
 def test_failed_hard_gate_cannot_be_reported_as_pass():
     request = _request()
     gate = policy.HardGateResult(gate_id="authorization", passed=False, reason_code="UNAUTHORIZED_WRITE")
-    verdict = _verdict(request=request, gates=[gate], decision=policy.JudgeDecision.PASS)
+    trusted = tuple(
+        gate if item.gate_id == "authorization" else item for item in _trusted_gates()
+    )
+    verdict = _verdict(request=request, gates=trusted, decision=policy.JudgeDecision.PASS)
     with pytest.raises(policy.EvaluationPolicyError, match="HARD_GATE_FAILURE_CANNOT_PASS"):
-        lab.validate_judge_verdict(verdict, request, lab.RUBRIC, lab.fixture_evidence())
+        _validate(verdict, request, gates=trusted)
 
 
 def test_authoritative_evidence_validates_when_fresh_bound_and_post_action():
@@ -306,6 +428,53 @@ def test_stale_evidence_is_rejected():
     requirement = policy.EvidenceRequirement(evidence_type="provider_receipt", criterion_id="outcome_binding", max_age_seconds=600)
     with pytest.raises(policy.EvaluationPolicyError, match="EVIDENCE_STALE"):
         lab.validate_evidence(case, record, requirement, now=lab.FIXED_TIME)
+
+
+def test_future_observed_at_is_not_treated_as_fresh():
+    case = _case("refund-absent")
+    record = lab.fixture_evidence()["receipt-refund-absent"].model_copy(
+        update={
+            "observed_at": lab.FIXED_TIME + timedelta(minutes=1),
+            "retrieved_at": lab.FIXED_TIME + timedelta(minutes=1),
+        }
+    )
+    requirement = policy.EvidenceRequirement(
+        evidence_type="provider_receipt",
+        criterion_id="outcome_binding",
+        max_age_seconds=600,
+    )
+    with pytest.raises(policy.EvaluationPolicyError, match="EVIDENCE_FROM_FUTURE"):
+        lab.validate_evidence(case, record, requirement, now=lab.FIXED_TIME)
+
+
+def test_future_retrieved_at_is_rejected():
+    case = _case("refund-absent")
+    record = lab.fixture_evidence()["receipt-refund-absent"].model_copy(
+        update={"retrieved_at": lab.FIXED_TIME + timedelta(minutes=1)}
+    )
+    requirement = policy.EvidenceRequirement(
+        evidence_type="provider_receipt",
+        criterion_id="outcome_binding",
+        max_age_seconds=600,
+    )
+    with pytest.raises(policy.EvaluationPolicyError, match="EVIDENCE_RETRIEVED_FROM_FUTURE"):
+        lab.validate_evidence(case, record, requirement, now=lab.FIXED_TIME)
+
+
+def test_explicit_small_clock_skew_is_allowed():
+    case = _case("refund-absent")
+    record = lab.fixture_evidence()["receipt-refund-absent"].model_copy(
+        update={
+            "observed_at": lab.FIXED_TIME + timedelta(seconds=3),
+            "retrieved_at": lab.FIXED_TIME + timedelta(seconds=3),
+        }
+    )
+    requirement = policy.EvidenceRequirement(
+        evidence_type="provider_receipt",
+        criterion_id="outcome_binding",
+        max_age_seconds=600,
+    )
+    lab.validate_evidence(case, record, requirement, now=lab.FIXED_TIME)
 
 
 def test_pre_action_evidence_cannot_prove_post_action_state():
@@ -431,10 +600,26 @@ def test_pairwise_supports_tie_and_abstain(choice, expected):
     assert verdict.consistency is expected
 
 
-def test_position_consistency_rate_is_measured():
+def test_position_outcomes_are_reported_separately():
     stable = lab.pairwise_consistency("a", "b", first_choice=policy.PairwiseChoice.CANDIDATE_A, swapped_choice=policy.PairwiseChoice.CANDIDATE_B)
     unstable = lab.pairwise_consistency("a", "b", first_choice=policy.PairwiseChoice.CANDIDATE_A, swapped_choice=policy.PairwiseChoice.CANDIDATE_A)
-    assert lab.position_bias_report([stable, unstable]).position_consistency_rate == 0.5
+    report = lab.position_bias_report([stable, unstable])
+    assert report.candidate_consistent_rate == 0.5
+    assert report.position_unstable_rate == 0.5
+    assert report.tie_consistent_rate == 0
+    assert report.abstain_rate == 0
+
+
+def test_all_abstain_pairs_do_not_appear_candidate_consistent():
+    abstain = lab.pairwise_consistency(
+        "a",
+        "b",
+        first_choice=policy.PairwiseChoice.ABSTAIN,
+        swapped_choice=policy.PairwiseChoice.ABSTAIN,
+    )
+    report = lab.position_bias_report([abstain, abstain])
+    assert report.candidate_consistent_rate == 0
+    assert report.abstain_rate == 1
 
 
 def test_shadow_mode_reports_failure_without_blocking():
@@ -480,6 +665,66 @@ def test_acceptance_threshold_is_application_specific_not_universal():
         required_validation_cases=8,
     )
     assert lab.rollout_gate(lab.evaluation_metrics(), permissive).admitted
+
+
+def test_release_metric_construction_rejects_development_cases():
+    development = tuple(case.model_copy(update={"split": "development"}) for case in lab.golden_dataset())
+    with pytest.raises(policy.EvaluationPolicyError, match="RELEASE_GATE_REQUIRES_VALIDATION_SPLIT"):
+        lab.evaluation_metrics(development, release_gating=True)
+
+
+def test_development_metrics_cannot_drive_blocking_rollout():
+    development = tuple(case.model_copy(update={"split": "development"}) for case in lab.golden_dataset())
+    metrics = lab.evaluation_metrics(development)
+    acceptance = policy.AcceptancePolicy(
+        policy_id="development-is-not-release-evidence",
+        release_mode=policy.ReleaseMode.BLOCKING,
+        min_weighted_kappa=0.7,
+        max_false_pass_rate=0.3,
+        max_false_fail_rate=0.3,
+        max_ece=0.2,
+        required_validation_cases=8,
+    )
+    decision = lab.rollout_gate(metrics, acceptance)
+    assert not decision.admitted
+    assert "RELEASE_METRICS_NOT_VALIDATION_ONLY" in decision.reason_codes
+
+
+def test_undersized_high_risk_slice_cannot_support_blocking_release():
+    acceptance = policy.AcceptancePolicy(
+        policy_id="high-risk-support",
+        release_mode=policy.ReleaseMode.BLOCKING,
+        min_weighted_kappa=0.7,
+        max_false_pass_rate=0.3,
+        max_false_fail_rate=0.3,
+        max_ece=0.2,
+        required_validation_cases=8,
+        minimum_slice_support={"high-risk": 3},
+        maximum_slice_false_pass_rate={"high-risk": 0},
+    )
+    decision = lab.rollout_gate(lab.evaluation_metrics(), acceptance)
+    assert not decision.admitted
+    assert "SLICE_SUPPORT_TOO_SMALL:high-risk" in decision.reason_codes
+
+
+def test_high_risk_false_pass_cannot_hide_in_strong_aggregate():
+    metrics = lab.evaluation_metrics()
+    high_risk = metrics.per_slice["high-risk"].model_copy(update={"false_pass_rate": 0.5})
+    metrics = metrics.model_copy(update={"per_slice": {**metrics.per_slice, "high-risk": high_risk}})
+    acceptance = policy.AcceptancePolicy(
+        policy_id="high-risk-errors",
+        release_mode=policy.ReleaseMode.BLOCKING,
+        min_weighted_kappa=0.7,
+        max_false_pass_rate=0.3,
+        max_false_fail_rate=0.3,
+        max_ece=0.2,
+        required_validation_cases=8,
+        minimum_slice_support={"high-risk": 2},
+        maximum_slice_false_pass_rate={"high-risk": 0},
+    )
+    decision = lab.rollout_gate(metrics, acceptance)
+    assert not decision.admitted
+    assert "SLICE_FALSE_PASS_RATE_ABOVE_POLICY:high-risk" in decision.reason_codes
 
 
 def test_drift_report_detects_pass_rate_change():

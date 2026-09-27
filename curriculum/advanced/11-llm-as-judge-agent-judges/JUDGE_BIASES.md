@@ -8,7 +8,7 @@ Run `(candidate-a, candidate-b)` and `(candidate-b, candidate-a)`, then map posi
 
 If both runs select the same candidate identity, the result is position-consistent. If they select the displayed position rather than stable content, return `POSITION_UNSTABLE` and abstain, add a judge, or request human review. The harness must never use a hidden gold answer to resolve disagreement.
 
-Track `position_consistency_rate` over a dataset. Order swapping is one diagnostic; it does not remove verbosity, style, reference, family, rubric, or stochastic bias.
+Report candidate-consistent, tie-consistent, abstained, and position-unstable rates separately. An evaluator that abstains on every pair has 100% abstention—not 100% candidate consistency. Order swapping is one diagnostic; it does not remove verbosity, style, reference, family, rubric, or stochastic bias.
 
 ## Other probes
 

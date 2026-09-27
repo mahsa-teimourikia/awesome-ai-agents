@@ -48,18 +48,28 @@ from policy import (
     ReleaseMode,
     Rubric,
     RubricCriterion,
+    SliceMetrics,
     ToolCapability,
     ToolSpec,
 )
 
 FIXED_TIME = datetime(2026, 1, 15, 10, 10, tzinfo=UTC)
 DATASET_VERSION = "northstar-eval-v1"
-EVIDENCE_SNAPSHOT = "northstar-snapshot-2026-01-15T10:10Z"
+DEFAULT_CLOCK_SKEW = timedelta(seconds=5)
 
 
 def canonical_digest(value: Any) -> str:
     encoded = json.dumps(value, sort_keys=True, separators=(",", ":"), default=str).encode()
     return hashlib.sha256(encoded).hexdigest()
+
+
+def evidence_snapshot_digest(records: Sequence[EvidenceRecord]) -> str:
+    """Bind a snapshot to the complete accepted records in stable ID order."""
+    ordered = sorted(records, key=lambda record: record.evidence_id)
+    ids = [record.evidence_id for record in ordered]
+    if len(ids) != len(set(ids)):
+        raise EvaluationPolicyError("DUPLICATE_EVIDENCE_IN_SNAPSHOT")
+    return canonical_digest([record.model_dump(mode="json") for record in ordered])
 
 
 RUBRIC = Rubric(
@@ -310,8 +320,17 @@ def _criterion_vectors(cases: Sequence[EvaluationCase], criterion_id: str) -> tu
     return references, predictions, confidences
 
 
-def evaluation_metrics(cases: Sequence[EvaluationCase] | None = None) -> EvaluationMetrics:
-    cases = tuple(cases or golden_dataset())
+def evaluation_metrics(
+    cases: Sequence[EvaluationCase] | None = None,
+    *,
+    release_gating: bool = False,
+) -> EvaluationMetrics:
+    cases = tuple(golden_dataset() if cases is None else cases)
+    if not cases:
+        raise ValueError("EMPTY_EVALUATION_DATASET")
+    dataset_splits = tuple(sorted({case.split for case in cases}))
+    if release_gating and dataset_splits != ("validation",):
+        raise EvaluationPolicyError("RELEASE_GATE_REQUIRES_VALIDATION_SPLIT")
     all_reference: list[int] = []
     all_predictions: list[int] = []
     all_confidence: list[float] = []
@@ -324,11 +343,22 @@ def evaluation_metrics(cases: Sequence[EvaluationCase] | None = None) -> Evaluat
         all_predictions.extend(prediction)
         all_confidence.extend(confidence)
         all_correct.extend(left == right for left, right in zip(reference, prediction, strict=True))
-    per_slice: dict[str, AgreementReport] = {}
+    per_slice: dict[str, SliceMetrics] = {}
     for slice_id in sorted({item for case in cases for item in case.slices}):
         selected = [case for case in cases if slice_id in case.slices]
         reference, prediction, _ = _criterion_vectors(selected, "grounding")
-        per_slice[slice_id] = agreement_report(reference, prediction)
+        negative_cases = [case for case in selected if case.reference_decision is JudgeDecision.FAIL]
+        slice_false_passes = sum(
+            JUDGE_DECISIONS[case.case_id] is JudgeDecision.PASS for case in negative_cases
+        )
+        per_slice[slice_id] = SliceMetrics(
+            agreement=agreement_report(reference, prediction),
+            case_count=len(selected),
+            negative_case_count=len(negative_cases),
+            false_pass_rate=(
+                slice_false_passes / len(negative_cases) if negative_cases else None
+            ),
+        )
     binary = [case for case in cases if case.reference_decision in {JudgeDecision.PASS, JudgeDecision.FAIL}]
     false_passes = sum(
         case.reference_decision is JudgeDecision.FAIL and JUDGE_DECISIONS[case.case_id] is JudgeDecision.PASS
@@ -349,7 +379,8 @@ def evaluation_metrics(cases: Sequence[EvaluationCase] | None = None) -> Evaluat
         for case in binary
     )
     return EvaluationMetrics(
-        validation_case_count=len(cases),
+        validation_case_count=sum(case.split == "validation" for case in cases),
+        dataset_splits=dataset_splits,
         agreement=agreement_report(all_reference, all_predictions),
         calibration=confidence_calibration(all_correct, all_confidence),
         false_pass_rate=false_passes / reference_fails,
@@ -431,7 +462,10 @@ def validate_evidence(
     requirement: EvidenceRequirement,
     *,
     now: datetime,
+    clock_skew: timedelta = DEFAULT_CLOCK_SKEW,
 ) -> None:
+    if clock_skew < timedelta(0):
+        raise ValueError("CLOCK_SKEW_MUST_BE_NON_NEGATIVE")
     if evidence.evidence_type != requirement.evidence_type:
         raise EvaluationPolicyError("EVIDENCE_TYPE_MISMATCH")
     if evidence.tenant_id != case.tenant_id:
@@ -440,6 +474,10 @@ def validate_evidence(
         raise EvaluationPolicyError("EVIDENCE_DOES_NOT_SUPPORT_CRITERION")
     if requirement.require_authoritative and evidence.authority is not EvidenceAuthority.AUTHORITATIVE:
         raise EvaluationPolicyError("EVIDENCE_NOT_AUTHORITATIVE")
+    if evidence.observed_at > now + clock_skew:
+        raise EvaluationPolicyError("EVIDENCE_FROM_FUTURE")
+    if evidence.retrieved_at > now + clock_skew:
+        raise EvaluationPolicyError("EVIDENCE_RETRIEVED_FROM_FUTURE")
     if now - evidence.observed_at > timedelta(seconds=requirement.max_age_seconds):
         raise EvaluationPolicyError("EVIDENCE_STALE")
     if requirement.require_post_action:
@@ -454,6 +492,10 @@ def validate_judge_verdict(
     request: JudgeRequest,
     rubric: Rubric,
     evidence: Mapping[str, EvidenceRecord],
+    *,
+    expected_judge: JudgeIdentity,
+    expected_settings: Mapping[str, Any],
+    trusted_hard_gates: Sequence[HardGateResult],
 ) -> None:
     if (
         verdict.evaluation_id != request.evaluation_id
@@ -463,8 +505,24 @@ def validate_judge_verdict(
         raise EvaluationPolicyError("VERDICT_REQUEST_BINDING_MISMATCH")
     if verdict.rubric_id != rubric.rubric_id or verdict.rubric_version != rubric.rubric_version:
         raise EvaluationPolicyError("VERDICT_RUBRIC_VERSION_MISMATCH")
-    if verdict.evidence_snapshot_digest != request.evidence_snapshot_digest:
-        raise EvaluationPolicyError("VERDICT_EVIDENCE_SNAPSHOT_MISMATCH")
+    if verdict.judge_id != expected_judge.judge_id:
+        raise EvaluationPolicyError("JUDGE_IDENTITY_MISMATCH")
+    if verdict.judge_version != expected_judge.version:
+        raise EvaluationPolicyError("JUDGE_VERSION_MISMATCH")
+    if verdict.prompt_version != expected_judge.prompt_version:
+        raise EvaluationPolicyError("JUDGE_PROMPT_VERSION_MISMATCH")
+    if verdict.settings != dict(expected_settings):
+        raise EvaluationPolicyError("JUDGE_SETTINGS_MISMATCH")
+    try:
+        accepted_evidence = tuple(evidence[evidence_id] for evidence_id in request.trusted_evidence_ids)
+    except KeyError as error:
+        raise EvaluationPolicyError("UNKNOWN_OR_UNTRUSTED_EVIDENCE_ID") from error
+    computed_snapshot = evidence_snapshot_digest(accepted_evidence)
+    if (
+        computed_snapshot != request.evidence_snapshot_digest
+        or verdict.evidence_snapshot_digest != request.evidence_snapshot_digest
+    ):
+        raise EvaluationPolicyError("EVIDENCE_SNAPSHOT_INTEGRITY_FAILURE")
     seen: set[str] = set()
     for result in verdict.criterion_results:
         criterion = rubric.criterion(result.criterion_id)
@@ -478,7 +536,32 @@ def validate_judge_verdict(
                 raise EvaluationPolicyError("UNKNOWN_OR_UNTRUSTED_EVIDENCE_ID")
             if result.criterion_id not in evidence[evidence_id].supported_criteria:
                 raise EvaluationPolicyError("EVIDENCE_DOES_NOT_SUPPORT_CRITERION")
-    if any(not gate.passed for gate in verdict.hard_gate_results) and verdict.verdict is JudgeDecision.PASS:
+    required_semantic = {
+        criterion.criterion_id
+        for criterion in rubric.criteria
+        if criterion.criterion_type is CriterionType.SEMANTIC and criterion.required
+    }
+    if not required_semantic.issubset(seen):
+        raise EvaluationPolicyError("MISSING_CRITERION_RESULT")
+
+    required_gates = {
+        criterion.criterion_id
+        for criterion in rubric.criteria
+        if criterion.criterion_type is CriterionType.DETERMINISTIC and criterion.hard_gate
+    }
+    trusted_by_id = {gate.gate_id: gate for gate in trusted_hard_gates}
+    if len(trusted_by_id) != len(trusted_hard_gates):
+        raise EvaluationPolicyError("DUPLICATE_TRUSTED_HARD_GATE")
+    if not required_gates.issubset(trusted_by_id):
+        raise EvaluationPolicyError("MISSING_REQUIRED_HARD_GATE")
+    if set(trusted_by_id) != required_gates:
+        raise EvaluationPolicyError("UNEXPECTED_TRUSTED_HARD_GATE")
+    verdict_by_id = {gate.gate_id: gate for gate in verdict.hard_gate_results}
+    if len(verdict_by_id) != len(verdict.hard_gate_results):
+        raise EvaluationPolicyError("DUPLICATE_HARD_GATE_RESULT")
+    if verdict_by_id != trusted_by_id:
+        raise EvaluationPolicyError("HARD_GATE_INTEGRITY_FAILURE")
+    if any(not gate.passed for gate in trusted_hard_gates) and verdict.verdict is JudgeDecision.PASS:
         raise EvaluationPolicyError("HARD_GATE_FAILURE_CANNOT_PASS")
 
 
@@ -524,11 +607,25 @@ def pairwise_consistency(
 def position_bias_report(verdicts: Sequence[PairwiseVerdict]) -> BiasReport:
     if not verdicts:
         raise ValueError("EMPTY_BIAS_SAMPLE")
-    stable = sum(verdict.consistency is not PairwiseConsistency.POSITION_UNSTABLE for verdict in verdicts)
-    failure_rate = 1 - stable / len(verdicts)
+    total = len(verdicts)
+    candidate_consistent = sum(
+        verdict.consistency in {PairwiseConsistency.CONSISTENT_A, PairwiseConsistency.CONSISTENT_B}
+        for verdict in verdicts
+    )
+    tie_consistent = sum(
+        verdict.consistency is PairwiseConsistency.CONSISTENT_TIE for verdict in verdicts
+    )
+    abstained = sum(verdict.consistency is PairwiseConsistency.ABSTAIN for verdict in verdicts)
+    unstable = sum(
+        verdict.consistency is PairwiseConsistency.POSITION_UNSTABLE for verdict in verdicts
+    )
     return BiasReport(
-        position_consistency_rate=stable / len(verdicts),
-        probes=(BiasProbe(probe_id="position-swap", bias_type="position", sample_size=len(verdicts), failure_rate=failure_rate),),
+        candidate_consistent_rate=candidate_consistent / total,
+        tie_consistent_rate=tie_consistent / total,
+        abstain_rate=abstained / total,
+        position_unstable_rate=unstable / total,
+        sample_size=total,
+        probes=(BiasProbe(probe_id="position-swap", bias_type="position", sample_size=total, failure_rate=unstable / total),),
     )
 
 
@@ -579,6 +676,8 @@ def run_layered_evaluation(
 
 def rollout_gate(metrics: EvaluationMetrics, policy: AcceptancePolicy) -> GateDecision:
     failures: list[str] = []
+    if metrics.dataset_splits != ("validation",):
+        failures.append("RELEASE_METRICS_NOT_VALIDATION_ONLY")
     if metrics.validation_case_count < policy.required_validation_cases:
         failures.append("VALIDATION_SAMPLE_TOO_SMALL")
     if metrics.agreement.weighted_kappa < policy.min_weighted_kappa:
@@ -589,6 +688,18 @@ def rollout_gate(metrics: EvaluationMetrics, policy: AcceptancePolicy) -> GateDe
         failures.append("FALSE_FAIL_RATE_ABOVE_POLICY")
     if metrics.calibration.expected_calibration_error > policy.max_ece:
         failures.append("CALIBRATION_ERROR_ABOVE_POLICY")
+    for slice_id, minimum in policy.minimum_slice_support.items():
+        slice_metrics = metrics.per_slice.get(slice_id)
+        if slice_metrics is None or slice_metrics.case_count < minimum:
+            failures.append(f"SLICE_SUPPORT_TOO_SMALL:{slice_id}")
+    for slice_id, maximum in policy.maximum_slice_false_pass_rate.items():
+        slice_metrics = metrics.per_slice.get(slice_id)
+        if slice_metrics is None:
+            failures.append(f"SLICE_NOT_MEASURED:{slice_id}")
+        elif slice_metrics.negative_case_count == 0:
+            failures.append(f"SLICE_NEGATIVE_SUPPORT_MISSING:{slice_id}")
+        elif slice_metrics.false_pass_rate is not None and slice_metrics.false_pass_rate > maximum:
+            failures.append(f"SLICE_FALSE_PASS_RATE_ABOVE_POLICY:{slice_id}")
     if policy.release_mode is ReleaseMode.SHADOW:
         return GateDecision(admitted=True, release_mode=policy.release_mode, reason_codes=tuple(failures or ["SHADOW_REPORT_ONLY"]), requires_human_review=bool(failures))
     return GateDecision(admitted=not failures, release_mode=policy.release_mode, reason_codes=tuple(failures or ["POLICY_MET"]), requires_human_review=bool(failures))

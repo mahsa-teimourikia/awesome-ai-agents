@@ -88,6 +88,7 @@ class RubricCriterion(FrozenModel):
     criterion_type: CriterionType
     anchors: tuple[Anchor, ...] = ()
     hard_gate: bool = False
+    required: bool = True
     required_evidence_types: tuple[str, ...] = ()
 
     @model_validator(mode="after")
@@ -197,7 +198,7 @@ class JudgeIdentity(FrozenModel):
 
     @property
     def version(self) -> str:
-        return f"{self.provider}/{self.model}/{self.model_version}/{self.prompt_version}"
+        return f"{self.provider}/{self.model}/{self.model_version}/{self.deployment}"
 
 
 class JudgeRequest(FrozenModel):
@@ -210,12 +211,23 @@ class JudgeRequest(FrozenModel):
     trusted_evidence_ids: tuple[str, ...]
     evidence_snapshot_digest: str = Field(min_length=1)
 
+    @model_validator(mode="after")
+    def unique_evidence_ids(self) -> "JudgeRequest":
+        if len(self.trusted_evidence_ids) != len(set(self.trusted_evidence_ids)):
+            raise ValueError("DUPLICATE_TRUSTED_EVIDENCE_ID")
+        return self
+
 
 class CriterionResult(FrozenModel):
     criterion_id: str = Field(min_length=1)
     status: CriterionStatus
     score: int | None = Field(default=None, ge=1, le=5)
-    confidence: float | None = Field(default=None, ge=0, le=1)
+    confidence: float | None = Field(
+        default=None,
+        ge=0,
+        le=1,
+        description="Estimated probability that this criterion judgment is correct.",
+    )
     evidence_ids: tuple[str, ...] = ()
     reason_codes: tuple[str, ...] = ()
 
@@ -312,12 +324,24 @@ class CalibrationReport(FrozenModel):
 
 
 class BiasReport(FrozenModel):
-    position_consistency_rate: float = Field(ge=0, le=1)
+    candidate_consistent_rate: float = Field(ge=0, le=1)
+    tie_consistent_rate: float = Field(ge=0, le=1)
+    abstain_rate: float = Field(ge=0, le=1)
+    position_unstable_rate: float = Field(ge=0, le=1)
+    sample_size: int = Field(ge=1)
     probes: tuple[BiasProbe, ...]
 
 
+class SliceMetrics(FrozenModel):
+    agreement: AgreementReport
+    case_count: int = Field(ge=1)
+    negative_case_count: int = Field(ge=0)
+    false_pass_rate: float | None = Field(default=None, ge=0, le=1)
+
+
 class EvaluationMetrics(FrozenModel):
-    validation_case_count: int = Field(ge=1)
+    validation_case_count: int = Field(ge=0)
+    dataset_splits: tuple[str, ...] = Field(min_length=1)
     agreement: AgreementReport
     calibration: CalibrationReport
     false_pass_rate: float = Field(ge=0, le=1)
@@ -325,7 +349,7 @@ class EvaluationMetrics(FrozenModel):
     pass_rate: float = Field(ge=0, le=1)
     confusion_matrix: dict[str, int]
     per_criterion: dict[str, AgreementReport]
-    per_slice: dict[str, AgreementReport]
+    per_slice: dict[str, SliceMetrics]
 
 
 class AcceptancePolicy(FrozenModel):
@@ -336,6 +360,16 @@ class AcceptancePolicy(FrozenModel):
     max_false_fail_rate: float = Field(ge=0, le=1)
     max_ece: float = Field(ge=0, le=1)
     required_validation_cases: int = Field(ge=1)
+    minimum_slice_support: dict[str, int] = Field(default_factory=dict)
+    maximum_slice_false_pass_rate: dict[str, float] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def validate_slice_limits(self) -> "AcceptancePolicy":
+        if any(value < 1 for value in self.minimum_slice_support.values()):
+            raise ValueError("SLICE_SUPPORT_MUST_BE_POSITIVE")
+        if any(value < 0 or value > 1 for value in self.maximum_slice_false_pass_rate.values()):
+            raise ValueError("SLICE_FALSE_PASS_RATE_OUT_OF_RANGE")
+        return self
 
 
 class GateDecision(FrozenModel):
