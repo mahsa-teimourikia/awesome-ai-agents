@@ -1,19 +1,50 @@
 # Contributing
 
-Thank you for improving Awesome AI Agents & Agentic Workflows.
+Thank you for improving Awesome AI Agents & Agentic Workflows. Read the
+[installation guide](INSTALLATION.md) before making changes.
 
-## How to add a lesson
+## Add or update a lesson
 
-Follow this exact order when contributing a new module:
-1. Create the **module README** in the appropriate track (e.g., `curriculum/advanced/32-<topic>/README.md`).
-2. Write the **companion notebook** (e.g., `32_<topic>.ipynb`) with a deliberate failure mode.
-3. Add the **hub registry** entry to `app/page.tsx` with no placeholder data.
-4. Add the **quiz** questions to `quiz/questions.js` and `quiz/learning.js`.
+Keep each lesson self-contained and use one implementation as its source of
+truth:
 
-> **Note:** Do not create a `docs/` folder or place markdown outside of the `curriculum/` directory.
+1. Create or update the lesson `README.md` in the appropriate curriculum track.
+2. Maintain exactly one canonical notebook in the lesson directory. The
+   notebook should import a reusable co-located module when the lesson has
+   substantial implementation logic.
+3. Add focused tests for the lesson's important contracts, failure modes, and
+   safety boundaries.
+4. Register the lesson in `app/page-data.tsx`, including its canonical notebook
+   and README paths.
+5. Add cross-course quiz questions to `quiz/questions.js`. Each question must
+   cite an existing repository file and, when used, a valid heading anchor.
+6. Update `README.md` and `COURSE_MAP.md` so the public navigation remains
+   complete.
+
+Do not duplicate notebooks, fabricate execution outputs, or copy a lesson's
+implementation into a second untested source file. Credential-free fixtures
+should be deterministic; provider-backed extensions must be clearly labeled.
+
+## Validate the change
+
+Run the focused lesson tests and notebook first, then the repository checks:
+
+```bash
+make content-check
+make test-quiz
+make test
+make notebook-check
+make test-ui
+```
+
+When dependency declarations change, update and commit `uv.lock` or
+`app/package-lock.json` as appropriate. CI installs from those lockfiles.
 
 ## Pull request scope
 
-Keep pull requests focused. Separate broad formatting changes from resource additions or conceptual revisions. If you update a technical explanation, include the primary sources that support the change.
+Keep pull requests focused. Separate broad formatting changes from conceptual
+revisions. Support technical claims with primary research, standards, or
+official documentation and record the exact validation performed.
 
-By contributing, you agree that your contribution will be licensed under this repository's MIT License.
+By contributing, you agree that your contribution will be licensed under the
+repository's MIT License.

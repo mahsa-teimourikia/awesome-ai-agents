@@ -11,7 +11,7 @@ Evaluate the whole runâ€”outcome, evidence, trajectory, safety, and operationsâ€
 
 Northstar investigates high latency in the EU checkout service. A polished answer can still be unsafe or inefficient: it may skip required evidence, use the wrong tool, attempt cross-tenant access, or cost ten times more than a simpler path. This lesson evaluates the **run**, not only the prose.
 
-![Diagram](assets/diagram.svg)
+![Agent evaluation loop](assets/evaluation-loop.svg)
 
 ## Outcomes
 

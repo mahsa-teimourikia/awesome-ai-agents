@@ -257,4 +257,4 @@ Install the `advanced` extra only for the optional real AutoGen path.
 - [AutoGen AgentChat 0.7.5 package](https://pypi.org/project/autogen-agentchat/0.7.5/)
 - [AutoGen: Enabling Next-Gen LLM Applications](https://arxiv.org/abs/2308.08155)
 - [Advanced 01 — Single vs Multi-Agent Architecture Decisions](../01-single-vs-multi-agent/README.md)
-- [Intermediate 03 — Tool Use and API Integration](../../intermediate/03-tool-use-and-api-integration/README.md)
+- [Intermediate 01 — Tool Engineering](../../intermediate/01-tool-engineering/README.md)

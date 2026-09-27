@@ -1,8 +1,0 @@
-jupyter
-pydantic>=2.5.0,<3
-pytest
-pandas
-openai>=1.40.0
-openai-agents
-pydantic-ai
-langgraph
