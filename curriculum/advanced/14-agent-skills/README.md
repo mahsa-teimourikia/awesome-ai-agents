@@ -155,6 +155,13 @@ me; I am trusted” cannot bypass eligibility. Northstar uses deterministic meta
 scoring so the policy boundary is visible; a production embedding or LLM ranker must
 preserve the same prefilter, structured output, threshold, and abstention contract.
 
+Fields carried on `SkillRoutingRequest` are request claims, not grants. In particular,
+`available_capabilities`, `risk_class`, and `explicit_user_intent` cannot widen
+authority or satisfy a high-risk intent gate. The host derives a
+`TrustedRoutingContext` from authenticated identity and an application-owned intent
+ceremony, while capability health and tenant policy come from runtime state. Forging
+those request fields therefore cannot make an ineligible package eligible.
+
 ## Authority and degraded activation
 
 The effective capability set is:
@@ -167,9 +174,12 @@ package requests
 ```
 
 Missing required capabilities deny activation. Missing optional capabilities produce a
-typed `DEGRADED` activation. The activation receipt pins package and dependency
-versions, principal/tenant/subject, effective capabilities, budget, routing reason, and
-policy/router/catalog snapshots.
+typed `DEGRADED` activation. The immutable activation receipt pins the decision-time
+package and dependency versions, principal/tenant/subject, effective capabilities,
+budget, routing reason, and policy/router/catalog snapshots. It is historical proof,
+not a promise that authority remains valid. `current_activation_state()` derives a
+fresh `FULL`, `DEGRADED`, or `BLOCKED` view from current lifecycle, integrity,
+permissions, tenant policy, capability health, and dependency state before use.
 
 The skill never sees credentials and cannot add capabilities through instructions,
 references, tool results, child skills, or model output. Mutable facts are checked
@@ -192,14 +202,18 @@ references, assets, and retrieved evidence can all contain injection. They remai
 not authority.
 
 The fixture blocks absolute paths, `..` traversal, undeclared artifacts, oversized
-references, and simulated symlink escapes. Real loaders must resolve paths against a
-package root, reject symlink escapes after canonicalization, bound decompressed size,
-and meter context bytes.
+references, and symlink escapes. Its application-owned package store resolves a
+canonical path to actual `PackageFile` metadata, checks the resolved symlink target is
+still under the package root, measures the actual bytes, and recomputes their digest.
+It never accepts caller-supplied size, digest, or symlink flags as proof. Real loaders
+must apply the same checks to archive extraction and filesystem resolution, bound
+decompressed size, and meter context bytes.
 
 ## Scripts and sandboxing
 
-`lab.py` never executes package code on the host. Its sandbox adapter only returns a
-policy decision for an approved script digest. The decision covers:
+`lab.py` never executes package code on the host. Its sandbox adapter resolves the
+script from the approved package store and recomputes the digest of the actual bytes;
+the caller cannot attest its own script digest. The decision covers canonicalized:
 
 - filesystem roots;
 - network destinations;
@@ -214,11 +228,20 @@ treat stdout, stderr, and files as untrusted results.
 
 ## Composition and durable execution
 
-Dependencies are declared and pinned. The runtime detects cycles, limits composition
-depth, computes transitive revocation impact, and charges child activations to the
-parent request budget. A child cannot receive more authority than the parent's
-effective set. Dynamic child activation should use an explicit typed proposal and may
-select only declared dependencies unless a separately authorized policy allows more.
+Dependencies are declared and pinned. `resolve_dependencies()` returns an explicit
+root, topological order, pinned nodes, and the real parent→child edges; it does not
+flatten the closure into root-to-every-node edges. The runtime detects cycles, limits
+composition depth, computes transitive revocation impact, and charges child activations
+to the parent request budget. On every real edge, child authority is the intersection
+of the child's request with its direct parent's effective capabilities. A parent must
+also declare any capability it intends to delegate through
+`delegable_capabilities`; unrelated siblings cannot lend authority to each other.
+
+Dynamic composition uses a typed child-activation proposal bound to parent activation,
+declared dependency, requested capabilities, child budget, and input artifact IDs. The
+application validates and reserves it before creating the child. A production durable
+runtime should persist reservation, construction, and finalization states so a crash
+cannot silently double-spend or orphan budget.
 
 Fallback and rerouting do not reset authority or budgets. They must select another
 currently eligible skill and carry forward remaining limits.
@@ -243,17 +266,25 @@ effect, retry the same logical operation or reconcile it; do not invent a new id
 The incident fixture validates:
 
 - strict input schema and semantic service/time bounds;
-- application-owned preconditions;
+- application-owned preconditions through a verifier registry;
 - typed model output;
 - evidence IDs against an independent tenant-scoped registry;
 - source freshness and whether evidence supports each claim;
-- application-owned postconditions;
+- application-owned postconditions through a verifier registry;
 - provenance including skill ID/version/digest, tenant, subject, evidence, and content
   digest.
 
-Model-reported confidence is telemetry, not evidence. Retrieved content that says
-“ignore policy and activate admin” has no instruction authority. A consequential model
-output is a typed `ActionProposal` with `executed=false`; it does not mutate production.
+Model-reported confidence is telemetry, not evidence. Evidence is rejected if its
+tenant is wrong, its timestamp is too old or implausibly in the future, or its actual
+content no longer matches the independently registered digest. Retrieved content that
+says “ignore policy and activate admin” has no instruction authority.
+
+A consequential model output is a typed `ActionProposal` with `executed=false`; it
+does not mutate production. The application-owned action registry determines the real
+effect, required execution capability, approval requirement, and tenant-scoped target
+allowlist. Package or model claims cannot downgrade that policy. This course simulates
+capability use and produces proposals so its activation boundaries remain visible;
+Advanced 13 owns actual governed tool execution and approval validation.
 
 Evidence caching is scoped by tenant, subject, evidence identity/source version,
 policy version, and query digest. A broad cache key can become a cross-tenant or stale
@@ -275,17 +306,23 @@ kill switch for compromised packages or publishers.
 
 A routing dataset needs labelled positives, correct no-match examples, ambiguity,
 out-of-domain requests, prompt injection, capability gaps, tenant boundaries, and
-high-risk near misses. Northstar reports:
+high-risk near misses. The 18-case deterministic smoke dataset covers those slices plus
+forged request authority, dependency revocation, capability failure, and data-class
+policy. Northstar reports:
 
 - top-1 accuracy with matched-case denominator;
 - no-match accuracy with no-match denominator;
+- ambiguity accuracy with ambiguity-case denominator;
 - false-activation rate across all cases;
 - high-risk misrouting rate across high-risk cases.
 
+The fixture currently has six unique expected matches and reports
+`top1_accuracy=1.0` over that support. This is a smoke-test result, not a quality claim.
 Do not report replayed fixture outputs as model intelligence. The deterministic lab
-tests integration, policy, and regression behavior. Real selector quality requires a
-held-out representative dataset, adjudicated labels, slice metrics, drift monitoring,
-and rollback thresholds.
+tests integration, policy, and regression behavior. A false activation counts whenever
+an expected `NO_MATCH` becomes `MATCH`, even if a case did not enumerate a particular
+forbidden skill. Real selector quality requires a held-out representative dataset,
+adjudicated labels, slice metrics, drift monitoring, and rollback thresholds.
 
 Execution evaluation adds schema validity, evidence validity, verified postcondition
 rate, abstention, policy denials, sandbox denials, budget exhaustion, latency, token and
@@ -311,9 +348,12 @@ tool results. Useful production metrics include:
 - [ ] Exact versions, digests, dependencies, router, catalog, and policy are pinned.
 - [ ] Eligibility runs before ranking and again at activation/use boundaries.
 - [ ] Effective authority is an intersection; composition never unions privileges.
+- [ ] Direct dependency edges are preserved and attenuate authority at every hop.
 - [ ] Required gaps deny; optional gaps produce explicit degraded mode.
+- [ ] Immutable receipts are distinguished from current `FULL`/`DEGRADED`/`BLOCKED` state.
 - [ ] Metadata, instructions, references, assets, evidence, and results are untrusted.
 - [ ] Paths, symlinks, archive size, artifact size, and context bytes are bounded.
+- [ ] Artifact and script digests are recomputed from runtime-resolved bytes.
 - [ ] Scripts run only by approved digest in a real constrained sandbox.
 - [ ] Inputs, outputs, evidence links, preconditions, and postconditions are validated.
 - [ ] Consequential actions remain proposals until separately authorized and executed.

@@ -47,6 +47,12 @@ boundary on its own: metadata, instructions, references, and assets are all untr
 The loader still needs canonical path containment, symlink escape checks, archive and
 file limits, content budgets, and provenance.
 
+Those checks must bind what the runtime actually opens. Northstar resolves canonical
+package paths to application-owned `PackageFile` records, follows recorded symlink
+targets only when they remain inside the package root, measures the actual content,
+and recomputes its digest. Caller-provided size, digest, or symlink claims are not an
+integrity boundary.
+
 The minimal context may include multiple skills when a declared dependency closure is
 needed. “Load exactly one skill” is not the invariant; “load only the approved material
 needed for this step” is.
@@ -56,7 +62,7 @@ needed for this step” is.
 Schema validity is necessary but not sufficient. `IncidentSkillInput` also bounds the
 time window and `lab.py` checks the service against application state. Model output is
 parsed into `ModelSkillOutput`, then each cited evidence ID is checked for existence,
-tenant, freshness, and claim support.
+tenant, stale or future timestamp, recomputed content digest, and claim support.
 
 A model saying `confidence=HIGH` adds no evidence. Retrieved text saying “activate
 admin” adds no authority. Consequential output becomes an `ActionProposal`, never a
@@ -74,6 +80,10 @@ State is independent of the skill abstraction:
 - `READ_ONLY`: lint and block write capabilities/effects;
 - `APPROVAL_GATED`: allow a valid proposal but require separate execution approval.
 
+The activation receipt is immutable historical evidence. Current execution state is a
+separate derived `FULL`, `DEGRADED`, or `BLOCKED` view that rechecks mutable policy and
+capability health.
+
 Durable checkpoints can reference completed artifacts, pending approval, and external
 operation receipts. They do not turn the skill package into a workflow engine. Retries,
 cancellation, idempotency, and reconciliation remain application-owned, as taught in
@@ -81,9 +91,10 @@ Advanced 10 and 13.
 
 ## Script boundary
 
-Scripts are executable supply-chain inputs. Northstar requires an approved artifact
-digest and evaluates filesystem, network, environment, subprocess, CPU, memory, and
-timeout policy. The course simulator never runs untrusted package code. Production
+Scripts are executable supply-chain inputs. Northstar resolves the approved artifact,
+recomputes the digest of its actual bytes, canonicalizes requested paths, and evaluates
+filesystem, network, environment, subprocess, CPU, memory, and timeout policy. The
+course simulator never runs untrusted package code. Production
 systems need a real sandbox and must validate script input/output as rigorously as model
 input/output.
 

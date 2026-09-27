@@ -44,6 +44,7 @@ class EffectClass(StrEnum):
 class ActivationMode(StrEnum):
     FULL = "FULL"
     DEGRADED = "DEGRADED"
+    BLOCKED = "BLOCKED"
 
 
 class ExecutionMode(StrEnum):
@@ -111,6 +112,19 @@ class PackageArtifact(FrozenModel):
     digest: str = Field(min_length=64, max_length=64)
 
 
+class PackageFile(FrozenModel):
+    artifact_id: str = Field(min_length=1)
+    content: str
+    is_symlink: bool = False
+    resolved_target: str | None = None
+
+    @model_validator(mode="after")
+    def symlink_has_target(self) -> "PackageFile":
+        if self.is_symlink and not self.resolved_target:
+            raise ValueError("SYMLINK_TARGET_REQUIRED")
+        return self
+
+
 class SandboxPolicy(FrozenModel):
     filesystem_roots: tuple[str, ...] = ()
     network_destinations: tuple[str, ...] = ()
@@ -135,6 +149,7 @@ class SkillManifest(FrozenModel):
     routing_terms: tuple[str, ...] = Field(min_length=1)
     required_capabilities: tuple[str, ...] = ()
     optional_capabilities: tuple[str, ...] = ()
+    delegable_capabilities: tuple[str, ...] = ()
     input_schema: dict[str, Any]
     output_schema: dict[str, Any]
     dependencies: tuple[SkillDependency, ...] = ()
@@ -154,6 +169,8 @@ class SkillManifest(FrozenModel):
             raise ValueError("SKILL_PUBLISHER_NAMESPACE_MISMATCH")
         if set(self.required_capabilities) & set(self.optional_capabilities):
             raise ValueError("CAPABILITY_CANNOT_BE_REQUIRED_AND_OPTIONAL")
+        if (set(self.required_capabilities) | set(self.optional_capabilities)) & set(self.delegable_capabilities):
+            raise ValueError("DELEGABLE_CAPABILITY_MUST_BE_DISTINCT")
         return self
 
     @property
@@ -184,6 +201,14 @@ class SkillRoutingRequest(FrozenModel):
     query: str = Field(min_length=1)
     available_capabilities: tuple[str, ...] = ()
     explicit_user_intent: bool = False
+
+
+class TrustedRoutingContext(FrozenModel):
+    principal_id: str = Field(min_length=1)
+    tenant_id: str = Field(min_length=1)
+    subject_id: str = Field(min_length=1)
+    explicit_user_intent: bool = False
+    established_by: str = Field(pattern="^HOST$")
 
 
 class RoutingCandidate(FrozenModel):
@@ -247,10 +272,33 @@ class SkillActivation(FrozenModel):
     activated_at: datetime
 
 
+class ActivationCurrentState(FrozenModel):
+    activation_id: str = Field(min_length=1)
+    mode: ActivationMode
+    effective_capabilities: tuple[str, ...]
+    missing_optional_capabilities: tuple[str, ...]
+    reason_code: str = Field(min_length=1)
+
+
 class SkillActivationProposal(FrozenModel):
     parent_activation_id: str = Field(min_length=1)
     child_skill_ref: str = Field(min_length=1)
     reason: str = Field(min_length=1)
+    requested_capabilities: tuple[str, ...] = ()
+    requested_budget: ExecutionBudget | None = None
+    input_artifact_ids: tuple[str, ...] = ()
+
+
+class DependencyEdge(FrozenModel):
+    parent_ref: str = Field(min_length=1)
+    child_ref: str = Field(min_length=1)
+
+
+class DependencyResolution(FrozenModel):
+    root_ref: str = Field(min_length=1)
+    topological_order: tuple[str, ...]
+    dependency_refs: tuple[str, ...]
+    edges: tuple[DependencyEdge, ...]
 
 
 class SkillExecutionNode(FrozenModel):
@@ -284,6 +332,14 @@ class EvidenceRecord(FrozenModel):
     supports_claims: tuple[str, ...]
     content: str
     instruction_authority: bool = False
+
+
+class ActionPolicy(FrozenModel):
+    action: str = Field(min_length=1)
+    effect: EffectClass
+    execution_capability: str = Field(min_length=1)
+    approval_required: bool
+    allowed_targets_by_tenant: dict[str, tuple[str, ...]]
 
 
 class EvidenceBoundClaim(FrozenModel):
@@ -369,7 +425,6 @@ class SkillTraceEvent(FrozenModel):
 
 class SandboxRequest(FrozenModel):
     script_id: str = Field(min_length=1)
-    script_digest: str = Field(min_length=64, max_length=64)
     filesystem_paths: tuple[str, ...] = ()
     network_destinations: tuple[str, ...] = ()
     environment_variables: tuple[str, ...] = ()
@@ -399,6 +454,9 @@ class RoutingEvaluationCase(FrozenModel):
     expected_skill_ref: str | None = None
     forbidden_skill_refs: tuple[str, ...] = ()
     high_risk: bool = False
+    trusted_explicit_user_intent: bool = False
+    quarantined_skill_refs: tuple[str, ...] = ()
+    unhealthy_capabilities: tuple[str, ...] = ()
 
 
 class RoutingEvaluationReport(FrozenModel):
@@ -407,10 +465,13 @@ class RoutingEvaluationReport(FrozenModel):
     top1_correct: int = Field(ge=0)
     no_match_cases: int = Field(ge=0)
     no_match_correct: int = Field(ge=0)
+    ambiguous_cases: int = Field(ge=0)
+    ambiguous_correct: int = Field(ge=0)
     false_activations: int = Field(ge=0)
     high_risk_cases: int = Field(ge=0)
     high_risk_misroutes: int = Field(ge=0)
     top1_accuracy: float = Field(ge=0, le=1)
     no_match_accuracy: float = Field(ge=0, le=1)
+    ambiguity_accuracy: float = Field(ge=0, le=1)
     false_activation_rate: float = Field(ge=0, le=1)
     high_risk_misrouting_rate: float = Field(ge=0, le=1)

@@ -35,6 +35,12 @@ document, or token such as `APPROVED` cannot authorize it. The application valid
 exact approval and target state, then invokes the write through its governed execution
 boundary.
 
+In this Course 14 fixture, capability use is simulated and metered so package trust,
+routing, activation, and composition remain the focus. The application-owned action
+registry still fixes the operation's effect, required capability, approval rule, and
+tenant-scoped targets, while pre/postcondition registries select trusted verifiers.
+Advanced 13 implements the actual governed tool-call and approval boundary.
+
 ## Failure patterns
 
 - **“The skill lists the tool, so it is allowed.”** Requested capability is metadata.
