@@ -1,3 +1,11 @@
+<p align="center">
+  <a href="https://oneplusi.io">
+    <img src="assets/one-plus-i.png" alt="One+i" width="170">
+  </a>
+</p>
+
+<p align="center"><strong>An open learning project by <a href="https://oneplusi.io">One+i</a></strong><br>Responsible AI · real-world impact</p>
+
 # ✨ Awesome AI Agents & Agentic Workflows ✨
 
 > A notebook-first course and curated reference for building, evaluating, securing, and operating AI agents.
@@ -177,3 +185,5 @@ topic so theory, notebook, lab, Hub entry, and checkpoint stay aligned.
 ## License
 
 This repository is licensed under the [MIT License](LICENSE).
+
+<p align="center">Created and maintained by <a href="https://oneplusi.io"><strong>One+i</strong></a>.</p>

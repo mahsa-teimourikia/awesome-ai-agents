@@ -129,6 +129,20 @@ for (const navigationPath of ["README.md", "COURSE_MAP.md"]) {
   }
 }
 
+const repositoryReadme = readFileSync(resolve(root, "README.md"), "utf8");
+assert.ok(
+  repositoryReadme.includes("assets/one-plus-i.png") && repositoryReadme.includes("https://oneplusi.io"),
+  "README must retain the One+i logo and attribution link",
+);
+
+const hubSource = readFileSync(resolve(root, "app/page.tsx"), "utf8");
+assert.ok(
+  hubSource.includes('import onePlusILogo from "../assets/one-plus-i.png"') &&
+    hubSource.includes("https://oneplusi.io") &&
+    hubSource.includes("A ONE+i OPEN LEARNING PROJECT"),
+  "Learning Hub must retain the One+i logo, attribution, and link",
+);
+
 function githubSlug(heading) {
   return heading
     .trim()
